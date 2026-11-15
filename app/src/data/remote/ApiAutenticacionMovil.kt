@@ -9,6 +9,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 internal data class RegistroRequest(
     val email: String,
@@ -29,6 +30,35 @@ internal data class UsuarioRespuesta(
     val user: AuthUser
 )
 
+internal data class PerfilUsuarioRespuesta(
+    val userId: String = "",
+    val displayName: String = "",
+    val name: String = "",
+    val email: String = "",
+    val photoUrl: String = "",
+    val phone: String = "",
+    val address: String = "",
+    val city: String = "",
+    val updatedAt: String? = null
+)
+
+internal data class PerfilRespuesta(
+    val item: PerfilUsuarioRespuesta
+)
+
+internal data class PerfilActualizarRequest(
+    val name: String,
+    val email: String,
+    val phone: String,
+    val address: String,
+    val city: String
+)
+
+internal data class PerfilActualizadoRespuesta(
+    val success: Boolean = false,
+    val item: PerfilUsuarioRespuesta
+)
+
 internal interface EleganAuthApi {
     @POST("api/movil/auth/register")
     suspend fun register(@Body request: RegistroRequest): AuthResponse
@@ -41,6 +71,15 @@ internal interface EleganAuthApi {
 
     @GET("api/movil/auth/me")
     suspend fun me(@Header("Authorization") authorization: String): UsuarioRespuesta
+
+    @GET("api/movil/profile")
+    suspend fun profile(@Header("Authorization") authorization: String): PerfilRespuesta
+
+    @PUT("api/movil/profile")
+    suspend fun updateProfile(
+        @Header("Authorization") authorization: String,
+        @Body request: PerfilActualizarRequest
+    ): PerfilActualizadoRespuesta
 
     @POST("api/movil/auth/logout")
     suspend fun logout(@Header("Authorization") authorization: String)
