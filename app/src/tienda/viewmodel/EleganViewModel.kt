@@ -122,8 +122,14 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun sendSupportMessage(text: String, mediaUri: String = "", mediaType: String = "") =
         perfilCtrl.sendSupportMessage(text, mediaUri, mediaType)
 
-    fun saveProfile(name: String, email: String, phone: String, address: String, city: String) =
-        perfilCtrl.saveProfile(name, email, phone, address, city)
+    fun saveProfile(
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+        onResult: (Result<Unit>) -> Unit
+    ) = perfilCtrl.saveProfile(name, email, phone, address, city, onResult)
 
     fun publishProduct(product: Product, onResult: (Result<Unit>) -> Unit = {}) =
         catalogoCtrl.publishProduct(product, onResult)
