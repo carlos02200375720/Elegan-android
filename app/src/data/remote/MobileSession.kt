@@ -3,12 +3,10 @@ package com.example.data.remote
 import android.content.Context
 
 /**
- * Fachada pública para la gestión de sesión móvil y credenciales locales.
- * Cifrado en reposo mediante AES-256.
+ * Sesión móvil autenticada por Elegan Backend.
+ * El token se conserva cifrado en el dispositivo; las credenciales se validan en el servidor.
  */
 object MobileSession {
-    const val SUPER_ADMIN_EMAIL = "cg0220037@gmail.com"
-
     fun save(context: Context, response: AuthResponse) =
         AlmacenCifradoSesion.save(context, response)
 
@@ -18,28 +16,61 @@ object MobileSession {
     fun user(context: Context): AuthUser? =
         AlmacenCifradoSesion.user(context)
 
+    fun token(context: Context): String? =
+        AlmacenCifradoSesion.token(context)
+
     fun clear(context: Context) =
         AlmacenCifradoSesion.clear(context)
 
-    fun deleteAccount(context: Context) =
-        AlmacenCuentasLocales.deleteCurrentAccount(context)
-
-    fun registerLocalUser(
+    suspend fun registerUser(
         context: Context,
         name: String,
         email: String,
         password: String
-    ): AuthResponse = RegistroYLoginLocal.registerLocalUser(context, name, email, password)
+    ): AuthResponse {
+        val response = ApiAutenticacionMovil.service.register(
+            RegistroRequest(email = email.trim(), password = password, name = name.trim())
+        )
+        save(context, response)
+        return response
+    }
 
-    fun loginLocalUser(context: Context, email: String, password: String): AuthResponse =
-        RegistroYLoginLocal.loginLocalUser(context, email, password)
+    suspend fun loginUser(context: Context, email: String, password: String): AuthResponse {
+        val response = ApiAutenticacionMovil.service.login(
+            InicioSesionRequest(email = email.trim(), password = password)
+        )
+        save(context, response)
+        return response
+    }
 
-    fun loginAdminLocally(context: Context): AuthResponse =
-        AccesosRapidosYGoogle.loginAdminLocally(context)
+    suspend fun loginWithGoogleToken(context: Context, googleIdToken: String): AuthResponse {
+        val response = ApiAutenticacionMovil.service.loginGoogle(
+            GoogleAuthRequest(idToken = googleIdToken)
+        )
+        save(context, response)
+        return response
+    }
 
-    fun loginClientLocally(context: Context): AuthResponse =
-        AccesosRapidosYGoogle.loginClientLocally(context)
+    suspend fun validateSession(context: Context): AuthUser {
+        val token = token(context)
+            ?: throw IllegalStateException("No hay una sesión guardada.")
+        if (token.startsWith("local_session_")) {
+            clear(context)
+            throw IllegalStateException("La sesión anterior era local y ya no es válida.")
+        }
+        val user = ApiAutenticacionMovil.service.me("Bearer $token").user
+        save(context, AuthResponse(token = token, user = user))
+        return user
+    }
 
-    fun loginWithGoogleTokenLocally(context: Context, googleIdToken: String): AuthResponse =
-        AccesosRapidosYGoogle.loginWithGoogleTokenLocally(context, googleIdToken)
+    suspend fun logout(context: Context) {
+        val token = token(context)
+        try {
+            if (!token.isNullOrBlank() && !token.startsWith("local_session_")) {
+                ApiAutenticacionMovil.service.logout("Bearer $token")
+            }
+        } finally {
+            clear(context)
+        }
+    }
 }
