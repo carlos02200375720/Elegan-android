@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,8 +50,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -184,14 +183,46 @@ fun CategoriaScreen(
     BackHandler { onBack() }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    color = Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp
+                ) {
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val isCompactHeader = maxWidth < 360.dp
+                        val isWideHeader = maxWidth >= 600.dp
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    start = if (isCompactHeader) 2.dp else 4.dp,
+                                    end = if (isWideHeader) 20.dp else 12.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.testTag("menu_back_button")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Volver",
+                                    tint = EleganCharcoal
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(if (isCompactHeader) 2.dp else 4.dp))
+
                             Box(
                                 modifier = Modifier
-                                    .size(40.dp)
+                                    .size(if (isCompactHeader) 34.dp else 38.dp)
                                     .clip(CircleShape)
                                     .background(Color.White)
                                     .padding(2.dp),
@@ -204,35 +235,24 @@ fun CategoriaScreen(
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
+
+                            Spacer(modifier = Modifier.width(if (isCompactHeader) 6.dp else 8.dp))
+
                             Text(
                                 text = "Menú de Categorías",
-                                style = MaterialTheme.typography.titleLarge.copy(
+                                style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold,
                                     color = EleganCharcoal,
-                                    fontFamily = FontFamily.Serif
+                                    fontFamily = FontFamily.Serif,
+                                    fontSize = if (isCompactHeader) 16.sp else 18.sp
                                 ),
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                    },
-                    navigationIcon = {
-                        IconButton(
-                            onClick = onBack,
-                            modifier = Modifier.testTag("menu_back_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Volver",
-                                tint = EleganCharcoal
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.White
-                    )
-                )
+                    }
+                }
                 EleganTopBarShadow()
             }
         },
