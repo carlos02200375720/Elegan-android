@@ -16,28 +16,22 @@ import org.robolectric.annotation.Config
 class PruebasPerfilPedidosYSoporteTest {
 
     @Test
-    fun `test local user delivery profile persists across repository refresh`(): Unit = runBlocking {
+    fun `test profile update is not treated as saved when backend request fails`(): Unit = runBlocking {
         val context = obtenerContextoPrueba()
         limpiarPreferenciasPrueba(context, "elegan_profile_cache")
         reiniciarSesionClienteDemo(context)
 
         val repo1 = EleganRepository(context)
-        repo1.saveUserProfile(
-            phone = "809-555-2026",
-            address = "Av. Abraham Lincoln 450",
-            city = "Santo Domingo"
-        )
-
-        val profile1 = repo1.observeUserProfile().first()
-        assertEquals("809-555-2026", profile1?.phone)
-        assertEquals("Av. Abraham Lincoln 450", profile1?.address)
-        assertEquals("Santo Domingo", profile1?.city)
-
-        val repo2 = EleganRepository(context)
-        val profile2 = repo2.observeUserProfile().first()
-        assertEquals("809-555-2026", profile2?.phone)
-        assertEquals("Av. Abraham Lincoln 450", profile2?.address)
-        assertEquals("Santo Domingo", profile2?.city)
+        val saveResult = runCatching {
+            repo1.saveUserProfile(
+                name = "Cliente Demo",
+                email = "cliente.demo@example.com",
+                phone = "809-555-2026",
+                address = "Av. Abraham Lincoln 450",
+                city = "Santo Domingo"
+            )
+        }
+        assertTrue("El guardado debe fallar si el backend no confirma la operación", saveResult.isFailure)
 
         limpiarPreferenciasPrueba(context, "elegan_profile_cache")
         MobileSession.clear(context)
