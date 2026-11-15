@@ -4,7 +4,7 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.compose)
   // alias(libs.plugins.google.devtools.ksp)
-  alias(libs.plugins.secrets)
+  // alias(libs.plugins.secrets)
 }
 
 android {
@@ -16,9 +16,6 @@ android {
     targetSdk = 36
     versionCode = 1
     versionName = "1.0"
-    val eleganApiBaseUrl = providers.environmentVariable("ELEGAN_API_BASE_URL").orNull?.takeIf { it.isNotBlank() }
-      ?: "https://backend-elegan-rd-587849039182.us-central1.run.app"
-    buildConfigField("String", "ELEGAN_API_BASE_URL", "\"$eleganApiBaseUrl\"")
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
   signingConfigs {
@@ -61,8 +58,6 @@ android {
   }
   sourceSets {
     getByName("main") {
-      java.srcDir("src/admin")
-      kotlin.srcDir("src/admin")
       java.srcDir("src/tienda")
       kotlin.srcDir("src/tienda")
       java.srcDir("src/data")
@@ -71,10 +66,10 @@ android {
   }
 }
 
-secrets {
-  propertiesFileName = ".env"
-  defaultPropertiesFileName = ".env.example"
-}
+// secrets {
+//   propertiesFileName = ".env"
+//   defaultPropertiesFileName = ".env.example"
+// }
 
 dependencies {
   implementation(platform(libs.androidx.compose.bom))
@@ -93,17 +88,17 @@ dependencies {
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   implementation(libs.coil.compose)
-  implementation(libs.converter.moshi)
+  // implementation(libs.converter.moshi)
   // implementation(libs.androidx.credentials)
   // implementation(libs.androidx.credentials.play.services)
   // implementation(libs.googleid)
   implementation(libs.kotlinx.coroutines.android)
   implementation(libs.kotlinx.coroutines.core)
-  implementation(libs.logging.interceptor)
-  implementation(libs.moshi.kotlin)
-  implementation(libs.okhttp)
+  // implementation(libs.logging.interceptor)
+  // implementation(libs.moshi.kotlin)
+  // implementation(libs.okhttp)
   implementation(libs.androidx.security.crypto)
-  implementation(libs.retrofit)
+  // implementation(libs.retrofit)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)

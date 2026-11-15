@@ -70,14 +70,7 @@ import coil.Coil
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
-import com.example.admin.MenuAdminScreen
-import com.example.admin.PublicacionesScreen
-import com.example.admin.PublicarAnuncioScreen
-import com.example.admin.PublicarProductoScreen
-import com.example.data.model.Announcement
-import com.example.data.model.Product
 import com.example.data.remote.AuthUser
-import com.example.data.remote.EleganApiClient
 import com.example.data.remote.MobileSession
 import com.example.ui.CarritoScreen
 import com.example.ui.CatalogoScreen
@@ -111,11 +104,7 @@ enum class Screen {
     VERIFICASION,
     GRACIA,
     PERFIL,
-    CHATS,
-    PUBLICAR_PRODUCTO,
-    PUBLICAR_ANUNCIO,
-    MENU_ADMIN,
-    PUBLICASIONE
+    CHATS
 }
 
 class MainActivity : ComponentActivity() {
@@ -143,8 +132,6 @@ class MainActivity : ComponentActivity() {
                 if (mediaDir.exists()) {
                     mediaDir.deleteRecursively()
                 }
-                getSharedPreferences("elegan_admin_prefs", android.content.Context.MODE_PRIVATE)
-                    .edit().clear().apply()
             } catch (_: Exception) {}
         }
 
@@ -199,9 +186,7 @@ fun MainApp() {
 
     LaunchedEffect(Unit) {
         val loadedUser = withContext(Dispatchers.IO) {
-            val cachedUser = MobileSession.user(context)
-            EleganApiClient.store
-            cachedUser
+            MobileSession.user(context)
         }
         currentUser = loadedUser
         isSessionReady = true
@@ -256,9 +241,7 @@ fun AppContent(
 ) {
     var currentScreen by remember { mutableStateOf(Screen.INICIO) }
     var previousScreen by remember { mutableStateOf(Screen.INICIO) }
-    var adminMenuReturnScreen by remember { mutableStateOf(Screen.INICIO) }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }
-    var openedFromAdminMenu by remember { mutableStateOf(false) }
 
     // Checkout verification parameters
     var checkoutSubtotal by remember { mutableDoubleStateOf(0.0) }
@@ -268,7 +251,6 @@ fun AppContent(
 
     // State flows
     val products by viewModel.products.collectAsState()
-    val announcements by viewModel.announcements.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
     val orders by viewModel.orders.collectAsState()
     val messages by viewModel.messages.collectAsState()
@@ -285,30 +267,11 @@ fun AppContent(
     val lastOrderDetails by viewModel.lastOrderDetails.collectAsState()
 
     fun navigateTo(screen: Screen) {
-        if (screen == Screen.MENU_ADMIN && currentScreen != Screen.PUBLICAR_PRODUCTO && currentScreen != Screen.PUBLICAR_ANUNCIO && currentScreen != Screen.PUBLICASIONE && currentScreen != Screen.CATEGORIA && currentScreen != Screen.CHATS) {
-            adminMenuReturnScreen = currentScreen
-        }
         if (screen == Screen.CHATS && currentScreen != Screen.CARRITO && currentScreen != Screen.CHATS) {
             chatsReturnScreen = currentScreen
         }
-        openedFromAdminMenu = false
         previousScreen = currentScreen
         currentScreen = screen
-    }
-
-    fun navigateFromAdminMenu(screen: Screen) {
-        if (screen == Screen.CHATS) {
-            chatsReturnScreen = Screen.MENU_ADMIN
-        }
-        openedFromAdminMenu = true
-        previousScreen = Screen.MENU_ADMIN
-        currentScreen = screen
-    }
-
-    fun closeAdminMenu() {
-        openedFromAdminMenu = false
-        previousScreen = Screen.MENU_ADMIN
-        currentScreen = adminMenuReturnScreen
     }
 
     val eleganNotifier = remember { EleganNotificationState() }
@@ -380,7 +343,7 @@ fun AppContent(
                             sizeTransform = SizeTransform(clip = false)
                         )
                     }
-                    initialState == Screen.MENU_ADMIN && openedFromAdminMenu && targetState != Screen.CATALOGO -> {
+                    targetState == Screen.CATEGORIA -> {
                         ContentTransform(
                             targetContentEnter = slideInHorizontally(
                                 initialOffsetX = { fullWidth -> -fullWidth },
@@ -394,55 +357,7 @@ fun AppContent(
                             sizeTransform = SizeTransform(clip = false)
                         )
                     }
-                    targetState == Screen.CATEGORIA ||
-                        targetState == Screen.PUBLICAR_PRODUCTO ||
-                        targetState == Screen.PUBLICAR_ANUNCIO ||
-                        targetState == Screen.PUBLICASIONE -> {
-                        ContentTransform(
-                            targetContentEnter = slideInHorizontally(
-                                initialOffsetX = { fullWidth -> -fullWidth },
-                                animationSpec = tween(durationMillis = 320)
-                            ),
-                            initialContentExit = fadeOut(
-                                animationSpec = tween(durationMillis = 320),
-                                targetAlpha = 0.99f
-                            ),
-                            targetContentZIndex = 1f,
-                            sizeTransform = SizeTransform(clip = false)
-                        )
-                    }
-                    initialState == Screen.CATEGORIA ||
-                        initialState == Screen.PUBLICAR_PRODUCTO ||
-                        initialState == Screen.PUBLICAR_ANUNCIO ||
-                        initialState == Screen.PUBLICASIONE -> {
-                        ContentTransform(
-                            targetContentEnter = fadeIn(
-                                animationSpec = tween(durationMillis = 280),
-                                initialAlpha = 0.99f
-                            ),
-                            initialContentExit = slideOutHorizontally(
-                                targetOffsetX = { fullWidth -> -fullWidth },
-                                animationSpec = tween(durationMillis = 280)
-                            ),
-                            targetContentZIndex = -1f,
-                            sizeTransform = SizeTransform(clip = false)
-                        )
-                    }
-                    targetState == Screen.MENU_ADMIN -> {
-                        ContentTransform(
-                            targetContentEnter = slideInHorizontally(
-                                initialOffsetX = { fullWidth -> -fullWidth },
-                                animationSpec = tween(durationMillis = 320)
-                            ),
-                            initialContentExit = fadeOut(
-                                animationSpec = tween(durationMillis = 320),
-                                targetAlpha = 0.99f
-                            ),
-                            targetContentZIndex = 1f,
-                            sizeTransform = SizeTransform(clip = false)
-                        )
-                    }
-                    initialState == Screen.MENU_ADMIN -> {
+                    initialState == Screen.CATEGORIA -> {
                         ContentTransform(
                             targetContentEnter = fadeIn(
                                 animationSpec = tween(durationMillis = 280),
@@ -527,6 +442,34 @@ fun AppContent(
                         )
                     }
                     initialState == Screen.PRODUCTO && targetState != Screen.CARRITO -> {
+                        ContentTransform(
+                            targetContentEnter = fadeIn(
+                                animationSpec = tween(durationMillis = 280),
+                                initialAlpha = 0.99f
+                            ),
+                            initialContentExit = slideOutHorizontally(
+                                targetOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(durationMillis = 280)
+                            ),
+                            targetContentZIndex = -1f,
+                            sizeTransform = SizeTransform(clip = false)
+                        )
+                    }
+                    targetState == Screen.PERFIL -> {
+                        ContentTransform(
+                            targetContentEnter = slideInHorizontally(
+                                initialOffsetX = { fullWidth -> fullWidth },
+                                animationSpec = tween(durationMillis = 320)
+                            ),
+                            initialContentExit = fadeOut(
+                                animationSpec = tween(durationMillis = 320),
+                                targetAlpha = 0.99f
+                            ),
+                            targetContentZIndex = 1f,
+                            sizeTransform = SizeTransform(clip = false)
+                        )
+                    }
+                    initialState == Screen.PERFIL -> {
                         ContentTransform(
                             targetContentEnter = fadeIn(
                                 animationSpec = tween(durationMillis = 280),
@@ -675,6 +618,9 @@ fun AppContent(
                             }
 
                             Screen.PERFIL -> {
+                                BackHandler {
+                                    navigateTo(Screen.INICIO)
+                                }
                                 PerfilScreen(
                                     userProfile = userProfile,
                                     orders = orders,
@@ -688,8 +634,7 @@ fun AppContent(
                                     onExploreClick = { navigateTo(Screen.INICIO) },
                                     onSaveProfile = { ph, ad, ct -> viewModel.saveProfile(ph, ad, ct) },
                                     onNavigateToChats = { navigateTo(Screen.CHATS) },
-                                    onNavigateToPublicar = { navigateTo(Screen.PUBLICAR_PRODUCTO) },
-                                    onNavigateToMenuAdmin = { navigateTo(Screen.MENU_ADMIN) },
+                                    onNavigateToCategoryMenu = { navigateTo(Screen.CATEGORIA) },
                                     onSignOut = onSignOut
                                 )
                             }
@@ -816,52 +761,6 @@ fun AppContent(
                             viewModel.sendSupportMessage(text, mediaUri, mediaType)
                         },
                         onBack = { navigateTo(chatsReturnScreen) }
-                    )
-                }
-
-                Screen.PUBLICAR_PRODUCTO -> {
-                    PublicarProductoScreen(
-                        onPublishProduct = { prod: Product, onResult: (Result<Unit>) -> Unit ->
-                            viewModel.publishProduct(prod, onResult)
-                        },
-                        onBack = { navigateTo(previousScreen) }
-                    )
-                }
-
-                Screen.PUBLICAR_ANUNCIO -> {
-                    PublicarAnuncioScreen(
-                        onPublishAnnouncement = { ann: Announcement ->
-                            viewModel.publishAnnouncement(ann)
-                        },
-                        onBack = { navigateTo(previousScreen) }
-                    )
-                }
-
-                Screen.MENU_ADMIN -> {
-                    MenuAdminScreen(
-                        onNavigateToPublicarProducto = { navigateFromAdminMenu(Screen.PUBLICAR_PRODUCTO) },
-                        onNavigateToPublicarAnuncio = { navigateFromAdminMenu(Screen.PUBLICAR_ANUNCIO) },
-                        onNavigateToPublicaciones = { navigateFromAdminMenu(Screen.PUBLICASIONE) },
-                        onNavigateToPerfil = { navigateFromAdminMenu(Screen.PERFIL) },
-                        onNavigateToInicio = { navigateFromAdminMenu(Screen.INICIO) },
-                        onNavigateToCatalogo = { navigateFromAdminMenu(Screen.CATALOGO) },
-                        onNavigateToCategorias = { navigateFromAdminMenu(Screen.CATEGORIA) },
-                        onNavigateToChats = { navigateFromAdminMenu(Screen.CHATS) },
-                        onNavigateToCart = { navigateFromAdminMenu(Screen.CARRITO) },
-                        onBack = { closeAdminMenu() }
-                    )
-                }
-
-                Screen.PUBLICASIONE -> {
-                    PublicacionesScreen(
-                        products = products,
-                        announcements = announcements,
-                        onDeleteProduct = { prodId -> viewModel.deleteProduct(prodId) },
-                        onToggleProductStock = { prodId, inStock -> viewModel.toggleProductStock(prodId, inStock) },
-                        onDeleteAnnouncement = { annId -> viewModel.deleteAnnouncement(annId) },
-                        onToggleAnnouncementActive = { annId, active -> viewModel.toggleAnnouncementActive(annId, active) },
-                        onNavigateToPublicar = { navigateTo(Screen.PUBLICAR_PRODUCTO) },
-                        onBack = { navigateTo(Screen.MENU_ADMIN) }
                     )
                 }
 

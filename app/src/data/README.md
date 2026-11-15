@@ -5,7 +5,5 @@ Esta es la carpeta física oficial de datos para la aplicación Elegan:
 
 ## Estructura
 - `model/Models.kt`: entidades y modelos de datos.
-- `repository/EleganRepository.kt`: repositorio principal conectado a los endpoints móviles del backend Elegan.
-- `remote/`: clientes Retrofit, contratos de API y sesión autenticada.
-
-La persistencia remota se realiza mediante el backend propio y MongoDB. Android no accede directamente a la base de datos.
+- `repository/EleganRepository.kt`: repositorio principal con persistencia 100% local en el dispositivo (`SharedPreferences` y almacenamiento interno de archivos multimedia).
+- `remote/MobileSession.kt`: gestión de sesión y autenticación local cifrada en el dispositivo mediante AES-256.

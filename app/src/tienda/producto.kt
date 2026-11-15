@@ -29,7 +29,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -87,6 +86,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import com.example.data.model.LocalBoutiqueMedia
 import com.example.data.model.Product
 import com.example.ui.components.EleganVideoPlayer
 import com.example.ui.components.LocalEleganNotifier
@@ -265,7 +265,7 @@ fun ProductoScreen(
 
                         // Etiqueta de categoría en esquina inferior izquierda
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
+                            shape = RoundedCornerShape(8.dp),
                             color = EleganBurgundyDark.copy(alpha = 0.9f),
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
@@ -274,10 +274,10 @@ fun ProductoScreen(
                             Text(
                                 text = product.category.uppercase(),
                                 color = Color.White,
-                                fontSize = 11.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                                letterSpacing = 1.sp
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                letterSpacing = 0.5.sp
                             )
                         }
 
@@ -559,107 +559,86 @@ fun ProductoScreen(
                 }
             }
 
-            // Cabecera fija con fondo 100% transparente sobre la galería
+            // Cabecera fija sin fondo ni sombra sobre la galería
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(54.dp)
                     .background(Color.Transparent)
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = 4.dp)
                     .align(Alignment.TopCenter)
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color.White.copy(alpha = 0.85f),
-                    shadowElevation = 2.dp,
+                IconButton(
+                    onClick = onBack,
                     modifier = Modifier
-                        .size(40.dp)
                         .align(Alignment.CenterStart)
+                        .testTag("producto_back_button")
                 ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .testTag("producto_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = EleganCharcoal,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Volver",
+                        tint = Color.Black,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
 
                 Row(
                     modifier = Modifier.align(Alignment.CenterEnd),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.85f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(40.dp)
+                    IconButton(
+                        onClick = {
+                            val willSave = !isSaved
+                            onToggleSave { result ->
+                                notifier?.show(
+                                    if (result.isSuccess) {
+                                        if (willSave) "Publicación guardada en tu perfil"
+                                        else "Publicación eliminada de guardados"
+                                    } else {
+                                        "No se pudo actualizar la publicación guardada"
+                                    }
+                                )
+                            }
+                        },
+                        modifier = Modifier.testTag("producto_bookmark_button")
                     ) {
-                        IconButton(
-                            onClick = {
-                                val willSave = !isSaved
-                                onToggleSave { result ->
-                                    notifier?.show(
-                                        if (result.isSuccess) {
-                                            if (willSave) "Publicación guardada en tu perfil"
-                                            else "Publicación eliminada de guardados"
-                                        } else {
-                                            "No se pudo actualizar la publicación guardada"
-                                        }
-                                    )
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .testTag("producto_bookmark_button")
-                        ) {
-                            Icon(
-                                imageVector = if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                                contentDescription = if (isSaved) "Quitar de guardados" else "Guardar publicación",
-                                tint = if (isSaved) EleganGold else EleganCharcoal,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                            contentDescription = if (isSaved) "Quitar de guardados" else "Guardar publicación",
+                            tint = if (isSaved) EleganGold else Color.Black,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
 
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.85f),
-                        shadowElevation = 2.dp,
-                        modifier = Modifier.size(40.dp)
+                    IconButton(
+                        onClick = onNavigateToCart,
+                        modifier = Modifier.testTag("producto_cart_button")
                     ) {
-                        IconButton(
-                            onClick = onNavigateToCart,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .testTag("producto_cart_button")
-                        ) {
+                        if (cartItemCount > 0L) {
                             BadgedBox(
                                 badge = {
-                                    if (cartItemCount > 0L) {
-                                        Badge(
-                                            containerColor = EleganBurgundy,
-                                            contentColor = Color.White
-                                        ) {
-                                            Text("$cartItemCount")
-                                        }
+                                    Badge(
+                                        containerColor = EleganBurgundy,
+                                        contentColor = Color.White
+                                    ) {
+                                        Text("$cartItemCount")
                                     }
                                 }
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.ShoppingCart,
                                     contentDescription = "Carrito",
-                                    tint = EleganCharcoal,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Carrito",
+                                tint = Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
                         }
                     }
                 }
@@ -703,23 +682,13 @@ fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
 }
 
 fun getDefaultCategoryFallback(category: String): String {
-    return when (category.lowercase().trim()) {
-        "gorra" -> "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=800&auto=format&fit=crop&q=80"
-        "gafa" -> "https://images.unsplash.com/photo-1508296695146-257a814070b4?w=800&auto=format&fit=crop&q=80"
-        "camisa" -> "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80"
-        "correa" -> "https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=800&auto=format&fit=crop&q=80"
-        "pantalone" -> "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&auto=format&fit=crop&q=80"
-        "zapato" -> "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80"
-        "interiore" -> "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&auto=format&fit=crop&q=80"
-        "perfume" -> "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=800&auto=format&fit=crop&q=80"
-        else -> "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80"
-    }
+    return LocalBoutiqueMedia.fallbackImageForCategory(category)
 }
 
 /**
  * Retorna la lista de imágenes para la galería multimedia del producto.
  * Si el producto ya cuenta con su lista de imágenes, se utiliza dicha lista.
- * Si no, se proveen 10 perspectivas y detalles de alta calidad acordes a su categoría.
+ * Si no, se proveen perspectivas locales acordes a su categoría.
  */
 fun getProductGalleryImages(product: Product): List<String> {
     val userImages = (listOfNotNull(product.imageUrl.takeIf { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }) +
@@ -732,96 +701,6 @@ fun getProductGalleryImages(product: Product): List<String> {
         getDefaultCategoryFallback(product.category)
     }
 
-    val supplements = when (product.category.lowercase().trim()) {
-        "gorra" -> listOf(
-            "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1521369909029-2afed882baee?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1534215754734-18e55d13e346?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1514327605112-b887c0e61c0a?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1529958030586-3aae4ca485ff?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1576871337622-98d48d1cf531?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80"
-        )
-        "gafa" -> listOf(
-            "https://images.unsplash.com/photo-1508296695146-257a814070b4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1577803645773-f96470509666?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1473496169904-658ba7c44d8a?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1509695503492-4933dd11dbdd?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1584030373081-f37b7bb4fa8e?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80"
-        )
-        "camisa" -> listOf(
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1620012253295-c15c429fbb41?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1603252109303-2751441dd157?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&auto=format&fit=crop&q=80"
-        )
-        "correa" -> listOf(
-            "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=800&auto=format&fit=crop&q=80"
-        )
-        "pantalone" -> listOf(
-            "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1506630448388-4e683c67ddb0?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&auto=format&fit=crop&q=80"
-        )
-        "zapato" -> listOf(
-            "https://images.unsplash.com/photo-1533867617858-e7b97e060509?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&auto=format&fit=crop&q=80"
-        )
-        "perfume" -> listOf(
-            "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1547887537-6158d64c35b3?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&auto=format&fit=crop&q=80"
-        )
-        else -> listOf(
-            "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1594035910387-fea47794261f?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=800&auto=format&fit=crop&q=80"
-        )
-    }
-
-    return (listOf(base) + supplements).take(10)
+    val supplements = LocalBoutiqueMedia.gallerySupplementsForCategory(product.category)
+    return (listOf(base) + supplements).distinct()
 }

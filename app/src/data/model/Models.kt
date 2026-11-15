@@ -1,6 +1,38 @@
 package com.example.data.model
 
+import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
+import com.example.BuildConfig
+import com.example.R
+
+object LocalBoutiqueMedia {
+    fun drawableUri(@DrawableRes resId: Int): String =
+        "android.resource://${BuildConfig.APPLICATION_ID}/$resId"
+
+    val camisaCover: String get() = drawableUri(R.drawable.img_cat_camisa)
+    val gorraCover: String get() = drawableUri(R.drawable.img_cat_gorra)
+    val gafaCover: String get() = drawableUri(R.drawable.img_cat_gafa)
+    val zapatoCover: String get() = drawableUri(R.drawable.img_cat_zapato)
+    val perfumeCover: String get() = drawableUri(R.drawable.img_cat_perfume)
+
+    fun fallbackImageForCategory(category: String): String = when (category.lowercase().trim()) {
+        "gorra" -> gorraCover
+        "gafa" -> gafaCover
+        "camisa", "pantalone", "interiore" -> camisaCover
+        "correa", "zapato" -> zapatoCover
+        "perfume" -> perfumeCover
+        else -> camisaCover
+    }
+
+    fun gallerySupplementsForCategory(category: String): List<String> = when (category.lowercase().trim()) {
+        "gorra" -> listOf(gorraCover, camisaCover, gafaCover)
+        "gafa" -> listOf(gafaCover, camisaCover, zapatoCover)
+        "camisa", "pantalone", "interiore" -> listOf(camisaCover, zapatoCover, perfumeCover)
+        "correa", "zapato" -> listOf(zapatoCover, camisaCover, gorraCover)
+        "perfume" -> listOf(perfumeCover, camisaCover, gafaCover)
+        else -> listOf(camisaCover, zapatoCover, perfumeCover)
+    }
+}
 
 @Immutable
 data class Product(

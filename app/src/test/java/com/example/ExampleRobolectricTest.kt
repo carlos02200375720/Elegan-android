@@ -65,27 +65,62 @@ class ExampleRobolectricTest {
   }
 
   @Test
-  fun `test remoteBearerToken ignores local guest and rejected tokens`() {
+  fun `test local user delivery profile persists across repository refresh`(): Unit = runBlocking {
     val context = ApplicationProvider.getApplicationContext<Context>()
+    context.getSharedPreferences("elegan_profile_cache", Context.MODE_PRIVATE).edit().clear().commit()
     com.example.data.remote.MobileSession.clear(context)
-
     com.example.data.remote.MobileSession.loginClientLocally(context)
-    org.junit.Assert.assertNull(com.example.data.remote.MobileSession.remoteBearerToken(context))
-    org.junit.Assert.assertEquals(false, com.example.data.remote.MobileSession.hasRemoteSession(context))
 
-    val fakeJwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.sig"
-    com.example.data.remote.MobileSession.save(
-      context,
-      com.example.data.remote.AuthResponse(
-        token = fakeJwt,
-        user = com.example.data.remote.AuthUser(id = "u1", name = "Cliente", role = "customer")
+    val repo1 = com.example.data.repository.EleganRepository(context)
+    repo1.saveUserProfile(
+      phone = "809-555-2026",
+      address = "Av. Abraham Lincoln 450",
+      city = "Santo Domingo"
+    )
+
+    val profile1 = repo1.observeUserProfile().first()
+    assertEquals("809-555-2026", profile1?.phone)
+    assertEquals("Av. Abraham Lincoln 450", profile1?.address)
+    assertEquals("Santo Domingo", profile1?.city)
+
+    val repo2 = com.example.data.repository.EleganRepository(context)
+    val profile2 = repo2.observeUserProfile().first()
+    assertEquals("809-555-2026", profile2?.phone)
+    assertEquals("Av. Abraham Lincoln 450", profile2?.address)
+    assertEquals("Santo Domingo", profile2?.city)
+
+    context.getSharedPreferences("elegan_profile_cache", Context.MODE_PRIVATE).edit().clear().commit()
+    com.example.data.remote.MobileSession.clear(context)
+  }
+
+  @Test
+  fun `test local publish and delete product persist across repository refresh`(): Unit = runBlocking {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    context.getSharedPreferences("elegan_catalog_store", Context.MODE_PRIVATE).edit().clear().commit()
+
+    val repo1 = com.example.data.repository.EleganRepository(context)
+    val publishedId = repo1.addProduct(
+      com.example.data.model.Product(
+        name = "Traje Local Exclusivo",
+        description = "Traje confeccionado localmente",
+        category = "camisa",
+        price = 320.0
       )
     )
-    assertEquals("Bearer $fakeJwt", com.example.data.remote.MobileSession.remoteBearerToken(context))
 
-    com.example.data.remote.MobileSession.markRemoteSessionRejected()
-    org.junit.Assert.assertNull(com.example.data.remote.MobileSession.remoteBearerToken(context))
-    com.example.data.remote.MobileSession.clear(context)
+    val products1 = repo1.observeProducts().first()
+    org.junit.Assert.assertTrue(products1.any { it.id == publishedId && it.name == "Traje Local Exclusivo" })
+
+    val repo2 = com.example.data.repository.EleganRepository(context)
+    val products2 = repo2.observeProducts().first()
+    org.junit.Assert.assertTrue(products2.any { it.id == publishedId && it.name == "Traje Local Exclusivo" })
+
+    repo2.deleteProduct(publishedId)
+    val repo3 = com.example.data.repository.EleganRepository(context)
+    val products3 = repo3.observeProducts().first()
+    org.junit.Assert.assertFalse(products3.any { it.id == publishedId })
+
+    context.getSharedPreferences("elegan_catalog_store", Context.MODE_PRIVATE).edit().clear().commit()
   }
 
   @Test
@@ -243,13 +278,13 @@ class ExampleRobolectricTest {
       val repo1 = com.example.data.repository.EleganRepository(context)
       repo1.sendSupportMessage(
         text = "Adjunto foto del producto",
-        mediaUri = "https://example.com/foto.jpg",
+        mediaUri = "android.resource://com.elegan/drawable/img_cat_camisa",
         mediaType = "image",
         scope = this
       )
       repo1.sendSupportMessage(
         text = "",
-        mediaUri = "https://example.com/video.mp4",
+        mediaUri = "android.resource://com.elegan/raw/demo_video",
         mediaType = "video",
         scope = this
       )
@@ -258,10 +293,10 @@ class ExampleRobolectricTest {
       val imgMsg = msgs1.first { it.mediaType == "image" }
       val vidMsg = msgs1.first { it.mediaType == "video" }
       assertEquals("user", imgMsg.sender)
-      assertEquals("https://example.com/foto.jpg", imgMsg.mediaUrl)
+      assertEquals("android.resource://com.elegan/drawable/img_cat_camisa", imgMsg.mediaUrl)
       assertEquals("Adjunto foto del producto", imgMsg.text)
       assertEquals("user", vidMsg.sender)
-      assertEquals("https://example.com/video.mp4", vidMsg.mediaUrl)
+      assertEquals("android.resource://com.elegan/raw/demo_video", vidMsg.mediaUrl)
 
       // Simular recarga con una nueva instancia del repositorio
       val repo2 = com.example.data.repository.EleganRepository(context)

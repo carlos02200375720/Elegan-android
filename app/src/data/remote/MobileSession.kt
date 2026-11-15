@@ -11,13 +11,38 @@ import org.json.JSONObject
 import java.security.MessageDigest
 import java.util.UUID
 
+data class AuthUser(
+    val id: String = "",
+    val originalId: String? = null,
+    val email: String? = null,
+    val name: String = "",
+    val photoUrl: String = "",
+    val avatar: String? = null,
+    val role: String = "customer",
+    val provider: String = "password",
+    val isAdmin: Boolean = false
+) {
+    val effectivePhotoUrl: String
+        get() = photoUrl.ifBlank { avatar.orEmpty() }
+
+    val effectiveId: String
+        get() = originalId?.takeIf { it.isNotBlank() } ?: id
+}
+
+data class AuthResponse(
+    val token: String = "",
+    val user: AuthUser = AuthUser(),
+    val success: Boolean = true,
+    val message: String? = null
+)
+
 /**
- * Holds the mobile session and local credentials fallback.
+ * Holds the local mobile session and account credentials.
  * Encrypted at rest using AES-256.
  */
 object MobileSession {
     private const val PREFS = "elegan_mobile_session"
-    private const val TOKEN = "jwt"
+    private const val TOKEN = "local_token"
     private const val USER_ID = "user_id"
     private const val EMAIL = "email"
     private const val NAME = "name"
@@ -30,9 +55,6 @@ object MobileSession {
 
     @Volatile
     private var cachedPreferences: SharedPreferences? = null
-
-    @Volatile
-    private var remoteSessionRejected = false
 
     private fun preferences(context: Context): SharedPreferences {
         cachedPreferences?.let { return it }
@@ -61,8 +83,7 @@ object MobileSession {
     }
 
     fun save(context: Context, response: AuthResponse) {
-        remoteSessionRejected = false
-        val token = response.token.ifBlank { "remote_jwt_" + UUID.randomUUID().toString() }
+        val token = response.token.ifBlank { "local_session_" + UUID.randomUUID().toString() }
         val userId = response.user.effectiveId.ifBlank { UUID.randomUUID().toString() }
         val role = if (response.user.isAdmin || response.user.role == "admin" || response.user.role == "superadmin") "admin" else "customer"
         preferences(context).edit()
@@ -72,33 +93,9 @@ object MobileSession {
             .putString(NAME, response.user.name.ifBlank { "Cliente Elegan" })
             .putString(PHOTO, response.user.effectivePhotoUrl)
             .putString(ROLE, role)
-            .putString(PROVIDER, response.user.provider.ifBlank { "mongodb" })
+            .putString(PROVIDER, response.user.provider.ifBlank { "local" })
             .apply()
     }
-
-    fun isValidRemoteJwt(rawToken: String?): Boolean {
-        if (rawToken.isNullOrBlank()) return false
-        if (rawToken.startsWith("local_jwt_") || rawToken.startsWith("remote_jwt_")) return false
-        return rawToken.count { it == '.' } == 2
-    }
-
-    fun hasRemoteSession(context: Context): Boolean {
-        if (remoteSessionRejected) return false
-        return isValidRemoteJwt(preferences(context).getString(TOKEN, null))
-    }
-
-    fun remoteBearerToken(context: Context): String? {
-        if (remoteSessionRejected) return null
-        val raw = preferences(context).getString(TOKEN, null) ?: return null
-        return if (isValidRemoteJwt(raw)) "Bearer $raw" else null
-    }
-
-    fun markRemoteSessionRejected() {
-        remoteSessionRejected = true
-    }
-
-    fun bearerToken(context: Context): String? =
-        preferences(context).getString(TOKEN, null)?.takeIf { it.isNotBlank() }?.let { "Bearer $it" }
 
     fun userId(context: Context): String? =
         preferences(context).getString(USER_ID, null)?.takeIf { it.isNotBlank() }
@@ -112,14 +109,12 @@ object MobileSession {
             name = prefs.getString(NAME, "").orEmpty(),
             photoUrl = prefs.getString(PHOTO, "").orEmpty(),
             role = prefs.getString(ROLE, "customer").orEmpty(),
-            provider = prefs.getString(PROVIDER, "backend").orEmpty()
+            provider = prefs.getString(PROVIDER, "local").orEmpty()
         )
     }
 
     fun clear(context: Context) {
-        remoteSessionRejected = false
         val prefs = preferences(context)
-        // Keep the local registered users, but remove current session
         val savedAccounts = prefs.getString(LOCAL_USERS_KEY, null)
         prefs.edit()
             .remove(TOKEN)
@@ -136,7 +131,7 @@ object MobileSession {
     }
 
     // -------------------------------------------------------------------------
-    // LOCAL CREDENTIALS & FALLBACK AUTHENTICATION
+    // LOCAL CREDENTIALS & AUTHENTICATION
     // -------------------------------------------------------------------------
 
     private fun hashPassword(password: String): String {
@@ -236,7 +231,7 @@ object MobileSession {
             role = newAccount.role,
             provider = "password"
         )
-        val token = "local_jwt_" + UUID.randomUUID().toString()
+        val token = "local_session_" + UUID.randomUUID().toString()
         val response = AuthResponse(token = token, user = authUser)
         save(context, response)
         return response
@@ -273,7 +268,6 @@ object MobileSession {
                 role = "admin",
                 provider = "password"
             )
-            // If not previously stored, store it now for consistency
             if (existing == null) {
                 accounts.add(
                     StoredAccount(
@@ -287,7 +281,7 @@ object MobileSession {
                 )
                 saveStoredAccounts(context, accounts)
             }
-            val response = AuthResponse(token = "local_jwt_" + UUID.randomUUID().toString(), user = adminUser)
+            val response = AuthResponse(token = "local_session_" + UUID.randomUUID().toString(), user = adminUser)
             save(context, response)
             return response
         }
@@ -313,7 +307,7 @@ object MobileSession {
                 role = "customer",
                 provider = "password"
             )
-            val response = AuthResponse(token = "local_jwt_" + UUID.randomUUID().toString(), user = clientUser)
+            val response = AuthResponse(token = "local_session_" + UUID.randomUUID().toString(), user = clientUser)
             save(context, response)
             return response
         }
@@ -335,7 +329,7 @@ object MobileSession {
             role = existing.role,
             provider = "password"
         )
-        val token = "local_jwt_" + UUID.randomUUID().toString()
+        val token = "local_session_" + UUID.randomUUID().toString()
         val response = AuthResponse(token = token, user = authUser)
         save(context, response)
         return response
@@ -352,7 +346,7 @@ object MobileSession {
             role = "admin",
             provider = "admin_quick"
         )
-        val token = "local_jwt_" + UUID.randomUUID().toString()
+        val token = "local_session_" + UUID.randomUUID().toString()
         val response = AuthResponse(token = token, user = adminUser)
         save(context, response)
         return response
@@ -367,7 +361,7 @@ object MobileSession {
             role = "customer",
             provider = "client_quick"
         )
-        val token = "local_jwt_" + UUID.randomUUID().toString()
+        val token = "local_session_" + UUID.randomUUID().toString()
         val response = AuthResponse(token = token, user = clientUser)
         save(context, response)
         return response
@@ -405,7 +399,7 @@ object MobileSession {
             role = role,
             provider = "google"
         )
-        val token = "local_jwt_" + UUID.randomUUID().toString()
+        val token = "local_session_" + UUID.randomUUID().toString()
         val response = AuthResponse(token = token, user = authUser)
         save(context, response)
         return response

@@ -74,6 +74,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.R
+import com.example.data.model.LocalBoutiqueMedia
 import com.example.data.model.Product
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
@@ -147,15 +148,15 @@ val storeCategoriesList = listOf(
 
 fun getCategoryStoryImage(category: StoreCategory): String {
     return when (category) {
-        StoreCategory.TODO -> "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.GORRA -> "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.GAFA -> "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.CAMISA -> "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.CORREA -> "https://images.unsplash.com/photo-1624222247344-550fb60583dc?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.PANTALONE -> "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.ZAPATO -> "https://images.unsplash.com/photo-1614252235316-8c857d38b5f4?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.INTERIORE -> "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=500&auto=format&fit=crop&q=80"
-        StoreCategory.PERFUME -> "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=500&auto=format&fit=crop&q=80"
+        StoreCategory.TODO -> LocalBoutiqueMedia.camisaCover
+        StoreCategory.GORRA -> LocalBoutiqueMedia.gorraCover
+        StoreCategory.GAFA -> LocalBoutiqueMedia.gafaCover
+        StoreCategory.CAMISA -> LocalBoutiqueMedia.camisaCover
+        StoreCategory.CORREA -> LocalBoutiqueMedia.zapatoCover
+        StoreCategory.PANTALONE -> LocalBoutiqueMedia.camisaCover
+        StoreCategory.ZAPATO -> LocalBoutiqueMedia.zapatoCover
+        StoreCategory.INTERIORE -> LocalBoutiqueMedia.camisaCover
+        StoreCategory.PERFUME -> LocalBoutiqueMedia.perfumeCover
     }
 }
 
@@ -188,12 +189,22 @@ fun CategoriaScreen(
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                painter = painterResource(id = R.drawable.icono),
-                                contentDescription = null,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_elegan_gentleman),
+                                    contentDescription = "Logo Elegan",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = "Menú de Categorías",
                                 style = MaterialTheme.typography.titleLarge.copy(

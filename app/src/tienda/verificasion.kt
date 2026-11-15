@@ -56,6 +56,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,11 +102,21 @@ fun VerificasionScreen(
     var address by remember { mutableStateOf(userProfile?.address ?: "") }
     var city by remember { mutableStateOf(userProfile?.city ?: "") }
 
-    val cardPayPalOption = "Tarjeta de Crédito / Débito (Visa / Mastercard)"
+    LaunchedEffect(userProfile) {
+        userProfile?.let { profile ->
+            if (customerName.isBlank() && profile.displayName.isNotBlank()) customerName = profile.displayName
+            if (email.isBlank() && profile.email.isNotBlank()) email = profile.email
+            if (phone.isBlank() && profile.phone.isNotBlank()) phone = profile.phone
+            if (address.isBlank() && profile.address.isNotBlank()) address = profile.address
+            if (city.isBlank() && profile.city.isNotBlank()) city = profile.city
+        }
+    }
+
+    val cardPaymentOption = "Tarjeta de Crédito / Débito (Visa / Mastercard)"
     val cashOnDeliveryOption = "Pago Contra Entrega (Efectivo al recibir)"
     val bankTransferOption = "Transferencia Bancaria Inmediata"
     val paymentOptions = listOf(
-        cardPayPalOption,
+        cardPaymentOption,
         cashOnDeliveryOption,
         bankTransferOption
     )
@@ -113,7 +124,7 @@ fun VerificasionScreen(
     var isSubmitting by remember { mutableStateOf(false) }
 
     var showBankTransferPage by remember { mutableStateOf(false) }
-    var showPayPalPage by remember { mutableStateOf(false) }
+    var showCardPaymentPage by remember { mutableStateOf(false) }
     var showCashOnDeliveryPage by remember { mutableStateOf(false) }
     var paymentProofUri by remember { mutableStateOf<Uri?>(null) }
     val bankAccounts = remember { defaultBankAccounts() }
@@ -132,7 +143,7 @@ fun VerificasionScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    BackHandler(enabled = !showBankTransferPage && !showPayPalPage && !showCashOnDeliveryPage) { onBack() }
+    BackHandler(enabled = !showBankTransferPage && !showCardPaymentPage && !showCashOnDeliveryPage) { onBack() }
 
     Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
@@ -217,8 +228,8 @@ fun VerificasionScreen(
                                     return@Button
                                 }
                                 when (selectedPayment) {
-                                    cardPayPalOption -> {
-                                        showPayPalPage = true
+                                    cardPaymentOption -> {
+                                        showCardPaymentPage = true
                                     }
                                     cashOnDeliveryOption -> {
                                         showCashOnDeliveryPage = true
@@ -555,12 +566,12 @@ fun VerificasionScreen(
                         val onSelectOption = {
                             selectedPayment = option
                             when (option) {
-                                cardPayPalOption -> {
+                                cardPaymentOption -> {
                                     if (isDeliveryFormValid()) {
-                                        showPayPalPage = true
+                                        showCardPaymentPage = true
                                     } else {
                                         scope.launch {
-                                            snackbarHostState.showSnackbar("Completa los datos de entrega para continuar con el pago con tarjeta o PayPal.")
+                                            snackbarHostState.showSnackbar("Completa los datos de entrega para continuar con el pago con tarjeta.")
                                         }
                                     }
                                 }
@@ -609,7 +620,7 @@ fun VerificasionScreen(
                         }
                     }
 
-                    if (selectedPayment == cardPayPalOption) {
+                    if (selectedPayment == cardPaymentOption) {
                         Spacer(modifier = Modifier.height(10.dp))
                         Surface(
                             shape = RoundedCornerShape(10.dp),
@@ -619,14 +630,14 @@ fun VerificasionScreen(
                                 .fillMaxWidth()
                                 .clickable {
                                     if (isDeliveryFormValid()) {
-                                        showPayPalPage = true
+                                        showCardPaymentPage = true
                                     } else {
                                         scope.launch {
                                             snackbarHostState.showSnackbar("Por favor completa los datos de entrega requeridos.")
                                         }
                                     }
                                 }
-                                .testTag("open_paypal_page_btn")
+                                .testTag("open_card_payment_btn")
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
@@ -640,7 +651,7 @@ fun VerificasionScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Pagar con Tarjeta o PayPal dentro de la app",
+                                    text = "Ingresar datos de tarjeta dentro de la app",
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = EleganCharcoal,
                                         fontWeight = FontWeight.SemiBold
@@ -788,7 +799,7 @@ fun VerificasionScreen(
     }
 
     AnimatedVisibility(
-        visible = showPayPalPage,
+        visible = showCardPaymentPage,
         enter = slideInHorizontally(
             initialOffsetX = { fullWidth -> fullWidth },
             animationSpec = tween(durationMillis = 320)
@@ -798,14 +809,14 @@ fun VerificasionScreen(
             animationSpec = tween(durationMillis = 280)
         )
     ) {
-        PaypalScreen(
+        CardPaymentScreen(
             total = total,
             customerName = customerName,
             customerEmail = email,
             itemCount = cartItems.sumOf { it.quantity },
             itemsSummary = cartItems.joinToString(", ") { "${it.quantity}x ${it.name}" },
             isSubmittingOrder = isSubmitting,
-            onBack = { showPayPalPage = false },
+            onBack = { showCardPaymentPage = false },
             onPaymentSuccess = { paymentLabel, _ ->
                 if (!isSubmitting) {
                     isSubmitting = true

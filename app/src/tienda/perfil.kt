@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -30,11 +31,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
-import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.Campaign
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
@@ -88,6 +90,7 @@ import com.example.R
 import com.example.data.model.Order
 import com.example.data.model.Product
 import com.example.data.model.UserProfile
+import com.example.ui.components.LocalEleganNotifier
 import com.example.ui.components.SavedPublicationsGrid
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -96,8 +99,6 @@ import com.example.ui.theme.EleganGold
 import com.example.ui.theme.EleganIvory
 import com.example.data.remote.MobileSession
 import kotlinx.coroutines.launch
-
-const val SUPER_ADMIN_EMAIL = "cg0220037@gmail.com"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -111,19 +112,23 @@ fun PerfilScreen(
     onExploreClick: () -> Unit = {},
     onSaveProfile: (phone: String, address: String, city: String) -> Unit,
     onNavigateToChats: () -> Unit,
-    onNavigateToPublicar: () -> Unit = {},
-    onNavigateToMenuAdmin: () -> Unit = {},
+    onNavigateToCategoryMenu: () -> Unit = {},
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
     val user = remember { MobileSession.user(context) }
-    val currentEmail = (user?.email ?: userProfile?.email ?: "").trim()
-    val isSuperAdmin = user?.role == "admin"
 
     var phone by remember(userProfile) { mutableStateOf(userProfile?.phone ?: "") }
     var address by remember(userProfile) { mutableStateOf(userProfile?.address ?: "") }
     var city by remember(userProfile) { mutableStateOf(userProfile?.city ?: "") }
+    val hasSavedDelivery = userProfile != null && (
+        userProfile.phone.isNotBlank() ||
+            userProfile.address.isNotBlank() ||
+            userProfile.city.isNotBlank()
+        )
+    var isEditingDelivery by remember(userProfile) { mutableStateOf(!hasSavedDelivery) }
 
+    val notifier = LocalEleganNotifier.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
@@ -247,21 +252,21 @@ fun PerfilScreen(
 
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
-                                color = if (isSuperAdmin) EleganBurgundyDark else EleganBurgundyDark
+                                color = EleganBurgundyDark
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = if (isSuperAdmin) Icons.Default.AdminPanelSettings else Icons.Default.Diamond,
+                                        imageVector = Icons.Default.Diamond,
                                         contentDescription = null,
                                         tint = EleganGold,
                                         modifier = Modifier.size(14.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (isSuperAdmin) "SUPER ADMINISTRADOR" else "MIEMBRO CLUB ELEGAN",
+                                        text = "MIEMBRO CLUB ELEGAN",
                                         fontSize = if (isCompact) 10.sp else 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -348,59 +353,217 @@ fun PerfilScreen(
                                             )
                                         }
                                         Spacer(modifier = Modifier.height(14.dp))
-                                        OutlinedTextField(
-                                            value = phone,
-                                            onValueChange = { phone = it },
-                                            label = { Text("Teléfono de Contacto") },
-                                            modifier = Modifier.fillMaxWidth().testTag("profile_phone_input"),
-                                            singleLine = true,
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = EleganBurgundy,
-                                                unfocusedBorderColor = Color(0xFFDDD5CE)
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        OutlinedTextField(
-                                            value = address,
-                                            onValueChange = { address = it },
-                                            label = { Text("Dirección Habitual") },
-                                            modifier = Modifier.fillMaxWidth().testTag("profile_address_input"),
-                                            singleLine = true,
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = EleganBurgundy,
-                                                unfocusedBorderColor = Color(0xFFDDD5CE)
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.height(10.dp))
-                                        OutlinedTextField(
-                                            value = city,
-                                            onValueChange = { city = it },
-                                            label = { Text("Ciudad / Provincia") },
-                                            modifier = Modifier.fillMaxWidth().testTag("profile_city_input"),
-                                            singleLine = true,
-                                            shape = RoundedCornerShape(8.dp),
-                                            colors = OutlinedTextFieldDefaults.colors(
-                                                focusedBorderColor = EleganBurgundy,
-                                                unfocusedBorderColor = Color(0xFFDDD5CE)
-                                            )
-                                        )
-                                        Spacer(modifier = Modifier.height(14.dp))
-                                        Button(
-                                            onClick = {
-                                                onSaveProfile(phone, address, city)
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("Datos guardados correctamente")
+
+                                        if (!isEditingDelivery && (phone.isNotBlank() || address.isNotBlank() || city.isNotBlank())) {
+                                            Surface(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .testTag("saved_delivery_summary_card"),
+                                                shape = RoundedCornerShape(12.dp),
+                                                color = Color(0xFFFAF8F5),
+                                                border = BorderStroke(1.dp, Color(0xFFE5DDD5))
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(16.dp)
+                                                ) {
+                                                    IconButton(
+                                                        onClick = { isEditingDelivery = true },
+                                                        modifier = Modifier
+                                                            .align(Alignment.TopEnd)
+                                                            .size(36.dp)
+                                                            .testTag("edit_delivery_btn")
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Edit,
+                                                            contentDescription = "Editar dirección de entrega",
+                                                            tint = EleganBurgundy,
+                                                            modifier = Modifier.size(20.dp)
+                                                        )
+                                                    }
+
+                                                    Column(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(end = 40.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                                    ) {
+                                                        Text(
+                                                            text = "Dirección de Entrega Guardada",
+                                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                                fontWeight = FontWeight.Bold,
+                                                                color = EleganBurgundyDark
+                                                            )
+                                                        )
+
+                                                        if (phone.isNotBlank()) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.Phone,
+                                                                    contentDescription = null,
+                                                                    tint = EleganBurgundy,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Column {
+                                                                    Text(
+                                                                        text = "Teléfono",
+                                                                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF7A726B))
+                                                                    )
+                                                                    Text(
+                                                                        text = phone,
+                                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                                            color = EleganCharcoal,
+                                                                            fontWeight = FontWeight.Medium
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (address.isNotBlank()) {
+                                                            Row(verticalAlignment = Alignment.Top) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.LocationOn,
+                                                                    contentDescription = null,
+                                                                    tint = EleganBurgundy,
+                                                                    modifier = Modifier
+                                                                        .padding(top = 2.dp)
+                                                                        .size(16.dp)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Column {
+                                                                    Text(
+                                                                        text = "Dirección",
+                                                                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF7A726B))
+                                                                    )
+                                                                    Text(
+                                                                        text = address,
+                                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                                            color = EleganCharcoal,
+                                                                            fontWeight = FontWeight.Medium
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+
+                                                        if (city.isNotBlank()) {
+                                                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                Icon(
+                                                                    imageVector = Icons.Default.LocationCity,
+                                                                    contentDescription = null,
+                                                                    tint = EleganBurgundy,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(8.dp))
+                                                                Column {
+                                                                    Text(
+                                                                        text = "Ciudad / Provincia",
+                                                                        style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF7A726B))
+                                                                    )
+                                                                    Text(
+                                                                        text = city,
+                                                                        style = MaterialTheme.typography.bodyMedium.copy(
+                                                                            color = EleganCharcoal,
+                                                                            fontWeight = FontWeight.Medium
+                                                                        )
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                    }
                                                 }
-                                            },
-                                            colors = ButtonDefaults.buttonColors(containerColor = EleganBurgundy),
-                                            shape = RoundedCornerShape(8.dp),
-                                            modifier = Modifier.fillMaxWidth().testTag("save_profile_btn")
-                                        ) {
-                                            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Guardar Cambios")
+                                            }
+                                        } else {
+                                            OutlinedTextField(
+                                                value = phone,
+                                                onValueChange = { phone = it },
+                                                label = { Text("Teléfono de Contacto") },
+                                                modifier = Modifier.fillMaxWidth().testTag("profile_phone_input"),
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = EleganBurgundy,
+                                                    unfocusedBorderColor = Color(0xFFDDD5CE),
+                                                    focusedTextColor = EleganCharcoal,
+                                                    unfocusedTextColor = EleganCharcoal
+                                                )
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            OutlinedTextField(
+                                                value = address,
+                                                onValueChange = { address = it },
+                                                label = { Text("Dirección Habitual") },
+                                                modifier = Modifier.fillMaxWidth().testTag("profile_address_input"),
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = EleganBurgundy,
+                                                    unfocusedBorderColor = Color(0xFFDDD5CE),
+                                                    focusedTextColor = EleganCharcoal,
+                                                    unfocusedTextColor = EleganCharcoal
+                                                )
+                                            )
+                                            Spacer(modifier = Modifier.height(10.dp))
+                                            OutlinedTextField(
+                                                value = city,
+                                                onValueChange = { city = it },
+                                                label = { Text("Ciudad / Provincia") },
+                                                modifier = Modifier.fillMaxWidth().testTag("profile_city_input"),
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(8.dp),
+                                                colors = OutlinedTextFieldDefaults.colors(
+                                                    focusedBorderColor = EleganBurgundy,
+                                                    unfocusedBorderColor = Color(0xFFDDD5CE),
+                                                    focusedTextColor = EleganCharcoal,
+                                                    unfocusedTextColor = EleganCharcoal
+                                                )
+                                            )
+                                            Spacer(modifier = Modifier.height(14.dp))
+                                            Button(
+                                                onClick = {
+                                                    val cleanPhone = phone.trim()
+                                                    val cleanAddress = address.trim()
+                                                    val cleanCity = city.trim()
+                                                    if (cleanPhone.isBlank() && cleanAddress.isBlank() && cleanCity.isBlank()) {
+                                                        if (notifier != null) {
+                                                            notifier.show("Completa al menos un dato de entrega para guardar.")
+                                                        } else {
+                                                            scope.launch {
+                                                                snackbarHostState.showSnackbar("Completa al menos un dato de entrega para guardar.")
+                                                            }
+                                                        }
+                                                        return@Button
+                                                    }
+                                                    phone = cleanPhone
+                                                    address = cleanAddress
+                                                    city = cleanCity
+                                                    onSaveProfile(cleanPhone, cleanAddress, cleanCity)
+                                                    isEditingDelivery = false
+                                                    if (notifier != null) {
+                                                        notifier.show("Datos de entrega guardados")
+                                                    } else {
+                                                        scope.launch {
+                                                            snackbarHostState.showSnackbar("Datos guardados correctamente")
+                                                        }
+                                                    }
+                                                },
+                                                colors = ButtonDefaults.buttonColors(
+                                                    containerColor = EleganBurgundy,
+                                                    contentColor = Color.White
+                                                ),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(48.dp)
+                                                    .testTag("save_profile_btn")
+                                            ) {
+                                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("Guardar Cambios", fontWeight = FontWeight.SemiBold)
+                                            }
                                         }
                                     }
                                     "orders" -> {
@@ -536,19 +699,15 @@ fun PerfilScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (isSuperAdmin) {
-                    IconButton(
-                        onClick = onNavigateToMenuAdmin,
-                        modifier = Modifier.testTag("perfil_menu_admin_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Menu,
-                            contentDescription = "Menú Administración",
-                            tint = EleganCharcoal
-                        )
-                    }
-                } else {
-                    Spacer(modifier = Modifier.size(48.dp))
+                IconButton(
+                    onClick = onNavigateToCategoryMenu,
+                    modifier = Modifier.testTag("perfil_menu_categories_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Menú de Categorías",
+                        tint = EleganCharcoal
+                    )
                 }
 
                 // Icono del carrito en la esquina superior derecha de la cabecera fija

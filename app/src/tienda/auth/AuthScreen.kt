@@ -85,17 +85,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
-import com.example.data.remote.EleganApiClient
-import com.example.data.remote.LoginRequest
 import com.example.data.remote.MobileSession
-import com.example.data.remote.RegisterRequest
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganGold
 import com.example.ui.theme.EleganIvory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun AuthScreen(
@@ -137,23 +136,11 @@ fun AuthScreen(
 
             coroutineScope.launch {
                 try {
-                    val response = if (isRegister) {
-                        val displayName = name.ifBlank { "Cliente Elegan" }
-                        try {
-                            EleganApiClient.auth.register(RegisterRequest(displayName, email, password))
-                        } catch (netEx: CancellationException) {
-                            throw netEx
-                        } catch (netEx: Exception) {
-                            Log.w("Auth", "Servidor no disponible para registro (${netEx.message}), registrando localmente.")
+                    val response = withContext(Dispatchers.IO) {
+                        if (isRegister) {
+                            val displayName = name.ifBlank { "Cliente Elegan" }
                             MobileSession.registerLocalUser(context, displayName, email, password)
-                        }
-                    } else {
-                        try {
-                            EleganApiClient.auth.login(LoginRequest(email, password))
-                        } catch (netEx: CancellationException) {
-                            throw netEx
-                        } catch (netEx: Exception) {
-                            Log.w("Auth", "Servidor no disponible para login (${netEx.message}), verificando credenciales locales.")
+                        } else {
                             MobileSession.loginLocalUser(context, email, password)
                         }
                     }
@@ -163,7 +150,7 @@ fun AuthScreen(
                     throw e
                 } catch (e: Exception) {
                     Log.e("Auth", "Error de autenticación", e)
-                    errorMessage = mapAuthApiError(e)
+                    errorMessage = mapAuthError(e)
                 } finally {
                     isLoading = false
                 }
@@ -573,32 +560,11 @@ fun attemptAutoSignIn(
     context: Context,
     onAuthSuccess: () -> Unit,
     onUnauthenticated: () -> Unit,
-    scope: CoroutineScope
+    @Suppress("UNUSED_PARAMETER") scope: CoroutineScope
 ) {
     val savedUser = MobileSession.user(context)
     if (savedUser != null) {
-        val remoteToken = MobileSession.remoteBearerToken(context)
-        if (remoteToken == null) {
-            onAuthSuccess()
-            return
-        }
-        scope.launch {
-            try {
-                EleganApiClient.auth.currentUser(remoteToken)
-                onAuthSuccess()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: retrofit2.HttpException) {
-                if (e.code() == 401) {
-                    MobileSession.clear(context)
-                    onUnauthenticated()
-                } else {
-                    onAuthSuccess()
-                }
-            } catch (_: Exception) {
-                onAuthSuccess()
-            }
-        }
+        onAuthSuccess()
     } else {
         onUnauthenticated()
     }
@@ -610,38 +576,20 @@ fun signOutUser(
     scope: CoroutineScope
 ) {
     scope.launch {
-        try {
-            MobileSession.remoteBearerToken(context)?.let { EleganApiClient.auth.logout(it) }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Log.w("Auth", "No se pudo cerrar la sesión remota: ${e.message}")
-        }
         MobileSession.clear(context)
         onSignOutComplete()
     }
 }
 
-fun mapAuthApiError(e: Throwable): String {
+fun mapAuthError(e: Throwable): String {
     val message = e.message ?: ""
     return when {
-        message.contains("Expected BEGIN_OBJECT", ignoreCase = true) ||
-        message.contains("JsonDataException", ignoreCase = true) ||
-        message.contains("End of input", ignoreCase = true) ||
-        message.contains("HTTP 200", ignoreCase = true) ->
-            "El servidor está procesando solicitudes. Inténtalo nuevamente o ingresa como Invitado."
-        message.contains("EMAIL_ALREADY_REGISTERED", ignoreCase = true) ||
-        message.contains("email already exists", ignoreCase = true) ||
+        message.contains("ya está registrado", ignoreCase = true) ||
         message.contains("ya registrado", ignoreCase = true) ->
             "Este correo electrónico ya está registrado. Selecciona Iniciar Sesión."
-        message.contains("INVALID_CREDENTIALS", ignoreCase = true) ||
-        message.contains("401", ignoreCase = true) ||
-        message.contains("incorrecta", ignoreCase = true) ->
+        message.contains("incorrecta", ignoreCase = true) ||
+        message.contains("incorrectos", ignoreCase = true) ->
             "Correo electrónico o contraseña incorrectos."
-        message.contains("Unable to resolve host", ignoreCase = true) ||
-        message.contains("ConnectException", ignoreCase = true) ||
-        message.contains("timeout", ignoreCase = true) ->
-            "No se pudo conectar con el servidor. Verifica tu conexión a internet o ingresa como Invitado."
         else ->
             e.localizedMessage ?: "Ocurrió un error al iniciar sesión. Inténtalo de nuevo."
     }

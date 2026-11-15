@@ -75,6 +75,7 @@ jobs:
           fi
 
       - name: Preparar firma debug
+        if: steps.signing.outputs.available != 'true'
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
@@ -87,7 +88,7 @@ jobs:
             echo "Restaurando debug.keystore desde archivo debug.keystore.base64..."
             base64 --decode debug.keystore.base64 > debug.keystore
           else
-            echo "::warning::Generando nuevo debug.keystore (Nota: Google Sign-In fallará a menos que se registre su nuevo SHA-1 en Firebase)."
+            echo "Generando nuevo debug.keystore temporal para compilación debug..."
             keytool -genkeypair -v \
               -keystore debug.keystore \
               -storepass android \
@@ -98,7 +99,6 @@ jobs:
               -validity 10000 \
               -dname "CN=Android Debug,O=Android,C=US"
           fi
-          # Mostrar la huella SHA-1 en los logs para verificación
           keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey | grep "SHA1:" || true
 
       - name: Compilar APK firmado para distribución
@@ -107,25 +107,21 @@ jobs:
           KEYSTORE_PATH: ${{ runner.temp }}/upload-key.jks
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ELEGAN_API_BASE_URL: ${{ secrets.ELEGAN_API_BASE_URL }}
         run: gradle --no-daemon :app:assembleRelease
 
       - name: Compilar APK de prueba (sin firma de distribución)
         if: steps.signing.outputs.available != 'true'
-        env:
-          ELEGAN_API_BASE_URL: ${{ secrets.ELEGAN_API_BASE_URL }}
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Inspeccionar firma del APK generado
         run: |
+          shopt -s globstar nullglob
           for apk in app/build/outputs/apk/**/*.apk; do
-            if [ -f "$apk" ]; then
-              echo "=== Certificado de $apk ==="
-              keytool -printcert -jarfile "$apk" | grep -E "SHA1:|SHA256:" || true
-            fi
+            echo "=== Certificado de $apk ==="
+            keytool -printcert -jarfile "$apk" | grep -E "SHA1:|SHA256:" || true
           done
 
-      - name: Publicar APK
+      - name: Publicar APK Android
         uses: actions/upload-artifact@v4
         with:
           name: elegan-apk
@@ -133,16 +129,15 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Compilar AAB firmado para Play Store
+      - name: Compilar AAB firmado para Google Play Store
         if: steps.signing.outputs.available == 'true'
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/upload-key.jks
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ELEGAN_API_BASE_URL: ${{ secrets.ELEGAN_API_BASE_URL }}
         run: gradle --no-daemon :app:bundleRelease
 
-      - name: Publicar AAB para Play Store
+      - name: Publicar AAB para Google Play Store
         if: steps.signing.outputs.available == 'true'
         uses: actions/upload-artifact@v4
         with:
@@ -151,16 +146,16 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Resumen de compilación
+      - name: Resumen de compilación Android
         if: always()
         run: |
           {
-            echo "## Compilación Android"
-            echo "- APK de prueba: se genera en cada ejecución."
+            echo "## Compilación Android (APK y AAB)"
             if [ "${{ steps.signing.outputs.available }}" = "true" ]; then
-              echo "- AAB firmado: compilado para Google Play."
+              echo "- APK firmado (release): compilado y publicado."
+              echo "- AAB firmado (Google Play Store): compilado y publicado."
             else
-              echo "- AAB firmado: omitido; faltan los secretos de firma."
+              echo "- APK de prueba (debug): compilado y publicado."
+              echo "- AAB para Google Play Store: omitido; configura los secretos de firma (ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD y ANDROID_KEY_PASSWORD) para generarlo."
             fi
-            echo "- IPA: este repositorio no contiene un proyecto iOS/Xcode; no se puede generar un IPA desde el proyecto Android actual."
           } >> "$GITHUB_STEP_SUMMARY"
