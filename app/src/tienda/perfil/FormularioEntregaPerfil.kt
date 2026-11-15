@@ -29,6 +29,10 @@ import com.example.ui.theme.EleganCharcoal
 
 @Composable
 internal fun SeccionEntregaPerfil(
+    name: String,
+    onNameChange: (String) -> Unit,
+    email: String,
+    onEmailChange: (String) -> Unit,
     phone: String,
     onPhoneChange: (String) -> Unit,
     address: String,
@@ -54,12 +58,18 @@ internal fun SeccionEntregaPerfil(
 
     if (!isEditingDelivery && (phone.isNotBlank() || address.isNotBlank() || city.isNotBlank())) {
         TarjetaResumenEntregaPerfil(
+            name = name,
+            email = email,
             phone = phone,
             address = address,
             city = city,
             onEditClick = onStartEdit
         )
     } else {
+        CampoEntregaPerfil(name, onNameChange, "Nombre completo", "profile_name_input")
+        Spacer(modifier = Modifier.height(10.dp))
+        CampoEntregaPerfil(email, onEmailChange, "Correo electrónico", "profile_email_input")
+        Spacer(modifier = Modifier.height(10.dp))
         CampoEntregaPerfil(phone, onPhoneChange, "Teléfono de Contacto", "profile_phone_input")
         Spacer(modifier = Modifier.height(10.dp))
         CampoEntregaPerfil(address, onAddressChange, "Dirección Habitual", "profile_address_input")
