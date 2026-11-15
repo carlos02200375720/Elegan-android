@@ -228,7 +228,8 @@ fun MainApp() {
                         onSignOutComplete = { currentUser = null },
                         scope = coroutineScope
                     )
-                }
+                },
+                onAccountDeleted = { currentUser = null }
             )
         }
     }
@@ -237,7 +238,8 @@ fun MainApp() {
 @Composable
 fun AppContent(
     viewModel: EleganViewModel = viewModel(),
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit,
+    onAccountDeleted: () -> Unit = onSignOut
 ) {
     var currentScreen by remember { mutableStateOf(Screen.INICIO) }
     var previousScreen by remember { mutableStateOf(Screen.INICIO) }
@@ -657,6 +659,11 @@ fun AppContent(
                         onCategorySelected = { cat ->
                             viewModel.setCategory(cat)
                             navigateTo(Screen.CATALOGO)
+                        },
+                        onDeleteAccount = {
+                            viewModel.deleteAccount {
+                                onAccountDeleted()
+                            }
                         },
                         onBack = { navigateTo(previousScreen) }
                     )

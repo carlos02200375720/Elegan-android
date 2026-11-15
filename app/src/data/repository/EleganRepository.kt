@@ -1526,6 +1526,63 @@ class EleganRepository(context: Context) {
         savePersistedProfile(profile)
     }
 
+    suspend fun deleteUserAccountData() {
+        withContext(Dispatchers.IO) {
+            val userKey = userCacheKey()
+            ensureOrdersLoaded()
+            ensureMessagesLoaded()
+
+            // Eliminar archivos locales de comprobantes y multimedia asociados al usuario
+            val mediaPaths = (localOrdersList.map { it.paymentProofUrl } + localMessagesList.map { it.mediaUrl })
+                .filter { it.startsWith("file://") }
+            val localMediaRoot = File(appContext.filesDir, "elegan_local_media")
+            mediaPaths.forEach { rawUri ->
+                try {
+                    val filePath = Uri.parse(rawUri).path
+                    if (!filePath.isNullOrBlank()) {
+                        val file = File(filePath)
+                        if (file.exists() && file.absolutePath.startsWith(localMediaRoot.absolutePath)) {
+                            file.delete()
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+
+            // Eliminar claves de almacenamiento asociadas a la cuenta
+            cartPrefs.edit().remove("cart_items_$userKey").commit()
+            savedPrefs.edit().remove(savedCacheKey(userKey)).commit()
+            likesPrefs.edit().remove(likesCacheKey(userKey)).commit()
+            ordersPrefs.edit().remove(ordersCacheKey(userKey)).commit()
+            statsPrefs.edit().remove(statsCacheKey(userKey)).commit()
+            profilePrefs.edit().remove(profileCacheKey(userKey)).commit()
+            messagesPrefs.edit().remove(messagesCacheKey(userKey)).commit()
+
+            // Limpiar estado en memoria
+            localCartItems.clear()
+            localCartFlow.value = emptyList()
+            localSavedProductIds.clear()
+            localSavedFlow.value = emptySet()
+            localLikedPublicationIds.clear()
+            localLikedFlow.value = emptySet()
+            localOrdersList.clear()
+            localOrdersFlow.value = emptyList()
+            localMessagesList.clear()
+            localMessagesFlow.value = emptyList()
+            localProfileFlow.value = null
+
+            loadedCartKey = null
+            loadedSavedKey = null
+            loadedStatsKey = null
+            loadedLikesKey = null
+            loadedOrdersKey = null
+            loadedMessagesKey = null
+            loadedProfileKey = null
+
+            // Eliminar credenciales y sesión activa
+            MobileSession.deleteAccount(appContext)
+        }
+    }
+
     fun getInitialSampleProducts(): List<Product> = listOf(
         Product(
             id = "prod_gorra_1",

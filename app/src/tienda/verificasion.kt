@@ -1,5 +1,6 @@
 package com.example.ui
 
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -55,6 +57,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -123,9 +126,14 @@ fun VerificasionScreen(
     var selectedPayment by remember { mutableStateOf(paymentOptions[0]) }
     var isSubmitting by remember { mutableStateOf(false) }
 
+    val context = LocalContext.current
+    val legalPrefs = remember(context) {
+        context.getSharedPreferences("elegan_legal_prefs", Context.MODE_PRIVATE)
+    }
     var showBankTransferPage by remember { mutableStateOf(false) }
     var showCardPaymentPage by remember { mutableStateOf(false) }
     var showCashOnDeliveryPage by remember { mutableStateOf(false) }
+    var showProofDisclosureDialog by remember { mutableStateOf(false) }
     var paymentProofUri by remember { mutableStateOf<Uri?>(null) }
     val bankAccounts = remember { defaultBankAccounts() }
 
@@ -134,6 +142,17 @@ fun VerificasionScreen(
     ) { uri ->
         if (uri != null) {
             paymentProofUri = uri
+        }
+    }
+
+    val launchProofPickerWithDisclosure: () -> Unit = {
+        val seen = legalPrefs.getBoolean("seen_transfer_proof_disclosure", false)
+        if (!seen) {
+            showProofDisclosureDialog = true
+        } else {
+            paymentProofPickerLauncher.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
         }
     }
 
@@ -775,11 +794,7 @@ fun VerificasionScreen(
             paymentProofUri = paymentProofUri,
             isSubmitting = isSubmitting,
             onBack = { showBankTransferPage = false },
-            onPickPaymentProof = {
-                paymentProofPickerLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
+            onPickPaymentProof = launchProofPickerWithDisclosure,
             onRemovePaymentProof = { paymentProofUri = null },
             onConfirmPayment = {
                 if (paymentProofUri != null && !isSubmitting) {
@@ -866,6 +881,58 @@ fun VerificasionScreen(
                         cashOnDeliveryOption,
                         ""
                     )
+                }
+            }
+        )
+    }
+
+    if (showProofDisclosureDialog) {
+        AlertDialog(
+            onDismissRequest = { showProofDisclosureDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    text = "Subir comprobante de pago",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = EleganCharcoal,
+                        fontFamily = FontFamily.Serif
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "Selecciona la foto de tu comprobante de transferencia para verificar tu pago. La imagen seleccionada se utilizará únicamente para validar este pedido y se mantendrá privada.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFF4A4A4A),
+                        lineHeight = 19.sp
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        legalPrefs.edit().putBoolean("seen_transfer_proof_disclosure", true).apply()
+                        showProofDisclosureDialog = false
+                        paymentProofPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = EleganBurgundy,
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.testTag("confirm_proof_disclosure_btn")
+                ) {
+                    Text("Seleccionar foto", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showProofDisclosureDialog = false },
+                    modifier = Modifier.testTag("cancel_proof_disclosure_btn")
+                ) {
+                    Text("Cancelar", color = EleganCharcoal)
                 }
             }
         )

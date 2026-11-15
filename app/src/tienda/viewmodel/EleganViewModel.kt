@@ -501,6 +501,23 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
             }
         }
     }
+
+    fun deleteAccount(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                repository.deleteUserAccountData()
+                _selectedProduct.value = null
+                _lastCreatedOrderId.value = null
+                _lastOrderPaymentMethod.value = ""
+                _lastOrderDetails.value = null
+                onComplete()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EleganViewModel", "Error al eliminar la cuenta: ${e.message}")
+            }
+        }
+    }
 }
 
 data class OrderConfirmationDetails(

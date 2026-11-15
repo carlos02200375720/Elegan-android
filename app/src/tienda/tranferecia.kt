@@ -456,7 +456,7 @@ fun TranfereciaScreen(
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Cargar imagen de evidencia del pago",
+                            text = "Subir comprobante",
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundy,
@@ -465,7 +465,7 @@ fun TranfereciaScreen(
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Toca para seleccionar la captura de tu transferencia",
+                            text = "Selecciona la foto de tu comprobante de transferencia para verificar tu pago",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = Color.Gray,
                                 textAlign = TextAlign.Center

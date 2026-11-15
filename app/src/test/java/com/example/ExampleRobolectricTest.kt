@@ -308,4 +308,40 @@ class ExampleRobolectricTest {
       com.example.data.remote.MobileSession.clear(context)
     }
   }
+
+  @Test
+  fun `test delete account removes user credentials and stored data`() = runBlocking {
+    val context = ApplicationProvider.getApplicationContext<Context>()
+    com.example.data.remote.MobileSession.clear(context)
+
+    val email = "delete.cliente@gmail.com"
+    val password = "DeletePass123!"
+    com.example.data.remote.MobileSession.registerLocalUser(
+      context = context,
+      name = "Cliente Temporal",
+      email = email,
+      password = password
+    )
+
+    val repo = com.example.data.repository.EleganRepository(context)
+    repo.saveUserProfile("809-555-9999", "Calle El Conde 10", "Santo Domingo")
+    val sampleProduct = repo.getInitialSampleProducts().first()
+    repo.addToCart(sampleProduct, "M", 1L, "Negro")
+    repo.setProductSaved(sampleProduct.id, true)
+
+    repo.deleteUserAccountData()
+
+    org.junit.Assert.assertNull(com.example.data.remote.MobileSession.user(context))
+    org.junit.Assert.assertTrue(repo.observeCart().first().isEmpty())
+    org.junit.Assert.assertTrue(repo.observeSavedProductIds().first().isEmpty())
+    org.junit.Assert.assertNull(repo.observeUserProfile().first())
+
+    var loginFailedAfterDelete = false
+    try {
+      com.example.data.remote.MobileSession.loginLocalUser(context, email, password)
+    } catch (_: IllegalArgumentException) {
+      loginFailedAfterDelete = true
+    }
+    org.junit.Assert.assertTrue(loginFailedAfterDelete)
+  }
 }

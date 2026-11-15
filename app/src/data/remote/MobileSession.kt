@@ -130,6 +130,20 @@ object MobileSession {
         }
     }
 
+    fun deleteAccount(context: Context) {
+        val currentUser = user(context)
+        if (currentUser != null) {
+            val currentEmail = currentUser.email?.trim().orEmpty()
+            val currentId = currentUser.effectiveId.trim()
+            val remaining = getStoredAccounts(context).filterNot { acc ->
+                (currentEmail.isNotBlank() && acc.email.equals(currentEmail, ignoreCase = true)) ||
+                    (currentId.isNotBlank() && acc.id == currentId)
+            }
+            saveStoredAccounts(context, remaining)
+        }
+        clear(context)
+    }
+
     // -------------------------------------------------------------------------
     // LOCAL CREDENTIALS & AUTHENTICATION
     // -------------------------------------------------------------------------

@@ -34,6 +34,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.DryCleaning
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.IceSkating
@@ -41,17 +42,27 @@ import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.PrivacyTip
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -76,6 +87,8 @@ import com.example.R
 import com.example.data.model.LocalBoutiqueMedia
 import com.example.data.model.Product
 import com.example.data.model.StoreCategory
+import com.example.ui.components.LegalDocType
+import com.example.ui.components.LegalDocumentDialog
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -178,9 +191,13 @@ fun getCategoryStoryIcon(category: StoreCategory): ImageVector {
 fun CategoriaScreen(
     products: List<Product>,
     onCategorySelected: (String) -> Unit,
+    onDeleteAccount: () -> Unit = {},
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
+
+    var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
+    var showDeleteAccountDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -389,10 +406,177 @@ fun CategoriaScreen(
                 }
 
                 item {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    HorizontalDivider(color = Color(0xFFEDE6DF))
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(14.dp),
+                        color = Color.White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("menu_legal_account_section")
+                    ) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // 1. Política de Privacidad
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { activeLegalDoc = LegalDocType.PRIVACY_POLICY }
+                                    .padding(horizontal = if (isCompact) 12.dp else 16.dp, vertical = 14.dp)
+                                    .testTag("menu_privacy_policy_item"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PrivacyTip,
+                                    contentDescription = "Política de Privacidad",
+                                    tint = EleganBurgundy,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Política de Privacidad",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = EleganCharcoal,
+                                        fontSize = if (isCompact) 13.5.sp else 14.sp
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9E958C),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            HorizontalDivider(color = Color(0xFFEDE6DF))
+
+                            // 2. Términos y Condiciones de Uso
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { activeLegalDoc = LegalDocType.TERMS_AND_CONDITIONS }
+                                    .padding(horizontal = if (isCompact) 12.dp else 16.dp, vertical = 14.dp)
+                                    .testTag("menu_terms_item"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Description,
+                                    contentDescription = "Términos y Condiciones de Uso",
+                                    tint = EleganBurgundy,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Términos y Condiciones de Uso",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = EleganCharcoal,
+                                        fontSize = if (isCompact) 13.5.sp else 14.sp
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color(0xFF9E958C),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+
+                            HorizontalDivider(color = Color(0xFFEDE6DF))
+
+                            // 3. Eliminar mi cuenta
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showDeleteAccountDialog = true }
+                                    .padding(horizontal = if (isCompact) 12.dp else 16.dp, vertical = 14.dp)
+                                    .testTag("menu_delete_account_item"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteForever,
+                                    contentDescription = "Eliminar mi cuenta",
+                                    tint = Color(0xFFC62828),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    text = "Eliminar mi cuenta",
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFC62828),
+                                        fontSize = if (isCompact) 13.5.sp else 14.sp
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }
+    }
+
+    activeLegalDoc?.let { docType ->
+        LegalDocumentDialog(
+            docType = docType,
+            onDismiss = { activeLegalDoc = null }
+        )
+    }
+
+    if (showDeleteAccountDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteAccountDialog = false },
+            containerColor = Color.White,
+            title = {
+                Text(
+                    text = "Eliminar mi cuenta",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = EleganCharcoal,
+                        fontFamily = FontFamily.Serif
+                    )
+                )
+            },
+            text = {
+                Text(
+                    text = "¿Estás seguro? Se borrarán tus datos permanentemente, incluyendo tu cuenta, perfil, historial de pedidos, publicaciones guardadas y comprobantes.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        color = Color(0xFF4A4A4A),
+                        lineHeight = 19.sp
+                    )
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDeleteAccountDialog = false
+                        onDeleteAccount()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFC62828),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier.testTag("confirm_delete_account_btn")
+                ) {
+                    Text("Eliminar cuenta", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteAccountDialog = false },
+                    modifier = Modifier.testTag("cancel_delete_account_btn")
+                ) {
+                    Text("Cancelar", color = EleganCharcoal)
+                }
+            }
+        )
     }
 }
 

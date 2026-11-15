@@ -133,113 +133,121 @@ fun ChatsScreen(
                 Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
+                        .height(50.dp),
                     color = Color.White,
                     tonalElevation = 0.dp,
                     shadowElevation = 0.dp
                 ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(start = 4.dp, end = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.testTag("chats_back_button")
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                            tint = EleganCharcoal
-                        )
-                    }
+                    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                        val isCompactHeader = maxWidth < 360.dp
+                        val isWideHeader = maxWidth >= 600.dp
 
-                    Spacer(modifier = Modifier.width(2.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(Color.White)
-                            .padding(2.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.ic_elegan_gentleman),
-                            contentDescription = "Logo Elegan",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Elegan Concierge VIP",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = EleganCharcoal,
-                                fontFamily = FontFamily.Serif,
-                                fontSize = 14.sp
-                            ),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF2E7D32))
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "Asesoría en línea 24/7",
-                                fontSize = 10.sp,
-                                color = Color(0xFF2E7D32),
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    // Icono del carrito en la esquina superior derecha de la cabecera
-                    IconButton(
-                        onClick = onNavigateToCart,
-                        modifier = Modifier.testTag("chats_cart_button")
-                    ) {
-                        if (cartItemCount > 0) {
-                            BadgedBox(
-                                badge = {
-                                    Badge(
-                                        containerColor = EleganBurgundy,
-                                        contentColor = Color.White
-                                    ) {
-                                        Text("$cartItemCount", fontSize = 10.sp)
-                                    }
-                                }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(
+                                    start = if (isCompactHeader) 2.dp else 4.dp,
+                                    end = if (isWideHeader) 14.dp else 6.dp
+                                ),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = onBack,
+                                modifier = Modifier.testTag("chats_back_button")
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.ShoppingBag,
-                                    contentDescription = "Carrito",
-                                    tint = EleganCharcoal,
-                                    modifier = Modifier.size(24.dp)
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "Volver",
+                                    tint = EleganCharcoal
                                 )
                             }
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = "Carrito",
-                                tint = EleganCharcoal,
-                                modifier = Modifier.size(24.dp)
-                            )
+
+                            Spacer(modifier = Modifier.width(2.dp))
+
+                            Box(
+                                modifier = Modifier
+                                    .size(if (isCompactHeader) 34.dp else 38.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White)
+                                    .padding(2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.ic_elegan_gentleman),
+                                    contentDescription = "Logo Elegan",
+                                    contentScale = ContentScale.Fit,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(if (isCompactHeader) 6.dp else 8.dp))
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Elegan Concierge VIP",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = EleganCharcoal,
+                                        fontFamily = FontFamily.Serif,
+                                        fontSize = if (isCompactHeader) 13.sp else 14.sp
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2E7D32))
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Asesoría en línea 24/7",
+                                        fontSize = if (isCompactHeader) 9.5.sp else 10.sp,
+                                        color = Color(0xFF2E7D32),
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            // Icono del carrito en la esquina superior derecha de la cabecera
+                            IconButton(
+                                onClick = onNavigateToCart,
+                                modifier = Modifier.testTag("chats_cart_button")
+                            ) {
+                                if (cartItemCount > 0) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                containerColor = EleganBurgundy,
+                                                contentColor = Color.White
+                                            ) {
+                                                Text("$cartItemCount", fontSize = 10.sp)
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.ShoppingBag,
+                                            contentDescription = "Carrito",
+                                            tint = EleganCharcoal,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingBag,
+                                        contentDescription = "Carrito",
+                                        tint = EleganCharcoal,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
                 EleganTopBarShadow()
             }
         },
@@ -256,10 +264,18 @@ fun ChatsScreen(
                     shadowElevation = 0.dp,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier.fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
+                        val isCompactFooter = maxWidth < 350.dp
+                        val isWideFooter = maxWidth >= 600.dp
+                        val footerHorizontalPad = when {
+                            isCompactFooter -> 10.dp
+                            isWideFooter -> 24.dp
+                            else -> 14.dp
+                        }
+
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -276,7 +292,7 @@ fun ChatsScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(start = 14.dp, end = 14.dp, top = 8.dp, bottom = 2.dp),
+                                    .padding(start = footerHorizontalPad, end = footerHorizontalPad, top = 8.dp, bottom = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Box(
@@ -342,11 +358,11 @@ fun ChatsScreen(
                                     if (isKeyboardOpen) {
                                         Modifier
                                             .height(54.dp)
-                                            .padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 6.dp)
+                                            .padding(start = footerHorizontalPad, end = footerHorizontalPad, top = 6.dp, bottom = 6.dp)
                                     } else {
                                         Modifier
                                             .height(62.dp)
-                                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                                            .padding(horizontal = footerHorizontalPad, vertical = 10.dp)
                                     }
                                 ),
                             verticalAlignment = Alignment.CenterVertically
@@ -356,7 +372,7 @@ fun ChatsScreen(
                                     .weight(1f)
                                     .height(42.dp)
                                     .clip(RoundedCornerShape(21.dp))
-                                    .background(Color(0xFFF9F7F5))
+                                    .background(Color.White)
                                     .border(1.dp, Color(0xFFD6CDC4), RoundedCornerShape(21.dp))
                                     .padding(start = 4.dp, end = 14.dp),
                                 verticalAlignment = Alignment.CenterVertically

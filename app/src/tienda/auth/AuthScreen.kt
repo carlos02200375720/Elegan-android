@@ -44,6 +44,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -74,6 +76,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -81,13 +87,18 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
 import com.example.data.remote.MobileSession
+import com.example.ui.components.LegalDocType
+import com.example.ui.components.LegalDocumentDialog
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
+import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 import com.example.ui.theme.EleganIvory
 import kotlinx.coroutines.CancellationException
@@ -112,6 +123,8 @@ fun AuthScreen(
     var passwordInput by remember { mutableStateOf("") }
     var confirmPasswordInput by remember { mutableStateOf("") }
     var isPasswordVisible by remember { mutableStateOf(false) }
+    var acceptedTerms by remember { mutableStateOf(false) }
+    var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -130,6 +143,8 @@ fun AuthScreen(
             errorMessage = "La contraseña debe tener al menos 6 caracteres."
         } else if (isRegister && password != confirmPasswordInput) {
             errorMessage = "Las contraseñas no coinciden."
+        } else if (isRegister && !acceptedTerms) {
+            errorMessage = "Debes leer y aceptar los Términos y Condiciones y la Política de Privacidad."
         } else {
             isLoading = true
             errorMessage = null
@@ -458,6 +473,69 @@ fun AuthScreen(
                             unfocusedBorderColor = Color(0xFFDDD5CE)
                         )
                     )
+
+                    Spacer(modifier = Modifier.height(if (isCompact || isShortScreen) 10.dp else 12.dp))
+
+                    val consentAnnotated = remember(isCompact) {
+                        val linkStyle = TextLinkStyles(
+                            style = SpanStyle(
+                                color = EleganBurgundy,
+                                fontWeight = FontWeight.Bold,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        )
+                        buildAnnotatedString {
+                            append("He leído y acepto los ")
+                            withLink(
+                                LinkAnnotation.Clickable(
+                                    tag = "terms",
+                                    styles = linkStyle
+                                ) {
+                                    activeLegalDoc = LegalDocType.TERMS_AND_CONDITIONS
+                                }
+                            ) {
+                                append("Términos y Condiciones")
+                            }
+                            append(" y la ")
+                            withLink(
+                                LinkAnnotation.Clickable(
+                                    tag = "privacy",
+                                    styles = linkStyle
+                                ) {
+                                    activeLegalDoc = LegalDocType.PRIVACY_POLICY
+                                }
+                            ) {
+                                append("Política de Privacidad")
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Checkbox(
+                            checked = acceptedTerms,
+                            onCheckedChange = { acceptedTerms = it },
+                            colors = CheckboxDefaults.colors(
+                                checkedColor = EleganBurgundy,
+                                uncheckedColor = Color(0xFF8C847C),
+                                checkmarkColor = Color.White
+                            ),
+                            modifier = Modifier.testTag("auth_accept_terms_checkbox")
+                        )
+                        Text(
+                            text = consentAnnotated,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = EleganCharcoal,
+                                fontSize = if (isCompact) 11.5.sp else 12.5.sp,
+                                lineHeight = 17.sp
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(start = 2.dp)
+                        )
+                    }
                 }
 
                 // Mensaje de error si ocurre alguno
@@ -502,9 +580,11 @@ fun AuthScreen(
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EleganBurgundy,
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        disabledContainerColor = Color(0xFFD6CEC7),
+                        disabledContentColor = Color.White.copy(alpha = 0.85f)
                     ),
-                    enabled = !isLoading
+                    enabled = !isLoading && (selectedTab == 0 || acceptedTerms)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
@@ -553,6 +633,13 @@ fun AuthScreen(
                 Spacer(modifier = Modifier.height(if (isCompact || isShortScreen) 16.dp else 24.dp))
             }
         }
+    }
+
+    activeLegalDoc?.let { docType ->
+        LegalDocumentDialog(
+            docType = docType,
+            onDismiss = { activeLegalDoc = null }
+        )
     }
 }
 
