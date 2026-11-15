@@ -91,7 +91,6 @@ class PruebasSesionYAplicacionTest {
         )
 
         val repo = EleganRepository(context)
-        repo.saveUserProfile("809-555-9999", "Calle El Conde 10", "Santo Domingo")
         val sampleProduct = repo.getInitialSampleProducts().first()
         repo.addToCart(sampleProduct, "M", 1L, "Negro")
         repo.setProductSaved(sampleProduct.id, true)
