@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.LocationCity
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Phone
@@ -35,6 +37,8 @@ import com.example.ui.theme.EleganCharcoal
 
 @Composable
 internal fun TarjetaResumenEntregaPerfil(
+    name: String,
+    email: String,
     phone: String,
     address: String,
     city: String,
@@ -75,13 +79,19 @@ internal fun TarjetaResumenEntregaPerfil(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Dirección de Entrega Guardada",
+                    text = "Datos de Entrega Guardados",
                     style = MaterialTheme.typography.titleSmall.copy(
                         fontWeight = FontWeight.Bold,
                         color = EleganBurgundyDark
                     )
                 )
 
+                if (name.isNotBlank()) {
+                    FilaDatoEntrega(Icons.Default.Person, "Nombre", name, alignTop = false)
+                }
+                if (email.isNotBlank()) {
+                    FilaDatoEntrega(Icons.Default.Email, "Correo electrónico", email, alignTop = false)
+                }
                 if (phone.isNotBlank()) {
                     FilaDatoEntrega(Icons.Default.Phone, "Teléfono", phone, alignTop = false)
                 }
