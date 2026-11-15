@@ -27,13 +27,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.data.remote.MobileSession
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
 
 @Composable
 fun AuthScreen(
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
+    onGuestContinue: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -172,11 +172,7 @@ fun AuthScreen(
                     isShortScreen = isShortScreen,
                     buttonHeight = buttonHeight,
                     onSubmit = submitAuth,
-                    onGuestSignIn = {
-                        val guestUser = MobileSession.loginClientLocally(context)
-                        MobileSession.save(context, guestUser)
-                        onAuthSuccess()
-                    }
+                    onGuestSignIn = onGuestContinue
                 )
 
                 Spacer(modifier = Modifier.height(if (isCompact || isShortScreen) 16.dp else 24.dp))
