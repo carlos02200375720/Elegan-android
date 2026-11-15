@@ -1,0 +1,124 @@
+package com.example.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.model.Product
+import com.example.data.model.PublicationComment
+import com.example.data.model.PublicationStats
+import com.example.data.model.UserProfile
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InicioScreen(
+    featuredProducts: List<Product>,
+    userProfile: UserProfile? = null,
+    cartItemCount: Long = 0L,
+    savedProductIds: Set<String> = emptySet(),
+    onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
+    publicationStats: Map<String, PublicationStats>,
+    likedPublicationIds: Set<String>,
+    publicationComments: List<PublicationComment>,
+    onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
+    onOpenComments: (String?) -> Unit,
+    onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
+    onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
+    onNavigateToCatalogo: (String) -> Unit,
+    onNavigateToProduct: (Product) -> Unit,
+    onNavigateToMenu: () -> Unit,
+    onNavigateToCategoryMenu: () -> Unit = onNavigateToMenu,
+    onNavigateToChats: () -> Unit,
+    onNavigateToCart: () -> Unit = {}
+) {
+    val listState = rememberLazyListState()
+    val context = LocalContext.current
+    val videoProductIds = remember(featuredProducts) {
+        featuredProducts.asSequence()
+            .filter { it.hasVideo && it.videoUrl.isNotBlank() }
+            .map { it.id }
+            .toSet()
+    }
+    var focusedProductId by remember { mutableStateOf<String?>(null) }
+    var localSavedProductIds by remember { mutableStateOf(setOf<String>()) }
+    var activeCommentProduct by remember { mutableStateOf<Product?>(null) }
+
+    EfectoFocoVideoInicio(
+        listState = listState,
+        videoProductIds = videoProductIds,
+        onFocusedProductChange = { focusedProductId = it }
+    )
+    EfectoPrecargaImagenesInicio(
+        listState = listState,
+        featuredProducts = featuredProducts
+    )
+
+    val displayName = resolverNombreSaludoInicio(context, userProfile)
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White)
+    ) {
+        InicioTopBar(
+            displayName = displayName,
+            cartItemCount = cartItemCount,
+            onNavigateToCategoryMenu = onNavigateToCategoryMenu,
+            onNavigateToCart = onNavigateToCart
+        )
+
+        ContenidoFeedInicio(
+            listState = listState,
+            featuredProducts = featuredProducts,
+            savedProductIds = savedProductIds,
+            localSavedProductIds = localSavedProductIds,
+            publicationStats = publicationStats,
+            likedPublicationIds = likedPublicationIds,
+            focusedProductId = focusedProductId,
+            onToggleSaveProduct = onToggleSaveProduct,
+            onToggleLocalSave = { productId, willSave ->
+                localSavedProductIds = if (willSave) {
+                    localSavedProductIds + productId
+                } else {
+                    localSavedProductIds - productId
+                }
+            },
+            onToggleLike = onToggleLike,
+            onOpenCommentsForProduct = { prod ->
+                activeCommentProduct = prod
+                onOpenComments(prod.id)
+            },
+            onRecordShare = onRecordShare,
+            onNavigateToCatalogo = onNavigateToCatalogo,
+            onNavigateToProduct = onNavigateToProduct,
+            onNavigateToMenu = onNavigateToMenu,
+            onNavigateToChats = onNavigateToChats,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        )
+    }
+
+    activeCommentProduct?.let { prod ->
+        PublicationCommentsBottomSheet(
+            product = prod,
+            displayName = displayName,
+            comments = publicationComments,
+            onDismiss = {
+                activeCommentProduct = null
+                onOpenComments(null)
+            },
+            onSubmitComment = onSubmitComment
+        )
+    }
+}

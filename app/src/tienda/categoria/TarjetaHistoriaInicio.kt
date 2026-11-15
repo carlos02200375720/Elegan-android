@@ -1,0 +1,141 @@
+package com.example.ui
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Precision
+import com.example.data.model.StoreCategory
+import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganCharcoal
+import com.example.ui.theme.EleganGold
+
+@Composable
+fun CategoryStoryCard(
+    category: StoreCategory,
+    cardWidth: Dp,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    val imageUrl = remember(category) { getCategoryStoryImage(category) }
+    val imageRequest = remember(imageUrl, context) {
+        ImageRequest.Builder(context)
+            .data(imageUrl)
+            .size(400, 700)
+            .precision(Precision.INEXACT)
+            .allowRgb565(true)
+            .crossfade(false)
+            .build()
+    }
+
+    Surface(
+        modifier = Modifier
+            .width(cardWidth)
+            .aspectRatio(9f / 16f)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .testTag("cat_story_${category.id}"),
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(
+            1.5.dp,
+            Brush.verticalGradient(colors = listOf(EleganGold, EleganBurgundy))
+        ),
+        shadowElevation = 3.dp,
+        color = EleganCharcoal
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            AsyncImage(
+                model = imageRequest,
+                contentDescription = category.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Black.copy(alpha = 0.4f),
+                            0.3f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.88f)
+                        )
+                    )
+            )
+
+            Box(
+                modifier = Modifier
+                    .padding(5.dp)
+                    .align(Alignment.TopStart)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(EleganBurgundy)
+                    .border(1.dp, EleganGold, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = getCategoryStoryIcon(category),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(12.dp)
+                )
+            }
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 4.dp, vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = category.title,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        fontSize = 9.5.sp,
+                        lineHeight = 11.sp,
+                        fontFamily = FontFamily.Serif
+                    ),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
