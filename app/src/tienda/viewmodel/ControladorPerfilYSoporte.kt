@@ -37,14 +37,23 @@ internal class ControladorPerfilYSoporte(
         }
     }
 
-    fun saveProfile(name: String, email: String, phone: String, address: String, city: String) {
+    fun saveProfile(
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+        onResult: (Result<Unit>) -> Unit
+    ) {
         scope.launch {
             try {
                 repository.saveUserProfile(name, email, phone, address, city)
+                onResult(Result.success(Unit))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al guardar perfil: ${e.message}")
+                Log.e("EleganViewModel", "Error al guardar perfil en el backend.", e)
+                onResult(Result.failure(e))
             }
         }
     }
