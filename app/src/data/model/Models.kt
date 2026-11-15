@@ -176,7 +176,6 @@ data class UserProfile(
     val userId: String = "",
     val displayName: String = "",
     val email: String = "",
-    val photoUrl: String = "",
     val phone: String = "",
     val address: String = "",
     val city: String = "",
