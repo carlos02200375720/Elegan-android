@@ -35,7 +35,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.R
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -43,7 +42,6 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 internal fun TarjetaIdentidadPerfil(
-    photoUrl: String?,
     displayName: String,
     email: String,
     isCompact: Boolean
@@ -67,25 +65,14 @@ internal fun TarjetaIdentidadPerfil(
                     ),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (!photoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = photoUrl,
-                        contentDescription = "Foto de perfil",
-                        modifier = Modifier
-                            .size(if (isCompact) 76.dp else 88.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_avatar_gold),
-                        contentDescription = "Foto de perfil",
-                        modifier = Modifier
-                            .size(if (isCompact) 76.dp else 88.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Fit
-                    )
-                }
+                Image(
+                    painter = painterResource(id = R.drawable.ic_avatar_gold),
+                    contentDescription = "Avatar predeterminado de Elegan",
+                    modifier = Modifier
+                        .size(if (isCompact) 76.dp else 88.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Fit
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
