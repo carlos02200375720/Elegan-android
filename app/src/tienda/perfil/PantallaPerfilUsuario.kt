@@ -50,7 +50,7 @@ fun PerfilScreen(
     onNavigateToCart: () -> Unit = {},
     onProductClick: (Product) -> Unit = {},
     onExploreClick: () -> Unit = {},
-    onSaveProfile: (phone: String, address: String, city: String) -> Unit,
+    onSaveProfile: (name: String, email: String, phone: String, address: String, city: String) -> Unit,
     onNavigateToChats: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = {},
     onSignOut: () -> Unit
@@ -58,6 +58,8 @@ fun PerfilScreen(
     val context = LocalContext.current
     val user = remember { MobileSession.user(context) }
 
+    var name by remember(userProfile) { mutableStateOf(userProfile?.displayName ?: user?.name.orEmpty()) }
+    var email by remember(userProfile) { mutableStateOf(userProfile?.email ?: user?.email.orEmpty()) }
     var phone by remember(userProfile) { mutableStateOf(userProfile?.phone ?: "") }
     var address by remember(userProfile) { mutableStateOf(userProfile?.address ?: "") }
     var city by remember(userProfile) { mutableStateOf(userProfile?.city ?: "") }
@@ -100,8 +102,8 @@ fun PerfilScreen(
                 item {
                     TarjetaIdentidadPerfil(
                         photoUrl = user?.photoUrl?.toString() ?: userProfile?.photoUrl,
-                        displayName = (user?.name ?: userProfile?.displayName ?: "Caballero Elegan").trim(),
-                        email = user?.email ?: userProfile?.email ?: "",
+                        displayName = (userProfile?.displayName ?: user?.name ?: "Caballero Elegan").trim(),
+                        email = userProfile?.email ?: user?.email ?: "",
                         isCompact = isCompact
                     )
                 }
@@ -132,6 +134,10 @@ fun PerfilScreen(
                                         modifier = Modifier.fillMaxWidth().testTag("profile_saved_section")
                                     )
                                     "delivery" -> SeccionEntregaPerfil(
+                                        name = name,
+                                        onNameChange = { name = it },
+                                        email = email,
+                                        onEmailChange = { email = it },
                                         phone = phone,
                                         onPhoneChange = { phone = it },
                                         address = address,
@@ -144,15 +150,19 @@ fun PerfilScreen(
                                             val cleanPhone = phone.trim()
                                             val cleanAddress = address.trim()
                                             val cleanCity = city.trim()
-                                            if (cleanPhone.isBlank() && cleanAddress.isBlank() && cleanCity.isBlank()) {
-                                                val msg = "Completa al menos un dato de entrega para guardar."
+                                            val cleanName = name.trim()
+                                            val cleanEmail = email.trim()
+                                            if (cleanName.isBlank() || cleanEmail.isBlank()) {
+                                                val msg = "El nombre y el correo son obligatorios."
                                                 if (notifier != null) notifier.show(msg)
                                                 else scope.launch { snackbarHostState.showSnackbar(msg) }
                                             } else {
+                                                name = cleanName
+                                                email = cleanEmail
                                                 phone = cleanPhone
                                                 address = cleanAddress
                                                 city = cleanCity
-                                                onSaveProfile(cleanPhone, cleanAddress, cleanCity)
+                                                onSaveProfile(cleanName, cleanEmail, cleanPhone, cleanAddress, cleanCity)
                                                 isEditingDelivery = false
                                                 if (notifier != null) notifier.show("Datos de entrega guardados")
                                                 else scope.launch { snackbarHostState.showSnackbar("Datos guardados correctamente") }
