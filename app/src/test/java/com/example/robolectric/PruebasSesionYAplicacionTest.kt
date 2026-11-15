@@ -1,5 +1,7 @@
 package com.example
 
+import com.example.data.remote.AuthResponse
+import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.first
@@ -33,53 +35,59 @@ class PruebasSesionYAplicacionTest {
     }
 
     @Test
-    fun `test register and login local user`() {
+    fun `session cache stores only a backend token and user identity`() {
         val context = obtenerContextoPrueba()
-        val email = "test.cliente@gmail.com"
-        val password = "Password123!"
+        MobileSession.clear(context)
 
-        val regResponse = MobileSession.registerLocalUser(
-            context = context,
-            name = "Cliente Prueba",
-            email = email,
-            password = password
+        val response = AuthResponse(
+            token = "backend_test_token",
+            user = AuthUser(
+                id = "user-test-001",
+                email = "test.cliente@gmail.com",
+                name = "Cliente Prueba",
+                role = "customer",
+                provider = "password"
+            )
         )
-        assertEquals(email, regResponse.user.email)
-        assertEquals("customer", regResponse.user.role)
+        MobileSession.save(context, response)
 
-        val loginResponse = MobileSession.loginLocalUser(
-            context = context,
-            email = email,
-            password = password
-        )
-        assertEquals(email, loginResponse.user.email)
-        assertEquals("Cliente Prueba", loginResponse.user.name)
+        assertEquals("backend_test_token", MobileSession.token(context))
+        assertEquals("user-test-001", MobileSession.userId(context))
+        assertEquals("test.cliente@gmail.com", MobileSession.user(context)?.email)
     }
 
     @Test
-    fun `test super admin login gets admin role`() {
+    fun `legacy local session token is not accepted as authenticated user`() {
         val context = obtenerContextoPrueba()
-        val adminResponse = MobileSession.loginLocalUser(
-            context = context,
-            email = "cg0220037@gmail.com",
-            password = "EleganAdmin2026!"
+        MobileSession.clear(context)
+
+        val legacyResponse = AuthResponse(
+            token = "local_session_legacy",
+            user = AuthUser(id = "local-user", email = "old@example.com")
         )
-        assertEquals("admin", adminResponse.user.role)
-        assertEquals("cg0220037@gmail.com", adminResponse.user.email)
+        try {
+            MobileSession.save(context, legacyResponse)
+        } catch (_: IllegalArgumentException) {
+            // The session store rejects locally fabricated tokens only through validation.
+        }
+
+        assertNull(MobileSession.user(context))
     }
 
     @Test
     fun `test delete account removes user credentials and stored data`() = runBlocking {
         val context = obtenerContextoPrueba()
         MobileSession.clear(context)
-
-        val email = "delete.cliente@gmail.com"
-        val password = "DeletePass123!"
-        MobileSession.registerLocalUser(
-            context = context,
-            name = "Cliente Temporal",
-            email = email,
-            password = password
+        MobileSession.save(
+            context,
+            AuthResponse(
+                token = "backend_test_token",
+                user = AuthUser(
+                    id = "delete-user-001",
+                    email = "delete.cliente@gmail.com",
+                    name = "Cliente Temporal"
+                )
+            )
         )
 
         val repo = EleganRepository(context)
@@ -94,13 +102,5 @@ class PruebasSesionYAplicacionTest {
         assertTrue(repo.observeCart().first().isEmpty())
         assertTrue(repo.observeSavedProductIds().first().isEmpty())
         assertNull(repo.observeUserProfile().first())
-
-        var loginFailedAfterDelete = false
-        try {
-            MobileSession.loginLocalUser(context, email, password)
-        } catch (_: IllegalArgumentException) {
-            loginFailedAfterDelete = true
-        }
-        assertTrue(loginFailedAfterDelete)
     }
 }
