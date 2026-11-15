@@ -144,8 +144,8 @@ class EleganRepository(context: Context) {
 
     fun observeUserProfile(): Flow<UserProfile?> = perfilYCuentaRepo.observeUserProfile()
 
-    suspend fun saveUserProfile(phone: String, address: String, city: String) =
-        perfilYCuentaRepo.saveUserProfile(phone, address, city)
+    suspend fun saveUserProfile(name: String, email: String, phone: String, address: String, city: String) =
+        perfilYCuentaRepo.saveUserProfile(name, email, phone, address, city)
 
     suspend fun deleteUserAccountData() = perfilYCuentaRepo.deleteUserAccountData()
 }
