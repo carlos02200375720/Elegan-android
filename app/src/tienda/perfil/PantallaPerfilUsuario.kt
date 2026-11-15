@@ -50,7 +50,7 @@ fun PerfilScreen(
     onNavigateToCart: () -> Unit = {},
     onProductClick: (Product) -> Unit = {},
     onExploreClick: () -> Unit = {},
-    onSaveProfile: (name: String, email: String, phone: String, address: String, city: String) -> Unit,
+    onSaveProfile: (String, String, String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToChats: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = {},
     onSignOut: () -> Unit
@@ -162,10 +162,18 @@ fun PerfilScreen(
                                                 phone = cleanPhone
                                                 address = cleanAddress
                                                 city = cleanCity
-                                                onSaveProfile(cleanName, cleanEmail, cleanPhone, cleanAddress, cleanCity)
-                                                isEditingDelivery = false
-                                                if (notifier != null) notifier.show("Datos de entrega guardados")
-                                                else scope.launch { snackbarHostState.showSnackbar("Datos guardados correctamente") }
+                                                onSaveProfile(cleanName, cleanEmail, cleanPhone, cleanAddress, cleanCity) { result ->
+                                                    result.onSuccess {
+                                                        isEditingDelivery = false
+                                                        if (notifier != null) notifier.show("Datos guardados correctamente en tu cuenta")
+                                                        else scope.launch { snackbarHostState.showSnackbar("Datos guardados correctamente en tu cuenta") }
+                                                    }.onFailure { error ->
+                                                        val msg = error.message?.takeIf { it.isNotBlank() }
+                                                            ?: "No se pudieron guardar los datos en el servidor."
+                                                        if (notifier != null) notifier.show(msg)
+                                                        else scope.launch { snackbarHostState.showSnackbar(msg) }
+                                                    }
+                                                }
                                             }
                                         }
                                     )
