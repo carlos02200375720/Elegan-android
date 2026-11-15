@@ -42,7 +42,6 @@ internal class RepositorioPerfilYCuenta(
         userId = remote.userId,
         displayName = remote.displayName.ifBlank { remote.name },
         email = remote.email,
-        photoUrl = remote.photoUrl,
         phone = remote.phone,
         address = remote.address,
         city = remote.city,
@@ -69,14 +68,12 @@ internal class RepositorioPerfilYCuenta(
                         userId = saved.userId.ifBlank { cachedUser?.effectiveId.orEmpty() },
                         displayName = saved.displayName.ifBlank { cachedUser?.name.orEmpty() },
                         email = saved.email.ifBlank { cachedUser?.email.orEmpty() },
-                        photoUrl = saved.photoUrl.ifBlank { cachedUser?.effectivePhotoUrl.orEmpty() }
                     )
                     cachedUser != null -> UserProfile(
                         id = cachedUser.effectiveId,
                         userId = cachedUser.effectiveId,
                         displayName = cachedUser.name,
                         email = cachedUser.email.orEmpty(),
-                        photoUrl = cachedUser.effectivePhotoUrl
                     )
                     else -> null
                 }
@@ -96,7 +93,6 @@ internal class RepositorioPerfilYCuenta(
                 userId = obj.optString("userId", ""),
                 displayName = obj.optString("displayName", ""),
                 email = obj.optString("email", ""),
-                photoUrl = obj.optString("photoUrl", ""),
                 phone = obj.optString("phone", ""),
                 address = obj.optString("address", ""),
                 city = obj.optString("city", ""),
@@ -116,7 +112,6 @@ internal class RepositorioPerfilYCuenta(
                     put("userId", profile.userId)
                     put("displayName", profile.displayName)
                     put("email", profile.email)
-                    put("photoUrl", profile.photoUrl)
                     put("phone", profile.phone)
                     put("address", profile.address)
                     put("city", profile.city)
