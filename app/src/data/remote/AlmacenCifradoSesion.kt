@@ -15,6 +15,7 @@ internal object AlmacenCifradoSesion {
     private const val PHOTO = "photo_url"
     private const val ROLE = "role"
     private const val PROVIDER = "provider"
+    internal const val LOCAL_USERS_KEY = "local_registered_accounts"
 
     @Volatile
     private var cachedPreferences: SharedPreferences? = null
