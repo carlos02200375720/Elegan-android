@@ -37,10 +37,10 @@ internal class ControladorPerfilYSoporte(
         }
     }
 
-    fun saveProfile(phone: String, address: String, city: String) {
+    fun saveProfile(name: String, email: String, phone: String, address: String, city: String) {
         scope.launch {
             try {
-                repository.saveUserProfile(phone, address, city)
+                repository.saveUserProfile(name, email, phone, address, city)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
