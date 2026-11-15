@@ -41,19 +41,26 @@ fun MainApp() {
     val coroutineScope = rememberCoroutineScope()
     var currentUser by remember { mutableStateOf<AuthUser?>(null) }
     var isSessionReady by remember { mutableStateOf(false) }
+    var isGuest by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val loadedUser = withContext(Dispatchers.IO) {
-            MobileSession.user(context)
+        val cachedUser = withContext(Dispatchers.IO) { MobileSession.user(context) }
+        if (cachedUser == null) {
+            isSessionReady = true
+        } else {
+            attemptAutoSignIn(
+                context = context,
+                onAuthSuccess = {
+                    currentUser = MobileSession.user(context)
+                    isSessionReady = true
+                },
+                onUnauthenticated = {
+                    currentUser = null
+                    isSessionReady = true
+                },
+                scope = coroutineScope
+            )
         }
-        currentUser = loadedUser
-        isSessionReady = true
-        attemptAutoSignIn(
-            context = context,
-            onAuthSuccess = { currentUser = MobileSession.user(context) },
-            onUnauthenticated = { currentUser = null },
-            scope = coroutineScope
-        )
     }
 
     val activity = context as? Activity
@@ -73,21 +80,32 @@ fun MainApp() {
                     .background(Color.White)
             )
         }
-        currentUser == null -> {
+        currentUser == null && !isGuest -> {
             AuthScreen(
-                onAuthSuccess = { currentUser = MobileSession.user(context) }
+                onAuthSuccess = {
+                    isGuest = false
+                    currentUser = MobileSession.user(context)
+                },
+                onGuestContinue = { isGuest = true }
             )
         }
         else -> {
             AppContent(
                 onSignOut = {
-                    signOutUser(
-                        context = context,
-                        onSignOutComplete = { currentUser = null },
-                        scope = coroutineScope
-                    )
+                    if (isGuest) {
+                        isGuest = false
+                    } else {
+                        signOutUser(
+                            context = context,
+                            onSignOutComplete = { currentUser = null },
+                            scope = coroutineScope
+                        )
+                    }
                 },
-                onAccountDeleted = { currentUser = null }
+                onAccountDeleted = {
+                    currentUser = null
+                    isGuest = false
+                }
             )
         }
     }
