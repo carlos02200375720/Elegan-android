@@ -4,9 +4,11 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.example.data.model.UserProfile
+import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
+import com.example.data.remote.PerfilActualizarRequest
+import com.example.data.remote.PerfilUsuarioRespuesta
 import java.io.File
-import java.time.Instant
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +37,18 @@ internal class RepositorioPerfilYCuenta(
 
     private fun cacheKey(userKey: String = userCacheKey(appContext)): String = "user_profile_$userKey"
 
+    private fun mapRemoteProfile(remote: PerfilUsuarioRespuesta): UserProfile = UserProfile(
+        id = remote.userId,
+        userId = remote.userId,
+        displayName = remote.displayName.ifBlank { remote.name },
+        email = remote.email,
+        photoUrl = remote.photoUrl,
+        phone = remote.phone,
+        address = remote.address,
+        city = remote.city,
+        updatedAt = remote.updatedAt
+    )
+
     private suspend fun ensureProfileLoaded() {
         val currentKey = userCacheKey(appContext)
         if (loadedProfileKey == currentKey) return
@@ -42,23 +56,33 @@ internal class RepositorioPerfilYCuenta(
             if (loadedProfileKey == currentKey) return
             val cachedUser = MobileSession.user(appContext)
             val saved = withContext(Dispatchers.IO) { loadPersistedProfile(currentKey) }
-            val resolved = when {
-                saved != null -> saved.copy(
-                    userId = saved.userId.ifBlank { cachedUser?.effectiveId.orEmpty() },
-                    displayName = saved.displayName.ifBlank { cachedUser?.name.orEmpty() },
-                    email = saved.email.ifBlank { cachedUser?.email.orEmpty() },
-                    photoUrl = saved.photoUrl.ifBlank { cachedUser?.effectivePhotoUrl.orEmpty() }
+            val resolved = try {
+                val token = MobileSession.token(appContext)
+                    ?: throw IllegalStateException("No hay sesión autenticada.")
+                mapRemoteProfile(
+                    ApiAutenticacionMovil.service.profile("Bearer $token").item
                 )
-                cachedUser != null -> UserProfile(
-                    id = cachedUser.effectiveId,
-                    userId = cachedUser.effectiveId,
-                    displayName = cachedUser.name,
-                    email = cachedUser.email.orEmpty(),
-                    photoUrl = cachedUser.effectivePhotoUrl
-                )
-                else -> null
+            } catch (error: Exception) {
+                Log.w("EleganRepository", "No se pudo actualizar el perfil desde el backend; se usará la caché existente.", error)
+                when {
+                    saved != null -> saved.copy(
+                        userId = saved.userId.ifBlank { cachedUser?.effectiveId.orEmpty() },
+                        displayName = saved.displayName.ifBlank { cachedUser?.name.orEmpty() },
+                        email = saved.email.ifBlank { cachedUser?.email.orEmpty() },
+                        photoUrl = saved.photoUrl.ifBlank { cachedUser?.effectivePhotoUrl.orEmpty() }
+                    )
+                    cachedUser != null -> UserProfile(
+                        id = cachedUser.effectiveId,
+                        userId = cachedUser.effectiveId,
+                        displayName = cachedUser.name,
+                        email = cachedUser.email.orEmpty(),
+                        photoUrl = cachedUser.effectivePhotoUrl
+                    )
+                    else -> null
+                }
             }
             localProfileFlow.value = resolved
+            if (resolved != null) savePersistedProfile(resolved, currentKey)
             loadedProfileKey = currentKey
         }
     }
@@ -110,22 +134,37 @@ internal class RepositorioPerfilYCuenta(
         localProfileFlow.collect { emit(it) }
     }.flowOn(Dispatchers.IO)
 
-    suspend fun saveUserProfile(phone: String, address: String, city: String) {
-        ensureProfileLoaded()
-        val user = MobileSession.user(appContext)
-        val profile = UserProfile(
-            id = user?.effectiveId.orEmpty(),
-            userId = optionalUserId(appContext).orEmpty(),
-            displayName = user?.name.orEmpty(),
-            email = user?.email.orEmpty(),
-            photoUrl = user?.effectivePhotoUrl.orEmpty(),
-            phone = phone.trim(),
-            address = address.trim(),
-            city = city.trim(),
-            updatedAt = Instant.now().toString()
+    suspend fun saveUserProfile(
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String
+    ) {
+        val token = MobileSession.token(appContext)
+            ?: throw IllegalStateException("Debes iniciar sesión para guardar tu perfil.")
+        val response = ApiAutenticacionMovil.service.updateProfile(
+            authorization = "Bearer $token",
+            request = PerfilActualizarRequest(
+                name = name.trim(),
+                email = email.trim(),
+                phone = phone.trim(),
+                address = address.trim(),
+                city = city.trim()
+            )
         )
+        if (!response.success) {
+            throw IllegalStateException("El servidor no confirmó la actualización del perfil.")
+        }
+
+        val profile = mapRemoteProfile(response.item)
         localProfileFlow.value = profile
         savePersistedProfile(profile)
+        try {
+            MobileSession.validateSession(appContext)
+        } catch (error: Exception) {
+            Log.w("EleganRepository", "El perfil se guardó, pero no se pudo refrescar la sesión local.", error)
+        }
     }
 
     suspend fun deleteUserAccountData() {
