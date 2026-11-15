@@ -134,7 +134,7 @@ internal fun PantallasConBarraInferior(
                             onNavigateTo(Screen.PRODUCTO)
                         },
                         onExploreClick = { onNavigateTo(Screen.INICIO) },
-                        onSaveProfile = { ph, ad, ct -> viewModel.saveProfile(ph, ad, ct) },
+                        onSaveProfile = { nm, em, ph, ad, ct, onResult -> viewModel.saveProfile(nm, em, ph, ad, ct, onResult) },
                         onNavigateToChats = { onNavigateTo(Screen.CHATS) },
                         onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onSignOut = onSignOut
