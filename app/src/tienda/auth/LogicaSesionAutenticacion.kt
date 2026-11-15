@@ -8,6 +8,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
 
 internal fun validarYEjecutarAutenticacion(
     context: Context,
@@ -28,7 +29,9 @@ internal fun validarYEjecutarAutenticacion(
     val validationError = when {
         isRegister && name.isBlank() -> "Por favor ingresa tu nombre completo."
         email.isBlank() || !email.contains("@") -> "Por favor ingresa un correo electrónico válido."
-        passwordInput.length < 6 -> "La contraseña debe tener al menos 6 caracteres."
+        passwordInput.length < if (isRegister) 8 else 1 ->
+            if (isRegister) "La contraseña debe tener al menos 8 caracteres." else "Ingresa tu contraseña."
+        isRegister && passwordInput.length > 128 -> "La contraseña no puede superar 128 caracteres."
         isRegister && passwordInput != confirmPasswordInput -> "Las contraseñas no coinciden."
         isRegister && !acceptedTerms ->
             "Debes leer y aceptar los Términos y Condiciones y la Política de Privacidad."
@@ -45,20 +48,18 @@ internal fun validarYEjecutarAutenticacion(
 
     coroutineScope.launch {
         try {
-            val response = withContext(Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 if (isRegister) {
-                    val displayName = name.ifBlank { "Cliente Elegan" }
-                    MobileSession.registerLocalUser(context, displayName, email, passwordInput)
+                    MobileSession.registerUser(context, name, email, passwordInput)
                 } else {
-                    MobileSession.loginLocalUser(context, email, passwordInput)
+                    MobileSession.loginUser(context, email, passwordInput)
                 }
             }
-            MobileSession.save(context, response)
             onAuthSuccess()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e("Auth", "Error de autenticación", e)
+            Log.e("Auth", "Error de autenticación con Elegan Backend", e)
             onError(mapAuthError(e))
         } finally {
             onLoadingChange(false)
@@ -70,13 +71,25 @@ fun attemptAutoSignIn(
     context: Context,
     onAuthSuccess: () -> Unit,
     onUnauthenticated: () -> Unit,
-    @Suppress("UNUSED_PARAMETER") scope: CoroutineScope
+    scope: CoroutineScope
 ) {
-    val savedUser = MobileSession.user(context)
-    if (savedUser != null) {
-        onAuthSuccess()
-    } else {
-        onUnauthenticated()
+    scope.launch {
+        try {
+            withContext(Dispatchers.IO) {
+                MobileSession.validateSession(context)
+            }
+            onAuthSuccess()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: HttpException) {
+            if (e.code() == 401 || e.code() == 403) {
+                MobileSession.clear(context)
+            }
+            onUnauthenticated()
+        } catch (e: Exception) {
+            Log.w("Auth", "No se pudo validar la sesión con el backend.", e)
+            if (MobileSession.user(context) != null) onAuthSuccess() else onUnauthenticated()
+        }
     }
 }
 
@@ -86,21 +99,30 @@ fun signOutUser(
     scope: CoroutineScope
 ) {
     scope.launch {
-        MobileSession.clear(context)
-        onSignOutComplete()
+        try {
+            withContext(Dispatchers.IO) { MobileSession.logout(context) }
+        } catch (e: Exception) {
+            Log.w("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
+            MobileSession.clear(context)
+        } finally {
+            onSignOutComplete()
+        }
     }
 }
 
 fun mapAuthError(e: Throwable): String {
-    val message = e.message ?: ""
-    return when {
-        message.contains("ya está registrado", ignoreCase = true) ||
-            message.contains("ya registrado", ignoreCase = true) ->
-            "Este correo electrónico ya está registrado. Selecciona Iniciar Sesión."
-        message.contains("incorrecta", ignoreCase = true) ||
-            message.contains("incorrectos", ignoreCase = true) ->
-            "Correo electrónico o contraseña incorrectos."
-        else ->
-            e.localizedMessage ?: "Ocurrió un error al iniciar sesión. Inténtalo de nuevo."
+    val status = (e as? HttpException)?.code()
+    return when (status) {
+        400 -> "Los datos enviados no son válidos. Revisa el formulario."
+        401 -> "Correo electrónico o contraseña incorrectos."
+        403 -> "Esta cuenta no tiene permiso para acceder."
+        409 -> "Este correo electrónico ya está registrado. Selecciona Iniciar Sesión."
+        503 -> "El servicio de autenticación no está disponible en este momento."
+        else -> when {
+            e.message.orEmpty().contains("Unable to resolve host", true) ||
+                e.message.orEmpty().contains("timeout", true) ->
+                "No se pudo conectar con Elegan. Comprueba tu conexión a Internet."
+            else -> e.localizedMessage ?: "Ocurrió un error al iniciar sesión. Inténtalo de nuevo."
+        }
     }
 }
