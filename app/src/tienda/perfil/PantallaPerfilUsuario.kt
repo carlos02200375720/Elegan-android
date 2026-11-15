@@ -101,7 +101,6 @@ fun PerfilScreen(
             ) {
                 item {
                     TarjetaIdentidadPerfil(
-                        photoUrl = user?.photoUrl?.toString() ?: userProfile?.photoUrl,
                         displayName = (userProfile?.displayName ?: user?.name ?: "Caballero Elegan").trim(),
                         email = userProfile?.email ?: user?.email ?: "",
                         isCompact = isCompact
