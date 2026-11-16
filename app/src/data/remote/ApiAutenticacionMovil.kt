@@ -71,10 +71,10 @@ internal interface EleganAuthApi {
     @GET("api/movil/auth/me")
     suspend fun me(@Header("Authorization") authorization: String): UsuarioRespuesta
 
-    @GET("api/movil/profile")
+    @GET("api/movil/usuario")
     suspend fun profile(@Header("Authorization") authorization: String): PerfilRespuesta
 
-    @PUT("api/movil/profile")
+    @PUT("api/movil/usuario")
     suspend fun updateProfile(
         @Header("Authorization") authorization: String,
         @Body request: PerfilActualizarRequest
