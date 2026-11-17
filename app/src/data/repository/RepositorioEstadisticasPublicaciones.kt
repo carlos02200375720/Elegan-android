@@ -31,6 +31,12 @@ internal class RepositorioEstadisticasPublicaciones {
         publishState()
     }
 
+    fun updateLikesCount(productId: String, count: Long) {
+        val current = statsMap[productId] ?: PublicationStats(id = productId)
+        statsMap[productId] = current.copy(likesCount = count.coerceAtLeast(0L))
+        publishState()
+    }
+
     fun incrementComments(productId: String) {
         val current = statsMap[productId] ?: PublicationStats(id = productId)
         statsMap[productId] = current.copy(commentsCount = current.commentsCount + 1L)
