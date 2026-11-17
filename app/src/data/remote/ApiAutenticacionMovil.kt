@@ -131,7 +131,24 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
-    // 6. Usuario (/api/movil/usuario)
+    // 6. Likes de publicaciones (/api/movil/likes)
+    @GET("api/movil/likes")
+    suspend fun getLikes(@Header("Authorization") authorization: String): Map<String, Any?>
+
+    @PUT("api/movil/likes/{product_id}")
+    suspend fun setLike(
+        @Header("Authorization") authorization: String,
+        @Path("product_id") productId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Map<String, Any?>
+
+    @GET("api/movil/likes/counts")
+    suspend fun getLikeCounts(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Query("productIds") productIds: List<String>
+    ): Map<String, Any?>
+
+    // 7. Usuario (/api/movil/usuario)
     @GET("api/movil/usuario")
     suspend fun profile(@Header("Authorization") authorization: String): PerfilRespuesta
 
@@ -141,11 +158,11 @@ internal interface EleganAuthApi {
         @Body request: PerfilActualizarRequest
     ): PerfilActualizadoRespuesta
 
-    // 7. Órdenes (/api/movil/orders) — Nota: POST /api/movil/orders devuelve HTTP 410 (usar PayPal)
+    // 8. Órdenes (/api/movil/orders) — Nota: POST /api/movil/orders devuelve HTTP 410 (usar PayPal)
     @GET("api/movil/orders")
     suspend fun getOrders(@Header("Authorization") authorization: String): Map<String, Any?>
 
-    // 8. Pagos PayPal (/api/movil/payments/paypal)
+    // 9. Pagos PayPal (/api/movil/payments/paypal)
     @POST("api/movil/payments/paypal/orders")
     suspend fun createPayPalOrder(
         @Header("Authorization") authorization: String,
@@ -159,7 +176,7 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
     ): Map<String, Any?>
 
-    // 9. Mensajes (/api/movil/messages)
+    // 10. Mensajes (/api/movil/messages)
     @GET("api/movil/messages")
     suspend fun getMessages(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -169,7 +186,7 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
-    // 10. Multimedia (/api/movil/media) — Requiere rol admin o superadmin
+    // 11. Multimedia (/api/movil/media) — Requiere rol admin o superadmin
     @Multipart
     @POST("api/movil/media")
     suspend fun uploadMedia(
