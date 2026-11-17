@@ -28,7 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
@@ -37,7 +37,7 @@ import com.example.ui.theme.EleganCharcoal
 fun CategoryStoriesSection(
     onNavigateToCatalogo: (String) -> Unit,
     onNavigateToMenu: () -> Unit,
-    products: List<Product> = emptyList(),
+    products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(

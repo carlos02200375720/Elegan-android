@@ -21,26 +21,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productColors
+import com.example.data.model.productId
+import com.example.data.model.productSizes
 import com.example.ui.components.LocalEleganNotifier
 import kotlinx.coroutines.launch
 
 @Composable
 fun ProductoScreen(
-    product: Product,
+    product: ProductJson,
     cartItemCount: Long,
     isSaved: Boolean = false,
     onToggleSave: ((Result<Boolean>) -> Unit) -> Unit = {},
-    onAddToCart: (Product, String, String, Long) -> Unit,
-    onBuyNow: (Product, String, String, Long) -> Unit,
+    onAddToCart: (ProductJson, String, String, Long) -> Unit,
+    onBuyNow: (ProductJson, String, String, Long) -> Unit,
     onNavigateToCart: () -> Unit,
     onBack: () -> Unit
 ) {
     BackHandler { onBack() }
 
-    val defaultSize = product.sizes.firstOrNull() ?: "Estándar"
-    var selectedSize by remember(product.id) { mutableStateOf(defaultSize) }
-    var selectedColor by remember(product.id) { mutableStateOf(product.colors.firstOrNull().orEmpty()) }
+    val productId = product.productId()
+    val defaultSize = product.productSizes().firstOrNull() ?: "Estándar"
+    var selectedSize by remember(productId) { mutableStateOf(defaultSize) }
+    var selectedColor by remember(productId) { mutableStateOf(product.productColors().firstOrNull().orEmpty()) }
     var quantity by remember { mutableLongStateOf(1L) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }

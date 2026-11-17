@@ -31,17 +31,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productCategory
+import com.example.data.model.productId
+import com.example.data.model.productName
 import com.example.ui.components.EleganVideoPlayer
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganGold
 
 @Composable
 fun VisorGaleriaProducto(
-    product: Product,
+    product: ProductJson,
     mediaItems: List<GalleryMediaItem>,
     pagerState: PagerState
 ) {
+    val productId = product.productId()
+    val productName = product.productName()
+    val productCategory = product.productCategory()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -55,7 +61,7 @@ fun VisorGaleriaProducto(
             ) {
                 Icon(
                     imageVector = Icons.Default.Checkroom,
-                    contentDescription = product.name,
+                    contentDescription = productName,
                     tint = Color(0xFFB5ABA0),
                     modifier = Modifier.size(64.dp)
                 )
@@ -75,7 +81,7 @@ fun VisorGaleriaProducto(
                             autoPlay = isVideoFocused,
                             isFocused = isVideoFocused,
                             showControls = true,
-                            testTagPrefix = "gallery_video_${product.id}",
+                            testTagPrefix = "gallery_video_$productId",
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -83,7 +89,7 @@ fun VisorGaleriaProducto(
                     is GalleryMediaItem.Image -> {
                         AsyncImage(
                             model = item.imageUrl,
-                            contentDescription = "${product.name} - Imagen ${page + 1}",
+                            contentDescription = "$productName - Imagen ${page + 1}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
@@ -102,7 +108,7 @@ fun VisorGaleriaProducto(
                 .padding(start = 12.dp, bottom = 12.dp)
         ) {
             Text(
-                text = product.category.uppercase(),
+                text = productCategory.uppercase(),
                 color = Color.White,
                 fontSize = 9.sp,
                 fontWeight = FontWeight.Bold,

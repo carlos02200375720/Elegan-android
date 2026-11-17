@@ -29,7 +29,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productHasVideo
+import com.example.data.model.productId
+import com.example.data.model.productImageUrl
+import com.example.data.model.productName
+import com.example.data.model.productPrice
 import com.example.ui.GalleryMediaItem
 import com.example.ui.getProductMediaItems
 import com.example.ui.theme.EleganGold
@@ -40,18 +45,22 @@ import com.example.ui.theme.EleganGold
  */
 @Composable
 fun SavedPublicationGridItem(
-    product: Product,
+    product: ProductJson,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val productId = product.productId()
+    val productName = product.productName()
+    val productImageUrl = product.productImageUrl()
+    val productPrice = product.productPrice()
     val mediaItems = getProductMediaItems(product)
-    val hasVideo = product.hasVideo || mediaItems.any { it is GalleryMediaItem.Video }
+    val hasVideo = product.productHasVideo() || mediaItems.any { it is GalleryMediaItem.Video }
     val isMultiMedia = mediaItems.size > 1
 
     val previewUrl = when (val first = mediaItems.firstOrNull()) {
-        is GalleryMediaItem.Video -> first.posterUrl.ifBlank { product.imageUrl }
+        is GalleryMediaItem.Video -> first.posterUrl.ifBlank { productImageUrl }
         is GalleryMediaItem.Image -> first.imageUrl
-        null -> product.imageUrl
+        null -> productImageUrl
     }
 
     Box(
@@ -60,19 +69,19 @@ fun SavedPublicationGridItem(
             .clip(RoundedCornerShape(8.dp))
             .background(Color(0xFFEFEBE8))
             .clickable(onClick = onClick)
-            .testTag("saved_post_${product.id}")
+            .testTag("saved_post_$productId")
     ) {
         if (previewUrl.isNotBlank()) {
             AsyncImage(
                 model = previewUrl,
-                contentDescription = product.name,
+                contentDescription = productName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
             Icon(
                 imageVector = Icons.Default.Checkroom,
-                contentDescription = product.name,
+                contentDescription = productName,
                 tint = Color(0xFFB5ABA0),
                 modifier = Modifier
                     .align(Alignment.Center)
@@ -139,7 +148,7 @@ fun SavedPublicationGridItem(
                 .padding(horizontal = 6.dp, vertical = 4.dp)
         ) {
             Text(
-                text = product.name,
+                text = productName,
                 color = Color.White,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Medium,
@@ -147,7 +156,7 @@ fun SavedPublicationGridItem(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "$${product.price.toInt()}",
+                text = "$${productPrice.toInt()}",
                 color = EleganGold,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold

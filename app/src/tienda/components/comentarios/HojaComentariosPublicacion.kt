@@ -25,15 +25,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
+import com.example.data.model.productId
+import com.example.data.model.productName
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PublicationCommentsBottomSheet(
-    product: Product,
+    product: ProductJson,
     displayName: String,
     comments: List<PublicationComment>,
     onDismiss: () -> Unit,
@@ -50,7 +52,7 @@ fun PublicationCommentsBottomSheet(
         if (trimmed.isNotEmpty() && !isSubmitting) {
             isSubmitting = true
             newCommentText = ""
-            onSubmitComment(product.id, displayName, trimmed) { result ->
+            onSubmitComment(product.productId(), displayName, trimmed) { result ->
                 isSubmitting = false
                 if (result.isSuccess) {
                     commentsNotifier.show("Comentario publicado")
@@ -96,7 +98,7 @@ fun PublicationCommentsBottomSheet(
                     .padding(horizontal = 16.dp)
             ) {
                 CabeceraHojaComentarios(
-                    productName = product.name,
+                    productName = product.productName(),
                     onDismiss = onDismiss
                 )
                 ListaComentariosPublicacion(

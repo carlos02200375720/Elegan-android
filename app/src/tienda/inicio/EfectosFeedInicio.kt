@@ -10,8 +10,10 @@ import androidx.compose.ui.platform.LocalContext
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.size.Precision
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.UserProfile
+import com.example.data.model.productImageUrl
+import com.example.data.model.productImages
 import com.example.data.remote.MobileSession
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -82,7 +84,7 @@ private fun calcularProductoVideoEnFoco(
 @Composable
 internal fun EfectoPrecargaImagenesInicio(
     listState: LazyListState,
-    featuredProducts: List<Product>
+    featuredProducts: List<ProductJson>
 ) {
     // Precarga las portadas de las próximas tarjetas antes de que entren en pantalla.
     val context = LocalContext.current
@@ -96,9 +98,9 @@ internal fun EfectoPrecargaImagenesInicio(
                 val endProductIndex = (startProductIndex + 4).coerceAtMost(featuredProducts.size)
                 for (i in startProductIndex until endProductIndex) {
                     val p = featuredProducts[i]
-                    val coverUrl = p.imageUrl.takeIf {
+                    val coverUrl = p.productImageUrl().takeIf {
                         it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
-                    } ?: p.images.firstOrNull {
+                    } ?: p.productImages().firstOrNull {
                         it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
                     }
                     if (!coverUrl.isNullOrBlank()) {

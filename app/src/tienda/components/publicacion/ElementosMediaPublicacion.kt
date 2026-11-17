@@ -10,12 +10,14 @@ import androidx.compose.ui.platform.LocalContext
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productId
+import com.example.data.model.productName
 import com.example.ui.components.EleganVideoPlayer
 
 @Composable
 internal fun ElementoMultimediaPublicacion(
-    product: Product,
+    product: ProductJson,
     item: GalleryMediaItem?,
     page: Int,
     ratio: Float,
@@ -30,12 +32,12 @@ internal fun ElementoMultimediaPublicacion(
             autoPlay = isVideoFocused,
             isFocused = isVideoFocused,
             showControls = true,
-            testTagPrefix = "inicio_video_${product.id}_$page",
+            testTagPrefix = "inicio_video_${product.productId()}_$page",
             modifier = Modifier.fillMaxSize()
         )
         is GalleryMediaItem.Image -> ImagenPublicacionProducto(
             imageUrl = item.imageUrl,
-            contentDescription = "${product.name} - ${page + 1}",
+            contentDescription = "${product.productName()} - ${page + 1}",
             onClick = onProductClick
         )
         null -> {}

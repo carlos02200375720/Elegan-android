@@ -39,7 +39,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productCategory
+import com.example.data.model.productId
+import com.example.data.model.productImageUrl
+import com.example.data.model.productName
+import com.example.data.model.productPrice
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -47,17 +52,23 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun ProductGridCard(
-    product: Product,
+    product: ProductJson,
     isSaved: Boolean,
     onClick: () -> Unit,
     onToggleSave: () -> Unit
 ) {
+    val productId = product.productId()
+    val productName = product.productName()
+    val productCategory = product.productCategory()
+    val productImageUrl = product.productImageUrl()
+    val productPrice = product.productPrice()
+
     ElevatedCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .testTag("catalog_item_${product.id}"),
+            .testTag("catalog_item_$productId"),
         colors = CardDefaults.elevatedCardColors(
             containerColor = Color.White
         ),
@@ -75,8 +86,8 @@ fun ProductGridCard(
                         .background(Color(0xFFF3EFEA))
                 ) {
                     AsyncImage(
-                        model = product.imageUrl,
-                        contentDescription = product.name,
+                        model = productImageUrl,
+                        contentDescription = productName,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
@@ -89,7 +100,7 @@ fun ProductGridCard(
                             .widthIn(max = this@BoxWithConstraints.maxWidth * 0.78f)
                     ) {
                         Text(
-                            text = product.category.uppercase(),
+                            text = productCategory.uppercase(),
                             color = Color.White,
                             fontSize = if (isCompactCard) 7.5.sp else 8.sp,
                             fontWeight = FontWeight.Bold,
@@ -105,7 +116,7 @@ fun ProductGridCard(
 
                 Column(modifier = Modifier.padding(contentPadding)) {
                     Text(
-                        text = product.name,
+                        text = productName,
                         style = MaterialTheme.typography.bodyMedium.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = EleganCharcoal,
@@ -123,7 +134,7 @@ fun ProductGridCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "$${String.format("%.2f", product.price)}",
+                            text = "$${String.format("%.2f", productPrice)}",
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundy,
@@ -140,7 +151,7 @@ fun ProductGridCard(
                             onClick = onToggleSave,
                             modifier = Modifier
                                 .size(if (isCompactCard) 28.dp else 32.dp)
-                                .testTag("catalog_save_${product.id}")
+                                .testTag("catalog_save_$productId")
                         ) {
                             Icon(
                                 imageVector = if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,

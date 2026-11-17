@@ -1,6 +1,6 @@
 package com.example.ui.viewmodel
 
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,13 +17,13 @@ internal class ControladorCatalogoYAnuncios(
     private val _selectedCategory = MutableStateFlow("todo")
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
-    private val _selectedProduct = MutableStateFlow<Product?>(null)
-    val selectedProduct: StateFlow<Product?> = _selectedProduct.asStateFlow()
+    private val _selectedProduct = MutableStateFlow<ProductJson?>(null)
+    val selectedProduct: StateFlow<ProductJson?> = _selectedProduct.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    val products: StateFlow<List<Product>> = repository.observeProducts()
+    val products: StateFlow<List<ProductJson>> = repository.observeProducts()
         .stateIn(
             scope = scope,
             started = SharingStarted.Eagerly,
@@ -58,7 +58,7 @@ internal class ControladorCatalogoYAnuncios(
         _searchQuery.value = query
     }
 
-    fun selectProduct(product: Product) {
+    fun selectProduct(product: ProductJson) {
         _selectedProduct.value = product
     }
 

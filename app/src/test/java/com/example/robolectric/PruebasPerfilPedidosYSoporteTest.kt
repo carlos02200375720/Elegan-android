@@ -1,6 +1,7 @@
 package com.example
 
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productName
 import com.example.data.remote.MobileSession
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.first
@@ -42,12 +43,12 @@ class PruebasPerfilPedidosYSoporteTest {
         reiniciarSesionClienteDemo(context)
 
         val repo = EleganRepository(context)
-        val backendProduct = Product(
-            id = "backend_prod_order_1",
-            name = "Camisa Oxford Blanca",
-            category = "camisa",
-            price = 89.0,
-            imageUrl = "https://cdn.example.com/camisa.jpg"
+        val backendProduct: ProductJson = mapOf(
+            "id" to "backend_prod_order_1",
+            "name" to "Camisa Oxford Blanca",
+            "category" to "camisa",
+            "price" to 89.0,
+            "imageUrl" to "https://cdn.example.com/camisa.jpg"
         )
         repo.addToCart(backendProduct, selectedSize = "M", quantity = 2L, selectedColor = "Negro")
 
@@ -60,7 +61,7 @@ class PruebasPerfilPedidosYSoporteTest {
             paymentMethod = "Tarjeta",
             total = 110.0,
             itemCount = 2L,
-            itemsSummary = "2x ${backendProduct.name}"
+            itemsSummary = "2x ${backendProduct.productName()}"
         )
 
         val orders = repo.observeOrders().first()

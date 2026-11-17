@@ -31,13 +31,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productId
+import com.example.data.model.productName
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganGold
 
 @Composable
 fun CarruselMultimediaPublicacion(
-    product: Product,
+    product: ProductJson,
     mediaItems: List<GalleryMediaItem>,
     pagerState: PagerState,
     ratio: Float,
@@ -45,6 +47,9 @@ fun CarruselMultimediaPublicacion(
     isFocused: Boolean,
     onProductClick: () -> Unit
 ) {
+    val productId = product.productId()
+    val productName = product.productName()
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -56,7 +61,7 @@ fun CarruselMultimediaPublicacion(
         if (mediaItems.isEmpty()) {
             Icon(
                 imageVector = Icons.Default.Checkroom,
-                contentDescription = product.name,
+                contentDescription = productName,
                 tint = Color(0xFFB5ABA0),
                 modifier = Modifier.size(56.dp)
             )
@@ -64,7 +69,7 @@ fun CarruselMultimediaPublicacion(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("post_media_pager_${product.id}")
+                    .testTag("post_media_pager_$productId")
             ) {
                 ElementoMultimediaPublicacion(
                     product = product,
@@ -79,10 +84,10 @@ fun CarruselMultimediaPublicacion(
             HorizontalPager(
                 state = pagerState,
                 beyondViewportPageCount = 0,
-                key = { page -> "${product.id}_$page" },
+                key = { page -> "${productId}_$page" },
                 modifier = Modifier
                     .fillMaxSize()
-                    .testTag("post_media_pager_${product.id}")
+                    .testTag("post_media_pager_$productId")
             ) { page ->
                 ElementoMultimediaPublicacion(
                     product = product,
@@ -108,7 +113,7 @@ fun CarruselMultimediaPublicacion(
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color.Black.copy(alpha = 0.65f))
                     .padding(horizontal = 9.dp, vertical = 4.dp)
-                    .testTag("post_content_indicator_${product.id}")
+                    .testTag("post_content_indicator_$productId")
             ) {
                 Icon(
                     imageVector = if (isCurrentVideo) Icons.Default.Videocam else Icons.Default.Collections,
@@ -133,7 +138,7 @@ fun CarruselMultimediaPublicacion(
                 .padding(end = 12.dp, bottom = 12.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(Color.White.copy(alpha = 0.84f))
-                .testTag("post_price_${product.id}")
+                .testTag("post_price_$productId")
         ) {
             Text(
                 text = priceText,

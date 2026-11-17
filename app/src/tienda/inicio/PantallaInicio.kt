@@ -14,15 +14,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.UserProfile
+import com.example.data.model.productHasVideo
+import com.example.data.model.productId
+import com.example.data.model.productVideoUrl
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InicioScreen(
-    featuredProducts: List<Product>,
+    featuredProducts: List<ProductJson>,
     userProfile: UserProfile? = null,
     cartItemCount: Long = 0L,
     savedProductIds: Set<String> = emptySet(),
@@ -35,7 +38,7 @@ fun InicioScreen(
     onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCatalogo: (String) -> Unit,
-    onNavigateToProduct: (Product) -> Unit,
+    onNavigateToProduct: (ProductJson) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = onNavigateToMenu,
     onNavigateToChats: () -> Unit,
@@ -48,13 +51,13 @@ fun InicioScreen(
     val context = LocalContext.current
     val videoProductIds = remember(featuredProducts) {
         featuredProducts.asSequence()
-            .filter { it.hasVideo && it.videoUrl.isNotBlank() }
-            .map { it.id }
+            .filter { it.productHasVideo() && it.productVideoUrl().isNotBlank() }
+            .map { it.productId() }
             .toSet()
     }
     var focusedProductId by remember { mutableStateOf<String?>(null) }
     var localSavedProductIds by remember { mutableStateOf(setOf<String>()) }
-    var activeCommentProduct by remember { mutableStateOf<Product?>(null) }
+    var activeCommentProduct by remember { mutableStateOf<ProductJson?>(null) }
 
     EfectoFocoVideoInicio(
         listState = listState,
@@ -102,7 +105,7 @@ fun InicioScreen(
             onToggleLike = onToggleLike,
             onOpenCommentsForProduct = { prod ->
                 activeCommentProduct = prod
-                onOpenComments(prod.id)
+                onOpenComments(prod.productId())
             },
             onRecordShare = onRecordShare,
             onNavigateToCatalogo = onNavigateToCatalogo,

@@ -11,8 +11,10 @@ import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.StoreCategory
+import com.example.data.model.productCategory
+import com.example.data.model.productImageUrl
 
 data class CategoriaItem(
     val id: String,
@@ -78,13 +80,15 @@ val storeCategoriesList = listOf(
     )
 )
 
-fun resolveCategoryCoverImage(category: StoreCategory, products: List<Product>): String? {
+fun resolveCategoryCoverImage(category: StoreCategory, products: List<ProductJson>): String? {
     val match = if (category == StoreCategory.TODO) {
-        products.firstOrNull { it.imageUrl.isNotBlank() }
+        products.firstOrNull { it.productImageUrl().isNotBlank() }
     } else {
-        products.firstOrNull { it.category.equals(category.id, ignoreCase = true) && it.imageUrl.isNotBlank() }
+        products.firstOrNull {
+            it.productCategory().equals(category.id, ignoreCase = true) && it.productImageUrl().isNotBlank()
+        }
     }
-    return match?.imageUrl?.takeIf { it.isNotBlank() }
+    return match?.productImageUrl()?.takeIf { it.isNotBlank() }
 }
 
 fun getCategoryStoryIcon(category: StoreCategory): ImageVector = when (category) {

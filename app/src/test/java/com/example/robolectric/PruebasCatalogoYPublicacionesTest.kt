@@ -1,7 +1,18 @@
 package com.example
 
+import com.example.data.model.productHasVideo
+import com.example.data.model.productId
+import com.example.data.model.productImageUrl
+import com.example.data.model.productImages
+import com.example.data.model.productMediaFormat
+import com.example.data.model.productName
+import com.example.data.model.productPrice
+import com.example.data.model.productVideoUrl
 import com.example.data.repository.EleganRepository
-import com.example.data.repository.parseBackendProductsJson
+import com.example.data.repository.extractJsonItems
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -17,7 +28,7 @@ import org.robolectric.annotation.Config
 class PruebasCatalogoYPublicacionesTest {
 
     @Test
-    fun `test catalog starts empty without local products and parses backend response`(): Unit = runBlocking {
+    fun `test catalog starts empty without local products and handles backend json directly`(): Unit = runBlocking {
         val context = obtenerContextoPrueba()
         val repo = EleganRepository(context)
 
@@ -33,12 +44,11 @@ class PruebasCatalogoYPublicacionesTest {
                   "description": "Lana fría italiana",
                   "category": "camisa",
                   "price": 295.5,
-                  "imageUrl": "/uploads/blazer.jpg",
-                  "images": ["/uploads/blazer.jpg", "https://cdn.example.com/blazer-2.jpg"],
+                  "imageUrl": "https://cdn.example.com/uploads/blazer.jpg",
+                  "images": ["https://cdn.example.com/uploads/blazer.jpg", "https://cdn.example.com/blazer-2.jpg"],
                   "sizes": ["48R", "50R"],
                   "colors": ["Azul Marino"],
                   "inStock": true,
-                  "isFeatured": true,
                   "mediaFormat": "3:4"
                 },
                 {
@@ -46,26 +56,30 @@ class PruebasCatalogoYPublicacionesTest {
                   "title": "Oxford Borgoña",
                   "category": "zapato",
                   "price": "240.00",
-                  "video_url": "/uploads/oxford.mp4",
+                  "video_url": "https://cdn.example.com/uploads/oxford.mp4",
                   "in_stock": true
                 }
               ]
             }
         """.trimIndent()
 
-        val parsed = parseBackendProductsJson(backendPayload, "https://elegan.example.com/")
-        assertEquals(2, parsed.size)
-        assertEquals("backend_prod_1", parsed[0].id)
-        assertEquals("https://elegan.example.com/uploads/blazer.jpg", parsed[0].imageUrl)
-        assertEquals(2, parsed[0].images.size)
-        assertEquals("3:4", parsed[0].mediaFormat)
-        assertTrue(parsed[0].isFeatured)
+        val moshi = Moshi.Builder().addLast(KotlinJsonAdapterFactory()).build()
+        val mapType = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        val adapter = moshi.adapter<Map<String, Any?>>(mapType)
+        val rawResponse = adapter.fromJson(backendPayload).orEmpty()
 
-        assertEquals("backend_prod_2", parsed[1].id)
-        assertEquals("Oxford Borgoña", parsed[1].name)
-        assertEquals(240.0, parsed[1].price, 0.01)
-        assertEquals("https://elegan.example.com/uploads/oxford.mp4", parsed[1].videoUrl)
-        assertTrue(parsed[1].hasVideo)
+        val items = extractJsonItems(rawResponse)
+        assertEquals(2, items.size)
+        assertEquals("backend_prod_1", items[0].productId())
+        assertEquals("https://cdn.example.com/uploads/blazer.jpg", items[0].productImageUrl())
+        assertEquals(2, items[0].productImages().size)
+        assertEquals("3:4", items[0].productMediaFormat())
+
+        assertEquals("backend_prod_2", items[1].productId())
+        assertEquals("Oxford Borgoña", items[1].productName())
+        assertEquals(240.0, items[1].productPrice(), 0.01)
+        assertEquals("https://cdn.example.com/uploads/oxford.mp4", items[1].productVideoUrl())
+        assertTrue(items[1].productHasVideo())
     }
 
     @Test

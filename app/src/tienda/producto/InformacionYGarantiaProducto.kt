@@ -27,14 +27,19 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productColors
+import com.example.data.model.productDescription
+import com.example.data.model.productName
+import com.example.data.model.productPrice
+import com.example.data.model.productSizes
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 
 @Composable
 fun BloqueDetalleProducto(
-    product: Product,
+    product: ProductJson,
     selectedSize: String,
     onSelectSize: (String) -> Unit,
     selectedColor: String,
@@ -43,9 +48,12 @@ fun BloqueDetalleProducto(
     onDecreaseQuantity: () -> Unit,
     onIncreaseQuantity: () -> Unit
 ) {
+    val sizes = product.productSizes()
+    val colors = product.productColors()
+
     Column(modifier = Modifier.padding(20.dp)) {
         Text(
-            text = product.name,
+            text = product.productName(),
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = EleganCharcoal,
@@ -58,7 +66,7 @@ fun BloqueDetalleProducto(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "$${String.format("%.2f", product.price)}",
+            text = "$${String.format("%.2f", product.productPrice())}",
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = EleganBurgundy,
@@ -80,7 +88,7 @@ fun BloqueDetalleProducto(
         )
         Spacer(modifier = Modifier.height(6.dp))
         Text(
-            text = product.description,
+            text = product.productDescription(),
             style = MaterialTheme.typography.bodyMedium.copy(
                 color = Color(0xFF4A4A4A),
                 lineHeight = 22.sp
@@ -89,10 +97,10 @@ fun BloqueDetalleProducto(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        if (product.sizes.isNotEmpty()) {
+        if (sizes.isNotEmpty()) {
             SelectorOpcionesProducto(
                 title = "Seleccionar Talla / Medida:",
-                options = product.sizes,
+                options = sizes,
                 selectedOption = selectedSize,
                 onSelect = onSelectSize,
                 rowTestTag = "size_selector_row",
@@ -100,10 +108,10 @@ fun BloqueDetalleProducto(
             )
         }
 
-        if (product.colors.isNotEmpty()) {
+        if (colors.isNotEmpty()) {
             SelectorOpcionesProducto(
                 title = "Seleccionar Color:",
-                options = product.colors,
+                options = colors,
                 selectedOption = selectedColor,
                 onSelect = onSelectColor,
                 rowTestTag = "color_selector_row",

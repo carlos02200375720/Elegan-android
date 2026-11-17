@@ -1,39 +1,129 @@
 package com.example.data.model
 
 import androidx.compose.runtime.Immutable
+import com.example.BuildConfig
 
-@Immutable
-data class Product(
-    val id: String = "",
-    val name: String = "",
-    val description: String = "",
-    val category: String = "todo", // gorra, gafa, camisa, correa, pantalone, zapato, interiore, perfume
-    val price: Double = 0.0,
-    val imageUrl: String = "",
-    val images: List<String> = emptyList(),
-    val colors: List<String> = emptyList(),
-    val rating: Double = 5.0,
-    val reviewCount: Long = 0L,
-    val sizes: List<String> = emptyList(),
-    val inStock: Boolean = true,
-    val isFeatured: Boolean = false,
-    val mediaFormat: String = "1:1", // "1:1", "3:4", "4:3", "9:16", "16:9"
-    val videoUrl: String = "",
-    val isVideo: Boolean = false,
-    val createdAt: String? = null
-) {
-    val hasVideo: Boolean
-        get() = isVideo || videoUrl.isNotBlank()
+/**
+ * Representación directa de cada producto tal como llega en JSON desde el backend
+ * (`GET api/movil/products` -> `{ items: [ ... ] }`), sin conversión a clase intermedia.
+ */
+typealias ProductJson = Map<String, Any?>
+
+fun ProductJson.productId(): String =
+    firstNonBlankString("id", "_id")
+
+fun ProductJson.productName(): String =
+    firstNonBlankString("name", "title")
+
+fun ProductJson.productDescription(): String =
+    firstNonBlankString("description")
+
+fun ProductJson.productCategory(): String =
+    firstNonBlankString("category").ifBlank { "todo" }
+
+fun ProductJson.productPrice(): Double {
+    val raw = this["price"] ?: return 0.0
+    return when (raw) {
+        is Number -> raw.toDouble()
+        is String -> raw.trim().toDoubleOrNull() ?: 0.0
+        else -> 0.0
+    }
 }
 
-val Product.aspectRatioValue: Float
-    get() = when (mediaFormat.trim()) {
-        "3:4" -> 3f / 4f
-        "4:3" -> 4f / 3f
-        "9:16" -> 9f / 16f
-        "16:9" -> 16f / 9f
-        else -> 1f // default 1:1
+fun ProductJson.productReviewCount(): Long {
+    val raw = this["reviewCount"] ?: this["review_count"] ?: return 0L
+    return when (raw) {
+        is Number -> raw.toLong().coerceAtLeast(0L)
+        is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        else -> 0L
     }
+}
+
+fun ProductJson.productImages(): List<String> {
+    val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
+    val directUrl = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
+        .let(::resolveBackendMediaUrl)
+    val parsed = rawList.mapNotNull { entry ->
+        when (entry) {
+            is String -> entry.trim().takeIf { it.isNotBlank() }?.let(::resolveBackendMediaUrl)
+            is Map<*, *> -> {
+                val url = listOf("url", "imageUrl", "image_url", "name")
+                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
+                url?.let(::resolveBackendMediaUrl)
+            }
+            else -> null
+        }
+    }
+    return if (directUrl.isNotBlank()) (listOf(directUrl) + parsed).distinct() else parsed.distinct()
+}
+
+fun ProductJson.productImageUrl(): String {
+    val direct = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
+        .let(::resolveBackendMediaUrl)
+    if (direct.isNotBlank()) return direct
+    return productImages().firstOrNull { !it.endsWith(".mp4", ignoreCase = true) }.orEmpty()
+}
+
+fun ProductJson.productVideoUrl(): String =
+    firstNonBlankString("videoUrl", "video_url", "video").let(::resolveBackendMediaUrl)
+
+fun ProductJson.productHasVideo(): Boolean =
+    readBoolean("isVideo", "is_video", defaultValue = false) || productVideoUrl().isNotBlank()
+
+fun ProductJson.productInStock(): Boolean =
+    readBoolean("inStock", "in_stock", defaultValue = true)
+
+fun ProductJson.productMediaFormat(): String =
+    firstNonBlankString("mediaFormat", "media_format").ifBlank { "1:1" }
+
+fun ProductJson.productSizes(): List<String> =
+    readStringArray("sizes")
+
+fun ProductJson.productColors(): List<String> =
+    readStringArray("colors")
+
+private fun ProductJson.firstNonBlankString(vararg keys: String): String {
+    for (key in keys) {
+        val value = (this[key] as? String)?.trim()
+        if (!value.isNullOrBlank()) return value
+    }
+    return ""
+}
+
+private fun ProductJson.readBoolean(vararg keys: String, defaultValue: Boolean): Boolean {
+    for (key in keys) {
+        if (!containsKey(key) || this[key] == null) continue
+        return when (val raw = this[key]) {
+            is Boolean -> raw
+            is Number -> raw.toInt() != 0
+            is String -> raw.equals("true", ignoreCase = true) || raw == "1"
+            else -> defaultValue
+        }
+    }
+    return defaultValue
+}
+
+private fun ProductJson.readStringArray(key: String): List<String> {
+    val list = this[key] as? List<*> ?: return emptyList()
+    return list.mapNotNull { item ->
+        when (item) {
+            is String -> item.trim().takeIf { it.isNotBlank() }
+            is Map<*, *> -> (item["name"] as? String)?.trim()?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+    }
+}
+
+private fun resolveBackendMediaUrl(rawUrl: String): String {
+    val clean = rawUrl.trim()
+    if (clean.isBlank()) return ""
+    if (clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true)) {
+        return clean
+    }
+    if (clean.startsWith("//")) return "https:$clean"
+    val cleanBase = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
+    return if (clean.startsWith("/")) "$cleanBase$clean" else "$cleanBase/$clean"
+}
 
 @Immutable
 data class PublicationStats(

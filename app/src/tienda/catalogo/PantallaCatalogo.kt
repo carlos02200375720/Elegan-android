@@ -35,20 +35,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.StoreCategory
+import com.example.data.model.productCategory
+import com.example.data.model.productDescription
+import com.example.data.model.productId
+import com.example.data.model.productName
 import com.example.ui.components.LocalEleganNotifier
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogoScreen(
-    products: List<Product>,
+    products: List<ProductJson>,
     selectedCategory: String,
     onCategoryChange: (String) -> Unit,
     onNavigateToMenu: () -> Unit,
-    onProductClick: (Product) -> Unit,
-    onQuickAddToCart: (Product) -> Unit = {},
+    onProductClick: (ProductJson) -> Unit,
+    onQuickAddToCart: (ProductJson) -> Unit = {},
     cartItemCount: Long = 0L,
     onNavigateToCart: () -> Unit = {},
     savedProductIds: Set<String> = emptySet(),
@@ -73,11 +77,12 @@ fun CatalogoScreen(
 
     val filteredProducts = remember(products, selectedCategory, searchQuery) {
         products.filter { prod ->
-            val matchesCat = selectedCategory == "todo" || prod.category.equals(selectedCategory, ignoreCase = true)
+            val category = prod.productCategory()
+            val matchesCat = selectedCategory == "todo" || category.equals(selectedCategory, ignoreCase = true)
             val matchesQuery = searchQuery.isBlank() ||
-                prod.name.contains(searchQuery, ignoreCase = true) ||
-                prod.description.contains(searchQuery, ignoreCase = true) ||
-                prod.category.contains(searchQuery, ignoreCase = true)
+                prod.productName().contains(searchQuery, ignoreCase = true) ||
+                prod.productDescription().contains(searchQuery, ignoreCase = true) ||
+                category.contains(searchQuery, ignoreCase = true)
             matchesCat && matchesQuery
         }
     }
@@ -179,15 +184,16 @@ fun CatalogoScreen(
                     }
                 }
 
-                items(filteredProducts, key = { it.id }) { product ->
-                    val isSaved = savedProductIds.contains(product.id)
+                items(filteredProducts, key = { it.productId() }) { product ->
+                    val prodId = product.productId()
+                    val isSaved = savedProductIds.contains(prodId)
                     ProductGridCard(
                         product = product,
                         isSaved = isSaved,
                         onClick = { onProductClick(product) },
                         onToggleSave = {
                             val willSave = !isSaved
-                            onToggleSaveProduct(product.id)
+                            onToggleSaveProduct(prodId)
                             val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
                             if (notifier != null) {
                                 notifier.show(msg)

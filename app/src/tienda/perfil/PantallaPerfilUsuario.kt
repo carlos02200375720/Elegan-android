@@ -33,7 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Order
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.UserProfile
 import com.example.data.remote.MobileSession
 import com.example.ui.components.LocalEleganNotifier
@@ -45,10 +45,10 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     userProfile: UserProfile?,
     orders: List<Order>,
-    savedProducts: List<Product> = emptyList(),
+    savedProducts: List<ProductJson> = emptyList(),
     cartItemCount: Long = 0L,
     onNavigateToCart: () -> Unit = {},
-    onProductClick: (Product) -> Unit = {},
+    onProductClick: (ProductJson) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onSaveProfile: (String, String, String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToChats: () -> Unit,

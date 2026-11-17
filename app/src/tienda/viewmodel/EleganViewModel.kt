@@ -5,7 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.CartItem
 import com.example.data.model.Order
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
@@ -26,14 +26,14 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     private val perfilCtrl = ControladorPerfilYSoporte(repository, viewModelScope)
 
     val selectedCategory: StateFlow<String> = catalogoCtrl.selectedCategory
-    val selectedProduct: StateFlow<Product?> = catalogoCtrl.selectedProduct
+    val selectedProduct: StateFlow<ProductJson?> = catalogoCtrl.selectedProduct
     val searchQuery: StateFlow<String> = catalogoCtrl.searchQuery
-    val products: StateFlow<List<Product>> = catalogoCtrl.products
+    val products: StateFlow<List<ProductJson>> = catalogoCtrl.products
     val isLoadingProducts: StateFlow<Boolean> = catalogoCtrl.isLoading
     val productsError: StateFlow<String?> = catalogoCtrl.error
 
     val savedProductIds: StateFlow<Set<String>> = interaccionesCtrl.savedProductIds
-    val savedProducts: StateFlow<List<Product>> = interaccionesCtrl.savedProducts
+    val savedProducts: StateFlow<List<ProductJson>> = interaccionesCtrl.savedProducts
     val likedPublicationIds: StateFlow<Set<String>> = interaccionesCtrl.likedPublicationIds
     val publicationStats: StateFlow<Map<String, PublicationStats>> = interaccionesCtrl.publicationStats
     val publicationComments: StateFlow<List<PublicationComment>> = interaccionesCtrl.publicationComments
@@ -57,7 +57,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setSearchQuery(query: String) = catalogoCtrl.setSearchQuery(query)
 
-    fun selectProduct(product: Product) = catalogoCtrl.selectProduct(product)
+    fun selectProduct(product: ProductJson) = catalogoCtrl.selectProduct(product)
 
     fun toggleSaveProduct(productId: String, onResult: (Result<Boolean>) -> Unit = {}) =
         interaccionesCtrl.toggleSaveProduct(productId, onResult)
@@ -78,7 +78,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun recordPublicationShare(productId: String, onResult: (Result<Unit>) -> Unit = {}) =
         interaccionesCtrl.recordPublicationShare(productId, onResult)
 
-    fun addToCart(product: Product, size: String, quantity: Long = 1L, color: String = "") =
+    fun addToCart(product: ProductJson, size: String, quantity: Long = 1L, color: String = "") =
         pedidosCtrl.addToCart(product, size, quantity, color)
 
     fun updateCartQuantity(cartItemId: String, quantity: Long) =

@@ -1,9 +1,10 @@
 package com.example.ui.viewmodel
 
 import android.util.Log
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
+import com.example.data.model.productId
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -20,7 +21,7 @@ import kotlinx.coroutines.launch
 
 internal class ControladorInteraccionesPublicacion(
     private val repository: EleganRepository,
-    products: StateFlow<List<Product>>,
+    products: StateFlow<List<ProductJson>>,
     private val scope: CoroutineScope
 ) {
     val savedProductIds: StateFlow<Set<String>> = repository.observeSavedProductIds()
@@ -30,11 +31,11 @@ internal class ControladorInteraccionesPublicacion(
         }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptySet())
 
-    val savedProducts: StateFlow<List<Product>> = combine(
+    val savedProducts: StateFlow<List<ProductJson>> = combine(
         products,
         savedProductIds
     ) { allProducts, savedIds ->
-        allProducts.filter { it.id in savedIds }
+        allProducts.filter { it.productId() in savedIds }
     }.stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyList())
 
     val likedPublicationIds: StateFlow<Set<String>> = repository.observeLikedPublicationIds()

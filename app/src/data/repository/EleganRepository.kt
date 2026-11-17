@@ -3,7 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import com.example.data.model.CartItem
 import com.example.data.model.Order
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
@@ -32,23 +32,23 @@ class EleganRepository(context: Context) {
         mensajesRepo = mensajesRepo
     )
 
-    fun observeProducts(): Flow<List<Product>> = catalogoRepo.observeProducts()
+    fun observeProducts(): Flow<List<ProductJson>> = catalogoRepo.observeProducts()
 
     fun observeProductsLoading(): Flow<Boolean> = catalogoRepo.observeLoading()
 
     fun observeProductsError(): Flow<String?> = catalogoRepo.observeError()
 
-    suspend fun refreshProducts(): List<Product> = catalogoRepo.refreshProducts()
+    suspend fun refreshProducts(): List<ProductJson> = catalogoRepo.refreshProducts()
 
-    /** Descarga el catálogo publicado directamente desde el backend. */
-    suspend fun fetchPublishedProducts(): List<Product> = catalogoRepo.fetchProductsFromBackend()
+    /** Descarga el catálogo publicado desde el backend; conserva cada producto en formato JSON crudo. */
+    suspend fun fetchPublishedProducts(): List<ProductJson> = catalogoRepo.fetchProductsFromBackend()
 
-    suspend fun getProductById(productId: String): Product? = catalogoRepo.getProductById(productId)
+    suspend fun getProductById(productId: String): ProductJson? = catalogoRepo.getProductById(productId)
 
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
 
     suspend fun addToCart(
-        product: Product,
+        product: ProductJson,
         selectedSize: String,
         quantity: Long = 1L,
         selectedColor: String = ""

@@ -25,14 +25,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productCategory
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoriaScreen(
-    products: List<Product>,
+    products: List<ProductJson>,
     onCategorySelected: (String) -> Unit,
     onDeleteAccount: () -> Unit = {},
     onBack: () -> Unit
@@ -84,7 +85,7 @@ fun CategoriaScreen(
                     val count = if (catItem.id == "todo") {
                         products.size
                     } else {
-                        products.count { it.category.equals(catItem.id, ignoreCase = true) }
+                        products.count { it.productCategory().equals(catItem.id, ignoreCase = true) }
                     }
                     TarjetaCategoriaMenu(
                         catItem = catItem,

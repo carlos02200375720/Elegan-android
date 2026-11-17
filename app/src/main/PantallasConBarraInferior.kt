@@ -13,6 +13,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.productColors
+import com.example.data.model.productInStock
+import com.example.data.model.productSizes
 import com.example.ui.CatalogoScreen
 import com.example.ui.InicioScreen
 import com.example.ui.PerfilScreen
@@ -69,7 +72,7 @@ internal fun PantallasConBarraInferior(
             when (screen) {
                 Screen.INICIO -> {
                     InicioScreen(
-                        featuredProducts = products.filter { it.inStock },
+                        featuredProducts = products.filter { it.productInStock() },
                         userProfile = userProfile,
                         cartItemCount = cartItems.sumOf { it.quantity },
                         savedProductIds = savedProductIds,
@@ -106,7 +109,7 @@ internal fun PantallasConBarraInferior(
                 Screen.CATALOGO -> {
                     BackHandler { onNavigateTo(Screen.INICIO) }
                     CatalogoScreen(
-                        products = products.filter { it.inStock },
+                        products = products.filter { it.productInStock() },
                         selectedCategory = selectedCategory,
                         onCategoryChange = { viewModel.setCategory(it) },
                         onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
@@ -115,8 +118,8 @@ internal fun PantallasConBarraInferior(
                             onNavigateTo(Screen.PRODUCTO)
                         },
                         onQuickAddToCart = { prod ->
-                            val defaultSize = prod.sizes.firstOrNull() ?: "Estándar"
-                            val defaultColor = prod.colors.firstOrNull().orEmpty()
+                            val defaultSize = prod.productSizes().firstOrNull() ?: "Estándar"
+                            val defaultColor = prod.productColors().firstOrNull().orEmpty()
                             viewModel.addToCart(prod, defaultSize, 1L, defaultColor)
                         },
                         cartItemCount = cartItems.sumOf { it.quantity },

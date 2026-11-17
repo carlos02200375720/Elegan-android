@@ -3,7 +3,7 @@ package com.example.ui.viewmodel
 import android.util.Log
 import com.example.data.model.CartItem
 import com.example.data.model.Order
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +42,7 @@ internal class ControladorCarritoYPedidos(
         _lastOrderDetails.value = null
     }
 
-    fun addToCart(product: Product, size: String, quantity: Long, color: String) {
+    fun addToCart(product: ProductJson, size: String, quantity: Long, color: String) {
         scope.launch {
             try {
                 repository.addToCart(product, size, quantity, color)

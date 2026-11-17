@@ -12,11 +12,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productCategory
+import com.example.data.model.productDescription
+import com.example.data.model.productHasVideo
+import com.example.data.model.productId
+import com.example.data.model.productImageUrl
+import com.example.data.model.productImages
+import com.example.data.model.productMediaFormat
+import com.example.data.model.productName
+import com.example.data.model.productPrice
+import com.example.data.model.productReviewCount
+import com.example.data.model.productVideoUrl
 
 @Composable
 fun ProductPublicationPost(
-    product: Product,
+    product: ProductJson,
     index: Int,
     isLiked: Boolean,
     isSaved: Boolean,
@@ -32,8 +43,19 @@ fun ProductPublicationPost(
     onProductClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val ratio = remember(product.mediaFormat, index) {
-        when (product.mediaFormat.trim()) {
+    val productId = product.productId()
+    val mediaFormat = product.productMediaFormat()
+    val productImageUrl = product.productImageUrl()
+    val productImages = product.productImages()
+    val productVideoUrl = product.productVideoUrl()
+    val productHasVideo = product.productHasVideo()
+    val productPrice = product.productPrice()
+    val productCategory = product.productCategory()
+    val productName = product.productName()
+    val productDescription = product.productDescription()
+
+    val ratio = remember(mediaFormat, index) {
+        when (mediaFormat.trim()) {
             "3:4" -> (3f / 4f)
             "4:3" -> (4f / 3f)
             "1:1" -> 1f
@@ -46,19 +68,19 @@ fun ProductPublicationPost(
     }
 
     val mediaItems = remember(
-        product.id,
-        product.imageUrl,
-        product.images,
-        product.videoUrl,
-        product.isVideo
+        productId,
+        productImageUrl,
+        productImages,
+        productVideoUrl,
+        productHasVideo
     ) {
         getProductMediaItems(product)
     }
-    val priceText = remember(product.price) {
-        "$${String.format("%.2f", product.price)}"
+    val priceText = remember(productPrice) {
+        "$${String.format("%.2f", productPrice)}"
     }
-    val categoryLabel = remember(product.category) {
-        "Boutique Oficial • ${product.category.replaceFirstChar { it.uppercase() }}"
+    val categoryLabel = remember(productCategory) {
+        "Boutique Oficial • ${productCategory.replaceFirstChar { it.uppercase() }}"
     }
     val pagerState = rememberPagerState(pageCount = { mediaItems.size })
 
@@ -66,10 +88,10 @@ fun ProductPublicationPost(
         modifier = modifier
             .fillMaxWidth()
             .background(Color.White)
-            .testTag("publication_post_${product.id}")
+            .testTag("publication_post_$productId")
     ) {
         CabeceraPublicacionProducto(
-            productName = product.name,
+            productName = productName,
             categoryLabel = categoryLabel,
             onProductClick = onProductClick
         )
@@ -85,7 +107,7 @@ fun ProductPublicationPost(
         )
 
         BarraInteraccionPublicacion(
-            productId = product.id,
+            productId = productId,
             isLiked = isLiked,
             isSaved = isSaved,
             likeCount = likeCount,
@@ -99,8 +121,8 @@ fun ProductPublicationPost(
         )
 
         DetallesYAccionesPublicacion(
-            productId = product.id,
-            description = product.description,
+            productId = productId,
+            description = productDescription,
             commentCount = commentCount,
             onCommentClick = onCommentClick,
             onProductClick = onProductClick
@@ -117,7 +139,7 @@ fun ProductPublicationPost(
 
 @Composable
 fun ProductHomeCard(
-    product: Product,
+    product: ProductJson,
     onClick: () -> Unit
 ) {
     ProductPublicationPost(
@@ -125,7 +147,7 @@ fun ProductHomeCard(
         index = 0,
         isLiked = false,
         isSaved = false,
-        likeCount = product.reviewCount.toInt().coerceAtLeast(10),
+        likeCount = product.productReviewCount().toInt().coerceAtLeast(10),
         commentCount = 2,
         onLikeClick = {},
         onCommentClick = {},

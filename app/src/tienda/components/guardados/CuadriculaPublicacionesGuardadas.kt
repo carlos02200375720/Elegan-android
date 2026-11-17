@@ -11,7 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 
 /**
  * Cuadrícula de 3 columnas para mostrar a los clientes todas sus publicaciones guardadas
@@ -19,8 +19,8 @@ import com.example.data.model.Product
  */
 @Composable
 fun SavedPublicationsGrid(
-    savedProducts: List<Product>,
-    onProductClick: (Product) -> Unit,
+    savedProducts: List<ProductJson>,
+    onProductClick: (ProductJson) -> Unit,
     onExploreClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {

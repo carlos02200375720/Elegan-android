@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.productId
 import com.example.ui.CarritoScreen
 import com.example.ui.CategoriaScreen
 import com.example.ui.ChatsScreen
@@ -64,14 +65,15 @@ internal fun PantallasSecundariasNavegacion(
 
             Screen.PRODUCTO -> {
                 val prod = selectedProduct
-                    ?: cartItems.lastOrNull()?.let { item -> products.find { it.id == item.productId } }
+                    ?: cartItems.lastOrNull()?.let { item -> products.find { it.productId() == item.productId } }
                     ?: products.firstOrNull()
                 if (prod != null) {
+                    val prodId = prod.productId()
                     ProductoScreen(
                         product = prod,
                         cartItemCount = cartItems.sumOf { it.quantity },
-                        isSaved = savedProductIds.contains(prod.id),
-                        onToggleSave = { onResult -> viewModel.toggleSaveProduct(prod.id, onResult) },
+                        isSaved = savedProductIds.contains(prodId),
+                        onToggleSave = { onResult -> viewModel.toggleSaveProduct(prodId, onResult) },
                         onAddToCart = { p, s, color, q -> viewModel.addToCart(p, s, q, color) },
                         onBuyNow = { p, s, color, q ->
                             viewModel.addToCart(p, s, q, color)

@@ -25,15 +25,17 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
+import com.example.data.model.productHasVideo
+import com.example.data.model.productId
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
 @Composable
 internal fun ContenidoFeedInicio(
     listState: LazyListState,
-    featuredProducts: List<Product>,
+    featuredProducts: List<ProductJson>,
     savedProductIds: Set<String>,
     localSavedProductIds: Set<String>,
     publicationStats: Map<String, PublicationStats>,
@@ -45,10 +47,10 @@ internal fun ContenidoFeedInicio(
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)?,
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
-    onOpenCommentsForProduct: (Product) -> Unit,
+    onOpenCommentsForProduct: (ProductJson) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCatalogo: (String) -> Unit,
-    onNavigateToProduct: (Product) -> Unit,
+    onNavigateToProduct: (ProductJson) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToChats: () -> Unit,
     modifier: Modifier = Modifier
@@ -137,21 +139,22 @@ internal fun ContenidoFeedInicio(
 
             itemsIndexed(
                 items = featuredProducts,
-                key = { _, prod -> prod.id },
+                key = { _, prod -> prod.productId() },
                 contentType = { _, _ -> "product_post" }
             ) { index, prod ->
-                val isLiked = prod.id in likedPublicationIds
+                val prodId = prod.productId()
+                val isLiked = prodId in likedPublicationIds
                 val isSaved = if (onToggleSaveProduct != null) {
-                    savedProductIds.contains(prod.id)
+                    savedProductIds.contains(prodId)
                 } else {
-                    localSavedProductIds.contains(prod.id)
+                    localSavedProductIds.contains(prodId)
                 }
-                val isPostFocused = prod.hasVideo && (focusedProductId == prod.id)
+                val isPostFocused = prod.productHasVideo() && (focusedProductId == prodId)
 
                 ElementoPublicacionFeedInicio(
                     product = prod,
                     index = index,
-                    stats = publicationStats[prod.id],
+                    stats = publicationStats[prodId],
                     isLiked = isLiked,
                     isSaved = isSaved,
                     isFocused = isPostFocused,

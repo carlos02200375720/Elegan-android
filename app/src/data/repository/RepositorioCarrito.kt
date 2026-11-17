@@ -2,7 +2,11 @@ package com.example.data.repository
 
 import android.content.Context
 import com.example.data.model.CartItem
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productId
+import com.example.data.model.productImageUrl
+import com.example.data.model.productName
+import com.example.data.model.productPrice
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.flow.Flow
@@ -20,10 +24,11 @@ internal class RepositorioCarrito(private val appContext: Context) {
 
     fun observeCart(): Flow<List<CartItem>> = cartFlow.asStateFlow()
 
-    fun addToCart(product: Product, selectedSize: String, quantity: Long = 1L, selectedColor: String = "") {
-        require(product.id.isNotBlank() && quantity > 0)
+    fun addToCart(product: ProductJson, selectedSize: String, quantity: Long = 1L, selectedColor: String = "") {
+        val productId = product.productId()
+        require(productId.isNotBlank() && quantity > 0)
         val existingIndex = cartItems.indexOfFirst {
-            it.productId == product.id && it.selectedSize == selectedSize && it.selectedColor == selectedColor
+            it.productId == productId && it.selectedSize == selectedSize && it.selectedColor == selectedColor
         }
         if (existingIndex >= 0) {
             val existing = cartItems[existingIndex]
@@ -33,10 +38,10 @@ internal class RepositorioCarrito(private val appContext: Context) {
                 CartItem(
                     id = UUID.randomUUID().toString(),
                     userId = optionalUserId(appContext).orEmpty(),
-                    productId = product.id,
-                    name = product.name,
-                    price = product.price,
-                    imageUrl = product.imageUrl,
+                    productId = productId,
+                    name = product.productName(),
+                    price = product.productPrice(),
+                    imageUrl = product.productImageUrl(),
                     selectedSize = selectedSize,
                     selectedColor = selectedColor,
                     quantity = quantity

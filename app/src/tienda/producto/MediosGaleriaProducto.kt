@@ -1,7 +1,11 @@
 package com.example.ui
 
 import androidx.compose.runtime.Immutable
-import com.example.data.model.Product
+import com.example.data.model.ProductJson
+import com.example.data.model.productHasVideo
+import com.example.data.model.productImageUrl
+import com.example.data.model.productImages
+import com.example.data.model.productVideoUrl
 
 @Immutable
 sealed interface GalleryMediaItem {
@@ -15,16 +19,19 @@ sealed interface GalleryMediaItem {
 /**
  * Retorna la lista unificada de elementos multimedia (video y fotos) obtenidos del backend.
  */
-fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
+fun getProductMediaItems(product: ProductJson): List<GalleryMediaItem> {
     val items = mutableListOf<GalleryMediaItem>()
-    val basePoster = if (product.imageUrl.isNotBlank() && !product.imageUrl.endsWith(".mp4", ignoreCase = true)) {
-        product.imageUrl
+    val imageUrl = product.productImageUrl()
+    val productImgs = product.productImages()
+    val videoUrl = product.productVideoUrl()
+    val basePoster = if (imageUrl.isNotBlank() && !imageUrl.endsWith(".mp4", ignoreCase = true)) {
+        imageUrl
     } else {
-        product.images.firstOrNull { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }.orEmpty()
+        productImgs.firstOrNull { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }.orEmpty()
     }
 
-    if (product.hasVideo && product.videoUrl.isNotBlank()) {
-        items.add(GalleryMediaItem.Video(videoUrl = product.videoUrl, posterUrl = basePoster))
+    if (product.productHasVideo() && videoUrl.isNotBlank()) {
+        items.add(GalleryMediaItem.Video(videoUrl = videoUrl, posterUrl = basePoster))
         if (basePoster.isNotBlank()) {
             items.add(GalleryMediaItem.Image(imageUrl = basePoster))
         }
@@ -44,8 +51,9 @@ fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
 /**
  * Retorna únicamente las imágenes reales del producto provistas por el backend.
  */
-fun getProductGalleryImages(product: Product): List<String> {
+fun getProductGalleryImages(product: ProductJson): List<String> {
+    val imageUrl = product.productImageUrl()
     return (listOfNotNull(
-        product.imageUrl.takeIf { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }
-    ) + product.images.filter { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }).distinct()
+        imageUrl.takeIf { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }
+    ) + product.productImages().filter { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }).distinct()
 }
