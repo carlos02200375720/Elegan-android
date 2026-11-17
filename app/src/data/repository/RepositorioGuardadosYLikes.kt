@@ -119,14 +119,14 @@ internal class RepositorioGuardadosYLikes(
 
         try {
             // El backend limita la consulta a 100 IDs por petición.
-            ids.chunked(100).forEach { batch ->
+            ids.chunked(100).forEach batchLoop@{ batch ->
                 val response = ApiAutenticacionMovil.service.getLikeCounts("Bearer $token", batch)
-                val counts = response["counts"] as? Map<*, *> ?: return@forEach
-                counts.forEach { (rawId, rawCount) ->
-                    val id = rawId as? String ?: return@forEach
+                val counts = response["counts"] as? Map<*, *> ?: return@batchLoop
+                counts.forEach countLoop@{ (rawId, rawCount) ->
+                    val id = rawId as? String ?: return@countLoop
                     val count = (rawCount as? Number)?.toLong()
                         ?: (rawCount as? String)?.toLongOrNull()
-                        ?: return@forEach
+                        ?: return@countLoop
                     statsRepo.updateLikesCount(id, count)
                 }
             }
