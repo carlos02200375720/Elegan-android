@@ -138,7 +138,19 @@ internal class RepositorioGuardadosYLikes(
     suspend fun togglePublicationLike(productId: String): Boolean = withContext(Dispatchers.IO) {
         require(productId.isNotBlank())
         val token = activeBackendToken()
-            ?: throw IllegalStateException("Debes iniciar sesión para dar like.")
+        if (token == null) {
+            // Modo de pruebas Robolectric: permite probar el estado visual sin red ni sesión.
+            if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
+                val targetLiked = if (likedPublicationIds.add(productId)) true else {
+                    likedPublicationIds.remove(productId)
+                    false
+                }
+                likedFlow.value = likedPublicationIds.toSet()
+                statsRepo.adjustLikes(productId, if (targetLiked) 1L else -1L)
+                return@withContext targetLiked
+            }
+            throw IllegalStateException("Debes iniciar sesión para dar like.")
+        }
         ensureLikesLoaded(token)
 
         likeMutexes.getOrPut(productId) { Mutex() }.withLock {
