@@ -52,7 +52,10 @@ fun CatalogoScreen(
     cartItemCount: Long = 0L,
     onNavigateToCart: () -> Unit = {},
     savedProductIds: Set<String> = emptySet(),
-    onToggleSaveProduct: (String) -> Unit = {}
+    onToggleSaveProduct: (String) -> Unit = {},
+    isLoadingProducts: Boolean = false,
+    productsError: String? = null,
+    onRefreshProducts: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
@@ -134,7 +137,8 @@ fun CatalogoScreen(
                     CatalogoCategoryStoriesSection(
                         selectedCategory = selectedCategory,
                         categoryListState = categoryListState,
-                        onCategoryChange = onCategoryChange
+                        onCategoryChange = onCategoryChange,
+                        products = products
                     )
                 }
 
@@ -163,6 +167,10 @@ fun CatalogoScreen(
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         EstadoVacioCatalogo(
                             isCompact = isCompact,
+                            isLoading = isLoadingProducts && products.isEmpty(),
+                            errorMessage = if (products.isEmpty()) productsError else null,
+                            hasActiveFilters = searchQuery.isNotBlank() || selectedCategory != "todo",
+                            onRetry = onRefreshProducts,
                             onResetFilters = {
                                 searchQuery = ""
                                 onCategoryChange("todo")

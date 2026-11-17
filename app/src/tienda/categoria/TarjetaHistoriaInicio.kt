@@ -40,6 +40,7 @@ import coil.request.ImageRequest
 import coil.size.Precision
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 
@@ -47,18 +48,20 @@ import com.example.ui.theme.EleganGold
 fun CategoryStoryCard(
     category: StoreCategory,
     cardWidth: Dp,
+    imageUrl: String? = null,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val imageUrl = remember(category) { getCategoryStoryImage(category) }
     val imageRequest = remember(imageUrl, context) {
-        ImageRequest.Builder(context)
-            .data(imageUrl)
-            .size(400, 700)
-            .precision(Precision.INEXACT)
-            .allowRgb565(true)
-            .crossfade(false)
-            .build()
+        imageUrl?.takeIf { it.isNotBlank() }?.let { url ->
+            ImageRequest.Builder(context)
+                .data(url)
+                .size(400, 700)
+                .precision(Precision.INEXACT)
+                .allowRgb565(true)
+                .crossfade(false)
+                .build()
+        }
     }
 
     Surface(
@@ -76,13 +79,32 @@ fun CategoryStoryCard(
         shadowElevation = 3.dp,
         color = EleganCharcoal
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = imageRequest,
-                contentDescription = category.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(EleganBurgundyDark, EleganCharcoal)
+                    )
+                )
+        ) {
+            Icon(
+                imageVector = getCategoryStoryIcon(category),
+                contentDescription = null,
+                tint = EleganGold.copy(alpha = 0.72f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(28.dp)
             )
+
+            if (imageRequest != null) {
+                AsyncImage(
+                    model = imageRequest,
+                    contentDescription = category.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Box(
                 modifier = Modifier

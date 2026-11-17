@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
@@ -30,7 +31,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Product
 import com.example.ui.GalleryMediaItem
-import com.example.ui.getDefaultCategoryFallback
 import com.example.ui.getProductMediaItems
 import com.example.ui.theme.EleganGold
 
@@ -49,9 +49,9 @@ fun SavedPublicationGridItem(
     val isMultiMedia = mediaItems.size > 1
 
     val previewUrl = when (val first = mediaItems.firstOrNull()) {
-        is GalleryMediaItem.Video -> first.posterUrl.ifBlank { getDefaultCategoryFallback(product.category) }
-        is GalleryMediaItem.Image -> first.imageUrl.ifBlank { getDefaultCategoryFallback(product.category) }
-        null -> getDefaultCategoryFallback(product.category)
+        is GalleryMediaItem.Video -> first.posterUrl.ifBlank { product.imageUrl }
+        is GalleryMediaItem.Image -> first.imageUrl
+        null -> product.imageUrl
     }
 
     Box(
@@ -62,13 +62,23 @@ fun SavedPublicationGridItem(
             .clickable(onClick = onClick)
             .testTag("saved_post_${product.id}")
     ) {
-        // Imagen o portada generada del video (nunca fondo negro)
-        AsyncImage(
-            model = previewUrl,
-            contentDescription = product.name,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize()
-        )
+        if (previewUrl.isNotBlank()) {
+            AsyncImage(
+                model = previewUrl,
+                contentDescription = product.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Default.Checkroom,
+                contentDescription = product.name,
+                tint = Color(0xFFB5ABA0),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(28.dp)
+            )
+        }
 
         // Degradado oscuro inferior para legibilidad del nombre y precio
         Box(

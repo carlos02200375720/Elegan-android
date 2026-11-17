@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
-import com.example.data.model.LocalBoutiqueMedia
+import com.example.data.model.Product
 import com.example.data.model.StoreCategory
 
 data class CategoriaItem(
@@ -78,16 +78,13 @@ val storeCategoriesList = listOf(
     )
 )
 
-fun getCategoryStoryImage(category: StoreCategory): String = when (category) {
-    StoreCategory.TODO -> LocalBoutiqueMedia.camisaCover
-    StoreCategory.GORRA -> LocalBoutiqueMedia.gorraCover
-    StoreCategory.GAFA -> LocalBoutiqueMedia.gafaCover
-    StoreCategory.CAMISA -> LocalBoutiqueMedia.camisaCover
-    StoreCategory.CORREA -> LocalBoutiqueMedia.zapatoCover
-    StoreCategory.PANTALONE -> LocalBoutiqueMedia.camisaCover
-    StoreCategory.ZAPATO -> LocalBoutiqueMedia.zapatoCover
-    StoreCategory.INTERIORE -> LocalBoutiqueMedia.camisaCover
-    StoreCategory.PERFUME -> LocalBoutiqueMedia.perfumeCover
+fun resolveCategoryCoverImage(category: StoreCategory, products: List<Product>): String? {
+    val match = if (category == StoreCategory.TODO) {
+        products.firstOrNull { it.imageUrl.isNotBlank() }
+    } else {
+        products.firstOrNull { it.category.equals(category.id, ignoreCase = true) && it.imageUrl.isNotBlank() }
+    }
+    return match?.imageUrl?.takeIf { it.isNotBlank() }
 }
 
 fun getCategoryStoryIcon(category: StoreCategory): ImageVector = when (category) {

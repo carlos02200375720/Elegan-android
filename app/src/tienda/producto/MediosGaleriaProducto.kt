@@ -1,7 +1,6 @@
 package com.example.ui
 
 import androidx.compose.runtime.Immutable
-import com.example.data.model.LocalBoutiqueMedia
 import com.example.data.model.Product
 
 @Immutable
@@ -14,8 +13,7 @@ sealed interface GalleryMediaItem {
 }
 
 /**
- * Retorna la lista unificada de elementos multimedia (video y fotos) para la galería.
- * Si el producto tiene video, la portada del video también acompaña como imagen la galería.
+ * Retorna la lista unificada de elementos multimedia (video y fotos) obtenidos del backend.
  */
 fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
     val items = mutableListOf<GalleryMediaItem>()
@@ -26,12 +24,9 @@ fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
     }
 
     if (product.hasVideo && product.videoUrl.isNotBlank()) {
-        val videoPoster = basePoster.ifBlank {
-            getDefaultCategoryFallback(product.category)
-        }
-        items.add(GalleryMediaItem.Video(videoUrl = product.videoUrl, posterUrl = videoPoster))
-        if (videoPoster.isNotBlank()) {
-            items.add(GalleryMediaItem.Image(imageUrl = videoPoster))
+        items.add(GalleryMediaItem.Video(videoUrl = product.videoUrl, posterUrl = basePoster))
+        if (basePoster.isNotBlank()) {
+            items.add(GalleryMediaItem.Image(imageUrl = basePoster))
         }
     }
 
@@ -43,30 +38,14 @@ fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
             }
         }
     }
-    return if (items.isNotEmpty()) items else listOf(GalleryMediaItem.Image(basePoster))
-}
-
-fun getDefaultCategoryFallback(category: String): String {
-    return LocalBoutiqueMedia.fallbackImageForCategory(category)
+    return items
 }
 
 /**
- * Retorna la lista de imágenes para la galería multimedia del producto.
- * Si el producto ya cuenta con su lista de imágenes, se utiliza dicha lista.
- * Si no, se proveen perspectivas locales acordes a su categoría.
+ * Retorna únicamente las imágenes reales del producto provistas por el backend.
  */
 fun getProductGalleryImages(product: Product): List<String> {
-    val userImages = (listOfNotNull(
+    return (listOfNotNull(
         product.imageUrl.takeIf { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }
     ) + product.images.filter { it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true) }).distinct()
-    if (userImages.isNotEmpty()) return userImages
-
-    val base = if (product.imageUrl.isNotBlank() && !product.imageUrl.endsWith(".mp4", ignoreCase = true)) {
-        product.imageUrl
-    } else {
-        getDefaultCategoryFallback(product.category)
-    }
-
-    val supplements = LocalBoutiqueMedia.gallerySupplementsForCategory(product.category)
-    return (listOf(base) + supplements).distinct()
 }

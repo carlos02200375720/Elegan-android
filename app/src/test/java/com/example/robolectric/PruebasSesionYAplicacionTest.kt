@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.data.model.Product
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
@@ -91,7 +92,13 @@ class PruebasSesionYAplicacionTest {
         )
 
         val repo = EleganRepository(context)
-        val sampleProduct = repo.getInitialSampleProducts().first()
+        val sampleProduct = Product(
+            id = "backend_prod_delete_test",
+            name = "Camisa Sartorial",
+            category = "camisa",
+            price = 89.0,
+            imageUrl = "https://cdn.example.com/camisa.jpg"
+        )
         repo.addToCart(sampleProduct, "M", 1L, "Negro")
         repo.setProductSaved(sampleProduct.id, true)
 

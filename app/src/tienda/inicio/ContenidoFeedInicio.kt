@@ -1,22 +1,34 @@
 package com.example.ui
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Product
 import com.example.data.model.PublicationStats
+import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganCharcoal
 
 @Composable
 internal fun ContenidoFeedInicio(
@@ -27,6 +39,9 @@ internal fun ContenidoFeedInicio(
     publicationStats: Map<String, PublicationStats>,
     likedPublicationIds: Set<String>,
     focusedProductId: String?,
+    isLoadingProducts: Boolean = false,
+    productsError: String? = null,
+    onRefreshProducts: () -> Unit = {},
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)?,
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
@@ -70,12 +85,54 @@ internal fun ContenidoFeedInicio(
                 CategoryStoriesSection(
                     onNavigateToCatalogo = onNavigateToCatalogo,
                     onNavigateToMenu = onNavigateToMenu,
+                    products = featuredProducts,
                     modifier = categoriesModifier
                 )
             }
 
             item(key = "feed_spacer") {
                 Spacer(modifier = Modifier.height(if (maxWidth < 360.dp) 12.dp else 16.dp))
+            }
+
+            if (featuredProducts.isEmpty() && (isLoadingProducts || !productsError.isNullOrBlank())) {
+                item(key = "feed_backend_status") {
+                    Column(
+                        modifier = feedItemModifier.padding(horizontal = 24.dp, vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        if (isLoadingProducts) {
+                            CircularProgressIndicator(color = EleganBurgundy)
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "Cargando colección desde el servidor...",
+                                style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
+                                textAlign = TextAlign.Center
+                            )
+                        } else if (!productsError.isNullOrBlank()) {
+                            Text(
+                                text = "No se pudo cargar el catálogo",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = EleganCharcoal
+                                ),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = productsError,
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = onRefreshProducts,
+                                colors = ButtonDefaults.buttonColors(containerColor = EleganBurgundy)
+                            ) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
+                }
             }
 
             itemsIndexed(

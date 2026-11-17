@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.data.model.Product
 import com.example.data.remote.MobileSession
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.first
@@ -18,7 +19,6 @@ class PruebasPerfilPedidosYSoporteTest {
     @Test
     fun `test profile update is not treated as saved when backend request fails`(): Unit = runBlocking {
         val context = obtenerContextoPrueba()
-        limpiarPreferenciasPrueba(context, "elegan_profile_cache")
         reiniciarSesionClienteDemo(context)
 
         val repo1 = EleganRepository(context)
@@ -33,20 +33,25 @@ class PruebasPerfilPedidosYSoporteTest {
         }
         assertTrue("El guardado debe fallar si el backend no confirma la operación", saveResult.isFailure)
 
-        limpiarPreferenciasPrueba(context, "elegan_profile_cache")
         MobileSession.clear(context)
     }
 
     @Test
-    fun `test created order is saved and persists in order history across repository refresh`() = runBlocking {
+    fun `test created order clears cart and appears in session order history without local cache`() = runBlocking {
         val context = obtenerContextoPrueba()
         reiniciarSesionClienteDemo(context)
 
-        val repo1 = EleganRepository(context)
-        val sampleProduct = repo1.getInitialSampleProducts().first()
-        repo1.addToCart(sampleProduct, selectedSize = "M", quantity = 2L, selectedColor = "Negro")
+        val repo = EleganRepository(context)
+        val backendProduct = Product(
+            id = "backend_prod_order_1",
+            name = "Camisa Oxford Blanca",
+            category = "camisa",
+            price = 89.0,
+            imageUrl = "https://cdn.example.com/camisa.jpg"
+        )
+        repo.addToCart(backendProduct, selectedSize = "M", quantity = 2L, selectedColor = "Negro")
 
-        val orderId = repo1.createOrder(
+        val orderId = repo.createOrder(
             customerName = "Cliente Elegan",
             email = "cliente.elegan@gmail.com",
             phone = "809-555-0199",
@@ -55,64 +60,53 @@ class PruebasPerfilPedidosYSoporteTest {
             paymentMethod = "Tarjeta",
             total = 110.0,
             itemCount = 2L,
-            itemsSummary = "2x ${sampleProduct.name}"
+            itemsSummary = "2x ${backendProduct.name}"
         )
 
-        val orders1 = repo1.observeOrders().first()
-        val cart1 = repo1.observeCart().first()
-        assertEquals(1, orders1.size)
-        assertEquals(orderId, orders1.first().id)
-        assertEquals("Cliente Elegan", orders1.first().customerName)
-        assertEquals(110.0, orders1.first().total, 0.01)
-        assertTrue(cart1.isEmpty())
+        val orders = repo.observeOrders().first()
+        val cart = repo.observeCart().first()
+        assertEquals(1, orders.size)
+        assertEquals(orderId, orders.first().id)
+        assertEquals("Cliente Elegan", orders.first().customerName)
+        assertEquals(110.0, orders.first().total, 0.01)
+        assertTrue(cart.isEmpty())
 
-        // Simular reinicio / recarga y comprobar que el historial de pedidos conserva el pedido
-        val repo2 = EleganRepository(context)
-        val orders2 = repo2.observeOrders().first()
-        assertEquals(1, orders2.size)
-        assertEquals(orderId, orders2.first().id)
-        assertEquals("Av. Winston Churchill 101", orders2.first().address)
+        // Sin almacenamiento local persistente entre instancias
+        val repoFresh = EleganRepository(context)
+        assertTrue(repoFresh.observeOrders().first().isEmpty())
 
         MobileSession.clear(context)
     }
 
     @Test
-    fun `test support chat sends and persists image and video messages`() {
+    fun `test support chat sends image and video messages in memory`() {
         runBlocking {
             val context = obtenerContextoPrueba()
-            limpiarPreferenciasPrueba(context, "elegan_support_messages")
             reiniciarSesionClienteDemo(context)
 
-            val repo1 = EleganRepository(context)
-            repo1.sendSupportMessage(
+            val repo = EleganRepository(context)
+            repo.sendSupportMessage(
                 text = "Adjunto foto del producto",
-                mediaUri = "android.resource://com.elegan/drawable/img_cat_camisa",
+                mediaUri = "https://cdn.example.com/camisa.jpg",
                 mediaType = "image",
                 scope = this
             )
-            repo1.sendSupportMessage(
+            repo.sendSupportMessage(
                 text = "",
-                mediaUri = "android.resource://com.elegan/raw/demo_video",
+                mediaUri = "https://cdn.example.com/demo_video.mp4",
                 mediaType = "video",
                 scope = this
             )
 
-            val msgs1 = repo1.observeMessages().first()
-            val imgMsg = msgs1.first { it.mediaType == "image" }
-            val vidMsg = msgs1.first { it.mediaType == "video" }
+            val msgs = repo.observeMessages().first()
+            val imgMsg = msgs.first { it.mediaType == "image" }
+            val vidMsg = msgs.first { it.mediaType == "video" }
             assertEquals("user", imgMsg.sender)
-            assertEquals("android.resource://com.elegan/drawable/img_cat_camisa", imgMsg.mediaUrl)
+            assertEquals("https://cdn.example.com/camisa.jpg", imgMsg.mediaUrl)
             assertEquals("Adjunto foto del producto", imgMsg.text)
             assertEquals("user", vidMsg.sender)
-            assertEquals("android.resource://com.elegan/raw/demo_video", vidMsg.mediaUrl)
+            assertEquals("https://cdn.example.com/demo_video.mp4", vidMsg.mediaUrl)
 
-            // Simular recarga con una nueva instancia del repositorio
-            val repo2 = EleganRepository(context)
-            val msgs2 = repo2.observeMessages().first()
-            assertTrue(msgs2.any { it.id == imgMsg.id && it.mediaType == "image" })
-            assertTrue(msgs2.any { it.id == vidMsg.id && it.mediaType == "video" })
-
-            limpiarPreferenciasPrueba(context, "elegan_support_messages")
             MobileSession.clear(context)
         }
     }

@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.data.model.Product
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
@@ -43,6 +44,7 @@ fun CatalogoCategoryStoriesSection(
     selectedCategory: String,
     categoryListState: LazyListState,
     onCategoryChange: (String) -> Unit,
+    products: List<Product> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -132,6 +134,7 @@ fun CatalogoCategoryStoriesSection(
                         category = cat,
                         cardWidth = cardWidth,
                         isSelected = isSelected,
+                        imageUrl = resolveCategoryCoverImage(cat, products),
                         onClick = { onCategoryChange(cat.id) }
                     )
                 }

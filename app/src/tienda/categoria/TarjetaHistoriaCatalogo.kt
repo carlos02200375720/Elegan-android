@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 
@@ -44,6 +45,7 @@ fun CatalogoCategoryStoryCard(
     category: StoreCategory,
     cardWidth: Dp,
     isSelected: Boolean,
+    imageUrl: String? = null,
     onClick: () -> Unit
 ) {
     val borderStroke = if (isSelected) {
@@ -70,13 +72,32 @@ fun CatalogoCategoryStoryCard(
         shadowElevation = if (isSelected) 6.dp else 2.dp,
         color = EleganCharcoal
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            AsyncImage(
-                model = getCategoryStoryImage(category),
-                contentDescription = category.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(EleganBurgundyDark, EleganCharcoal)
+                    )
+                )
+        ) {
+            Icon(
+                imageVector = getCategoryStoryIcon(category),
+                contentDescription = null,
+                tint = EleganGold.copy(alpha = 0.72f),
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(28.dp)
             )
+
+            if (!imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = category.title,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
 
             Box(
                 modifier = Modifier

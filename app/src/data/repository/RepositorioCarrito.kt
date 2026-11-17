@@ -1,125 +1,35 @@
 package com.example.data.repository
 
 import android.content.Context
-import android.util.Log
 import com.example.data.model.CartItem
 import com.example.data.model.Product
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.coroutines.flow.asStateFlow
 
 internal class RepositorioCarrito(private val appContext: Context) {
 
-    private val cartPrefs by lazy {
-        appContext.getSharedPreferences("elegan_cart_cache", Context.MODE_PRIVATE)
-    }
-    private val cartLoadMutex = Mutex()
+    private val cartItems = CopyOnWriteArrayList<CartItem>()
+    private val cartFlow = MutableStateFlow<List<CartItem>>(emptyList())
 
-    @Volatile
-    private var loadedCartKey: String? = null
-    private val localCartItems = CopyOnWriteArrayList<CartItem>()
-    private val localCartFlow = MutableStateFlow<List<CartItem>>(emptyList())
-
-    private fun cacheKey(userKey: String = userCacheKey(appContext)): String = "cart_items_$userKey"
-
-    suspend fun ensureLoaded() {
-        val currentKey = userCacheKey(appContext)
-        if (loadedCartKey == currentKey) return
-        cartLoadMutex.withLock {
-            if (loadedCartKey == currentKey) return
-            val loaded = withContext(Dispatchers.IO) { loadPersistedCart(currentKey) }
-            localCartItems.clear()
-            if (loaded.isNotEmpty()) localCartItems.addAll(loaded)
-            localCartFlow.value = localCartItems.toList()
-            loadedCartKey = currentKey
-        }
+    private fun publishState() {
+        cartFlow.value = cartItems.toList()
     }
 
-    private fun loadPersistedCart(userKey: String): List<CartItem> {
-        val raw = cartPrefs.getString(cacheKey(userKey), null) ?: return emptyList()
-        return try {
-            val array = JSONArray(raw)
-            buildList {
-                for (i in 0 until array.length()) {
-                    val obj = array.getJSONObject(i)
-                    add(
-                        CartItem(
-                            id = obj.optString("id", ""),
-                            userId = obj.optString("userId", ""),
-                            productId = obj.optString("productId", ""),
-                            name = obj.optString("name", ""),
-                            price = obj.optDouble("price", 0.0),
-                            imageUrl = obj.optString("imageUrl", ""),
-                            selectedSize = obj.optString("selectedSize", ""),
-                            selectedColor = obj.optString("selectedColor", ""),
-                            quantity = obj.optLong("quantity", 1L).coerceAtLeast(1L)
-                        )
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            Log.w("EleganRepository", "No se pudo leer el carrito local persistido: ${e.message}")
-            emptyList()
-        }
-    }
+    fun observeCart(): Flow<List<CartItem>> = cartFlow.asStateFlow()
 
-    private suspend fun savePersistedCart(items: List<CartItem>) {
-        withContext(Dispatchers.IO) {
-            try {
-                val array = JSONArray()
-                for (item in items) {
-                    array.put(
-                        JSONObject().apply {
-                            put("id", item.id)
-                            put("userId", item.userId)
-                            put("productId", item.productId)
-                            put("name", item.name)
-                            put("price", item.price)
-                            put("imageUrl", item.imageUrl)
-                            put("selectedSize", item.selectedSize)
-                            put("selectedColor", item.selectedColor)
-                            put("quantity", item.quantity)
-                        }
-                    )
-                }
-                cartPrefs.edit().putString(cacheKey(), array.toString()).apply()
-            } catch (e: Exception) {
-                Log.w("EleganRepository", "No se pudo guardar el carrito localmente: ${e.message}")
-            }
-        }
-    }
-
-    private suspend fun publishState() {
-        val snapshot = localCartItems.toList()
-        localCartFlow.value = snapshot
-        savePersistedCart(snapshot)
-    }
-
-    fun observeCart(): Flow<List<CartItem>> = flow {
-        ensureLoaded()
-        localCartFlow.collect { emit(it) }
-    }.flowOn(Dispatchers.IO)
-
-    suspend fun addToCart(product: Product, selectedSize: String, quantity: Long = 1L, selectedColor: String = "") {
+    fun addToCart(product: Product, selectedSize: String, quantity: Long = 1L, selectedColor: String = "") {
         require(product.id.isNotBlank() && quantity > 0)
-        ensureLoaded()
-        val existingIndex = localCartItems.indexOfFirst {
+        val existingIndex = cartItems.indexOfFirst {
             it.productId == product.id && it.selectedSize == selectedSize && it.selectedColor == selectedColor
         }
         if (existingIndex >= 0) {
-            val existing = localCartItems[existingIndex]
-            localCartItems[existingIndex] = existing.copy(quantity = existing.quantity + quantity)
+            val existing = cartItems[existingIndex]
+            cartItems[existingIndex] = existing.copy(quantity = existing.quantity + quantity)
         } else {
-            localCartItems.add(
+            cartItems.add(
                 CartItem(
                     id = UUID.randomUUID().toString(),
                     userId = optionalUserId(appContext).orEmpty(),
@@ -136,35 +46,25 @@ internal class RepositorioCarrito(private val appContext: Context) {
         publishState()
     }
 
-    suspend fun updateCartQuantity(cartItemId: String, newQuantity: Long) {
-        ensureLoaded()
+    fun updateCartQuantity(cartItemId: String, newQuantity: Long) {
         if (newQuantity <= 0) {
             removeFromCart(cartItemId)
             return
         }
-        val index = localCartItems.indexOfFirst { it.id == cartItemId }
+        val index = cartItems.indexOfFirst { it.id == cartItemId }
         if (index >= 0) {
-            localCartItems[index] = localCartItems[index].copy(quantity = newQuantity)
+            cartItems[index] = cartItems[index].copy(quantity = newQuantity)
             publishState()
         }
     }
 
-    suspend fun removeFromCart(cartItemId: String) {
-        ensureLoaded()
-        localCartItems.removeAll { it.id == cartItemId }
+    fun removeFromCart(cartItemId: String) {
+        cartItems.removeAll { it.id == cartItemId }
         publishState()
     }
 
-    suspend fun clearCart() {
-        ensureLoaded()
-        localCartItems.clear()
+    fun clearCart() {
+        cartItems.clear()
         publishState()
-    }
-
-    fun clearUserData(userKey: String) {
-        cartPrefs.edit().remove(cacheKey(userKey)).commit()
-        localCartItems.clear()
-        localCartFlow.value = emptyList()
-        loadedCartKey = null
     }
 }

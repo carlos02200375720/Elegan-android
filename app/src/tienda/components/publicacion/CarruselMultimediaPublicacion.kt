@@ -15,6 +15,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
@@ -52,7 +53,14 @@ fun CarruselMultimediaPublicacion(
             .background(Color(0xFFF0EBE3)),
         contentAlignment = Alignment.Center
     ) {
-        if (mediaItems.size <= 1) {
+        if (mediaItems.isEmpty()) {
+            Icon(
+                imageVector = Icons.Default.Checkroom,
+                contentDescription = product.name,
+                tint = Color(0xFFB5ABA0),
+                modifier = Modifier.size(56.dp)
+            )
+        } else if (mediaItems.size == 1) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()

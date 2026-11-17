@@ -35,6 +35,8 @@ internal fun PantallasConBarraInferior(
     val likedPublicationIds by viewModel.likedPublicationIds.collectAsState()
     val publicationComments by viewModel.publicationComments.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
+    val isLoadingProducts by viewModel.isLoadingProducts.collectAsState()
+    val productsError by viewModel.productsError.collectAsState()
 
     Scaffold(
         contentWindowInsets = if (screen == Screen.PERFIL) {
@@ -94,7 +96,10 @@ internal fun PantallasConBarraInferior(
                         onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onNavigateToChats = { onNavigateTo(Screen.CHATS) },
-                        onNavigateToCart = { onNavigateTo(Screen.CARRITO) }
+                        onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
+                        isLoadingProducts = isLoadingProducts,
+                        productsError = productsError,
+                        onRefreshProducts = { viewModel.refreshProducts() }
                     )
                 }
 
@@ -117,7 +122,10 @@ internal fun PantallasConBarraInferior(
                         cartItemCount = cartItems.sumOf { it.quantity },
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         savedProductIds = savedProductIds,
-                        onToggleSaveProduct = { id -> viewModel.toggleSaveProduct(id) }
+                        onToggleSaveProduct = { id -> viewModel.toggleSaveProduct(id) },
+                        isLoadingProducts = isLoadingProducts,
+                        productsError = productsError,
+                        onRefreshProducts = { viewModel.refreshProducts() }
                     )
                 }
 

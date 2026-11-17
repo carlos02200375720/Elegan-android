@@ -39,7 +39,10 @@ fun InicioScreen(
     onNavigateToMenu: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = onNavigateToMenu,
     onNavigateToChats: () -> Unit,
-    onNavigateToCart: () -> Unit = {}
+    onNavigateToCart: () -> Unit = {},
+    isLoadingProducts: Boolean = false,
+    productsError: String? = null,
+    onRefreshProducts: () -> Unit = {}
 ) {
     val listState = rememberLazyListState()
     val context = LocalContext.current
@@ -85,6 +88,9 @@ fun InicioScreen(
             publicationStats = publicationStats,
             likedPublicationIds = likedPublicationIds,
             focusedProductId = focusedProductId,
+            isLoadingProducts = isLoadingProducts,
+            productsError = productsError,
+            onRefreshProducts = onRefreshProducts,
             onToggleSaveProduct = onToggleSaveProduct,
             onToggleLocalSave = { productId, willSave ->
                 localSavedProductIds = if (willSave) {

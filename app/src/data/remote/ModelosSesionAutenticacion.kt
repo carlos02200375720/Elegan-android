@@ -24,12 +24,3 @@ data class AuthResponse(
     val success: Boolean = true,
     val message: String? = null
 )
-
-internal data class StoredAccount(
-    val id: String,
-    val email: String,
-    val name: String,
-    val passwordHash: String,
-    val role: String,
-    val photoUrl: String
-)

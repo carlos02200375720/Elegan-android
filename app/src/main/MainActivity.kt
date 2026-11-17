@@ -32,8 +32,24 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val mediaDir = File(filesDir, "product_media")
-                if (mediaDir.exists()) mediaDir.deleteRecursively()
+                listOf("product_media", "elegan_local_media", "support_media").forEach { dirName ->
+                    val dir = File(filesDir, dirName)
+                    if (dir.exists()) dir.deleteRecursively()
+                }
+                listOf(
+                    "elegan_publication_states",
+                    "elegan_catalog_store",
+                    "elegan_cart_cache",
+                    "elegan_orders_cache",
+                    "elegan_profile_cache",
+                    "elegan_comments_cache",
+                    "elegan_stats_cache",
+                    "elegan_saved_cache",
+                    "elegan_likes_cache",
+                    "elegan_support_messages"
+                ).forEach { prefsName ->
+                    deleteSharedPreferences(prefsName)
+                }
             } catch (_: Exception) {}
         }
 

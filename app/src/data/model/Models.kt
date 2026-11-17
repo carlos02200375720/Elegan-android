@@ -1,38 +1,6 @@
 package com.example.data.model
 
-import androidx.annotation.DrawableRes
 import androidx.compose.runtime.Immutable
-import com.example.BuildConfig
-import com.example.R
-
-object LocalBoutiqueMedia {
-    fun drawableUri(@DrawableRes resId: Int): String =
-        "android.resource://${BuildConfig.APPLICATION_ID}/$resId"
-
-    val camisaCover: String get() = drawableUri(R.drawable.img_cat_camisa)
-    val gorraCover: String get() = drawableUri(R.drawable.img_cat_gorra)
-    val gafaCover: String get() = drawableUri(R.drawable.img_cat_gafa)
-    val zapatoCover: String get() = drawableUri(R.drawable.img_cat_zapato)
-    val perfumeCover: String get() = drawableUri(R.drawable.img_cat_perfume)
-
-    fun fallbackImageForCategory(category: String): String = when (category.lowercase().trim()) {
-        "gorra" -> gorraCover
-        "gafa" -> gafaCover
-        "camisa", "pantalone", "interiore" -> camisaCover
-        "correa", "zapato" -> zapatoCover
-        "perfume" -> perfumeCover
-        else -> camisaCover
-    }
-
-    fun gallerySupplementsForCategory(category: String): List<String> = when (category.lowercase().trim()) {
-        "gorra" -> listOf(gorraCover, camisaCover, gafaCover)
-        "gafa" -> listOf(gafaCover, camisaCover, zapatoCover)
-        "camisa", "pantalone", "interiore" -> listOf(camisaCover, zapatoCover, perfumeCover)
-        "correa", "zapato" -> listOf(zapatoCover, camisaCover, gorraCover)
-        "perfume" -> listOf(perfumeCover, camisaCover, gafaCover)
-        else -> listOf(camisaCover, zapatoCover, perfumeCover)
-    }
-}
 
 @Immutable
 data class Product(
@@ -66,7 +34,6 @@ val Product.aspectRatioValue: Float
         "16:9" -> 16f / 9f
         else -> 1f // default 1:1
     }
-
 
 @Immutable
 data class PublicationStats(
@@ -181,26 +148,6 @@ data class UserProfile(
     val city: String = "",
     val updatedAt: String? = null
 )
-
-@Immutable
-data class Announcement(
-    val id: String = "",
-    val title: String = "",
-    val message: String = "",
-    val type: String = "banner", // "banner", "historia_9_16", "descuento", "coleccion"
-    val imageUrl: String = "",
-    val discountCode: String = "",
-    val discountPercent: Double = 0.0,
-    val ctaText: String = "Ver Más",
-    val targetCategory: String = "todo",
-    val isActive: Boolean = true,
-    val videoUrl: String = "",
-    val isVideo: Boolean = false,
-    val createdAt: String? = null
-) {
-    val hasVideo: Boolean
-        get() = isVideo || videoUrl.isNotBlank()
-}
 
 enum class StoreCategory(val id: String, val title: String, val iconName: String) {
     TODO("todo", "Todo", "grid_view"),

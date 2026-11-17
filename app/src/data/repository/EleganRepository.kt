@@ -1,7 +1,6 @@
 package com.example.data.repository
 
 import android.content.Context
-import com.example.data.model.Announcement
 import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.Product
@@ -9,22 +8,19 @@ import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
-import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.CoroutineScope
-import com.squareup.moshi.JsonObject
 import kotlinx.coroutines.flow.Flow
 
 class EleganRepository(context: Context) {
     private val appContext = context.applicationContext
 
-    private val catalogoRepo = RepositorioCatalogo(appContext)
+    private val catalogoRepo = RepositorioCatalogo()
     private val carritoRepo = RepositorioCarrito(appContext)
-    private val estadisticasRepo = RepositorioEstadisticasPublicaciones(appContext)
-    private val guardadosYLikesRepo = RepositorioGuardadosYLikes(appContext, estadisticasRepo)
+    private val estadisticasRepo = RepositorioEstadisticasPublicaciones()
+    private val guardadosYLikesRepo = RepositorioGuardadosYLikes(estadisticasRepo)
     private val comentariosRepo = RepositorioComentarios(
         appContext = appContext,
-        statsRepo = estadisticasRepo,
-        ensureStatsLoaded = { guardadosYLikesRepo.ensureStatsLoaded() }
+        statsRepo = estadisticasRepo
     )
     private val pedidosRepo = RepositorioPedidos(appContext, carritoRepo)
     private val mensajesRepo = RepositorioMensajesSoporte(appContext)
@@ -38,43 +34,16 @@ class EleganRepository(context: Context) {
 
     fun observeProducts(): Flow<List<Product>> = catalogoRepo.observeProducts()
 
-    /** Descarga el catálogo publicado desde el backend; conserva cada producto como JSON crudo. */
-    suspend fun fetchPublishedProducts(): List<JsonObject> {
-        val response = ApiAutenticacionMovil.service.products()
-        return (response["items"] as? List<*>)?.mapNotNull { it as? JsonObject }.orEmpty()
-    }
+    fun observeProductsLoading(): Flow<Boolean> = catalogoRepo.observeLoading()
 
-    suspend fun seedProductsIfEmpty() {
-        // El catálogo se alimenta directamente desde el almacenamiento local.
-    }
+    fun observeProductsError(): Flow<String?> = catalogoRepo.observeError()
 
-    suspend fun seedAnnouncementsIfEmpty() {
-        // Los anuncios se alimentan directamente desde el almacenamiento local.
-    }
+    suspend fun refreshProducts(): List<Product> = catalogoRepo.refreshProducts()
+
+    /** Descarga el catálogo publicado directamente desde el backend. */
+    suspend fun fetchPublishedProducts(): List<Product> = catalogoRepo.fetchProductsFromBackend()
 
     suspend fun getProductById(productId: String): Product? = catalogoRepo.getProductById(productId)
-
-    suspend fun addProduct(product: Product): String = catalogoRepo.addProduct(product)
-
-    suspend fun addAnnouncement(announcement: Announcement): String =
-        catalogoRepo.addAnnouncement(announcement)
-
-    fun observeAnnouncements(): Flow<List<Announcement>> = catalogoRepo.observeAnnouncements()
-
-    suspend fun deleteProduct(productId: String) = catalogoRepo.deleteProduct(productId)
-
-    suspend fun toggleProductStock(productId: String, inStock: Boolean) =
-        catalogoRepo.toggleProductStock(productId, inStock)
-
-    suspend fun deleteAnnouncement(announcementId: String) =
-        catalogoRepo.deleteAnnouncement(announcementId)
-
-    suspend fun toggleAnnouncementActive(announcementId: String, isActive: Boolean) =
-        catalogoRepo.toggleAnnouncementActive(announcementId, isActive)
-
-    fun getInitialSampleAnnouncements(): List<Announcement> = anunciosInicialesTienda()
-
-    fun getInitialSampleProducts(): List<Product> = todosProductosIniciales()
 
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
 

@@ -2,6 +2,7 @@ package com.example.data.remote
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -15,7 +16,6 @@ internal object AlmacenCifradoSesion {
     private const val PHOTO = "photo_url"
     private const val ROLE = "role"
     private const val PROVIDER = "provider"
-    internal const val LOCAL_USERS_KEY = "local_registered_accounts"
 
     @Volatile
     private var cachedPreferences: SharedPreferences? = null
@@ -26,19 +26,23 @@ internal object AlmacenCifradoSesion {
         val appContext = context.applicationContext
         return synchronized(this) {
             cachedPreferences ?: run {
-                val prefs = try {
-                    EncryptedSharedPreferences.create(
-                        appContext,
-                        PREFS,
-                        MasterKey.Builder(appContext)
-                            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                            .build(),
-                        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                    )
-                } catch (e: Exception) {
-                    Log.e("MobileSession", "No se pudo inicializar el almacenamiento cifrado de sesión.", e)
-                    throw IllegalStateException("No se pudo proteger la sesión en este dispositivo.", e)
+                val prefs = if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
+                    appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                } else {
+                    try {
+                        EncryptedSharedPreferences.create(
+                            appContext,
+                            PREFS,
+                            MasterKey.Builder(appContext)
+                                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                                .build(),
+                            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+                        )
+                    } catch (e: Exception) {
+                        Log.e("MobileSession", "No se pudo inicializar el almacenamiento cifrado de sesión.", e)
+                        throw IllegalStateException("No se pudo proteger la sesión en este dispositivo.", e)
+                    }
                 }
                 cachedPreferences = prefs
                 prefs

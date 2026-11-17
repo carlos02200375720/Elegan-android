@@ -3,7 +3,6 @@ package com.example.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.data.model.Announcement
 import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.Product
@@ -13,7 +12,6 @@ import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
 class EleganViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -31,7 +29,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val selectedProduct: StateFlow<Product?> = catalogoCtrl.selectedProduct
     val searchQuery: StateFlow<String> = catalogoCtrl.searchQuery
     val products: StateFlow<List<Product>> = catalogoCtrl.products
-    val announcements: StateFlow<List<Announcement>> = catalogoCtrl.announcements
+    val isLoadingProducts: StateFlow<Boolean> = catalogoCtrl.isLoading
+    val productsError: StateFlow<String?> = catalogoCtrl.error
 
     val savedProductIds: StateFlow<Set<String>> = interaccionesCtrl.savedProductIds
     val savedProducts: StateFlow<List<Product>> = interaccionesCtrl.savedProducts
@@ -49,11 +48,10 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val userProfile: StateFlow<UserProfile?> = perfilCtrl.userProfile
 
     init {
-        viewModelScope.launch {
-            repository.seedProductsIfEmpty()
-            repository.seedAnnouncementsIfEmpty()
-        }
+        catalogoCtrl.refreshProducts()
     }
+
+    fun refreshProducts() = catalogoCtrl.refreshProducts()
 
     fun setCategory(category: String) = catalogoCtrl.setCategory(category)
 
@@ -130,24 +128,6 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
         city: String,
         onResult: (Result<Unit>) -> Unit
     ) = perfilCtrl.saveProfile(name, email, phone, address, city, onResult)
-
-    fun publishProduct(product: Product, onResult: (Result<Unit>) -> Unit = {}) =
-        catalogoCtrl.publishProduct(product, onResult)
-
-    fun publishAnnouncement(announcement: Announcement, onResult: (Boolean) -> Unit = {}) =
-        catalogoCtrl.publishAnnouncement(announcement, onResult)
-
-    fun deleteProduct(productId: String, onResult: (Boolean) -> Unit = {}) =
-        catalogoCtrl.deleteProduct(productId, onResult)
-
-    fun toggleProductStock(productId: String, inStock: Boolean) =
-        catalogoCtrl.toggleProductStock(productId, inStock)
-
-    fun deleteAnnouncement(announcementId: String, onResult: (Boolean) -> Unit = {}) =
-        catalogoCtrl.deleteAnnouncement(announcementId, onResult)
-
-    fun toggleAnnouncementActive(announcementId: String, isActive: Boolean) =
-        catalogoCtrl.toggleAnnouncementActive(announcementId, isActive)
 
     fun deleteAccount(onComplete: () -> Unit) = perfilCtrl.deleteAccount(
         onCleared = {

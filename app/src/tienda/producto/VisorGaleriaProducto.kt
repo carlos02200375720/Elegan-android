@@ -15,6 +15,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.Collections
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
@@ -47,35 +48,49 @@ fun VisorGaleriaProducto(
             .aspectRatio(1f)
             .background(Color(0xFFF0EBE3))
     ) {
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            when (val item = mediaItems.getOrNull(page)) {
-                is GalleryMediaItem.Video -> {
-                    val isVideoFocused = (pagerState.currentPage == page)
-                    EleganVideoPlayer(
-                        videoUrl = item.videoUrl,
-                        posterUrl = item.posterUrl,
-                        aspectRatio = 1f,
-                        autoPlay = isVideoFocused,
-                        isFocused = isVideoFocused,
-                        showControls = true,
-                        testTagPrefix = "gallery_video_${product.id}",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+        if (mediaItems.isEmpty()) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Checkroom,
+                    contentDescription = product.name,
+                    tint = Color(0xFFB5ABA0),
+                    modifier = Modifier.size(64.dp)
+                )
+            }
+        } else {
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                when (val item = mediaItems.getOrNull(page)) {
+                    is GalleryMediaItem.Video -> {
+                        val isVideoFocused = (pagerState.currentPage == page)
+                        EleganVideoPlayer(
+                            videoUrl = item.videoUrl,
+                            posterUrl = item.posterUrl,
+                            aspectRatio = 1f,
+                            autoPlay = isVideoFocused,
+                            isFocused = isVideoFocused,
+                            showControls = true,
+                            testTagPrefix = "gallery_video_${product.id}",
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                is GalleryMediaItem.Image -> {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = "${product.name} - Imagen ${page + 1}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                    is GalleryMediaItem.Image -> {
+                        AsyncImage(
+                            model = item.imageUrl,
+                            contentDescription = "${product.name} - Imagen ${page + 1}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                null -> {}
+                    null -> {}
+                }
             }
         }
 
@@ -96,40 +111,42 @@ fun VisorGaleriaProducto(
             )
         }
 
-        val currentItem = mediaItems.getOrNull(pagerState.currentPage)
-        val isCurrentVideo = currentItem is GalleryMediaItem.Video
+        if (mediaItems.isNotEmpty()) {
+            val currentItem = mediaItems.getOrNull(pagerState.currentPage)
+            val isCurrentVideo = currentItem is GalleryMediaItem.Video
 
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = Color.Black.copy(alpha = 0.65f),
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 12.dp, bottom = 12.dp)
-                .testTag("gallery_content_indicator")
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = Color.Black.copy(alpha = 0.65f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 12.dp, bottom = 12.dp)
+                    .testTag("gallery_content_indicator")
             ) {
-                Icon(
-                    imageVector = if (isCurrentVideo) Icons.Default.Videocam else Icons.Default.Collections,
-                    contentDescription = "Contenido multimedia",
-                    tint = if (isCurrentVideo) EleganGold else Color.White.copy(alpha = 0.95f),
-                    modifier = Modifier.size(13.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = if (isCurrentVideo) {
-                        "Video • ${pagerState.currentPage + 1}/${mediaItems.size}"
-                    } else {
-                        "${pagerState.currentPage + 1}/${mediaItems.size}"
-                    },
-                    color = Color.White,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isCurrentVideo) Icons.Default.Videocam else Icons.Default.Collections,
+                        contentDescription = "Contenido multimedia",
+                        tint = if (isCurrentVideo) EleganGold else Color.White.copy(alpha = 0.95f),
+                        modifier = Modifier.size(13.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (isCurrentVideo) {
+                            "Video • ${pagerState.currentPage + 1}/${mediaItems.size}"
+                        } else {
+                            "${pagerState.currentPage + 1}/${mediaItems.size}"
+                        },
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp
+                    )
+                }
             }
         }
     }

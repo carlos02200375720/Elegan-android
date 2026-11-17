@@ -1,197 +1,214 @@
 package com.example.data.repository
 
-import android.content.Context
-import com.example.data.model.Announcement
-import com.example.data.model.LocalBoutiqueMedia
+import android.util.Log
+import com.example.BuildConfig
 import com.example.data.model.Product
-import java.util.UUID
+import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import org.json.JSONTokener
 
-internal class RepositorioCatalogo(private val appContext: Context) {
+internal class RepositorioCatalogo {
 
-    private val publicationStatePrefs by lazy {
-        appContext.getSharedPreferences("elegan_publication_states", Context.MODE_PRIVATE)
-    }
-    private val catalogStorePrefs by lazy {
-        appContext.getSharedPreferences("elegan_catalog_store", Context.MODE_PRIVATE)
-    }
+    private val fetchMutex = Mutex()
+    private val productsFlow = MutableStateFlow<List<Product>>(emptyList())
+    private val isLoadingFlow = MutableStateFlow(false)
+    private val errorFlow = MutableStateFlow<String?>(null)
 
-    private val productStockOverridesFlow by lazy {
-        MutableStateFlow(loadBooleanOverrideMap(publicationStatePrefs, "product_stock_overrides"))
-    }
-    private val announcementActiveOverridesFlow by lazy {
-        MutableStateFlow(loadBooleanOverrideMap(publicationStatePrefs, "announcement_active_overrides"))
-    }
-    private val customProductsFlow by lazy {
-        MutableStateFlow(leerProductosPersonalizados(catalogStorePrefs))
-    }
-    private val deletedProductIdsFlow by lazy {
-        MutableStateFlow(loadPersistedIdSet(catalogStorePrefs, "deleted_product_ids"))
-    }
-    private val customAnnouncementsFlow by lazy {
-        MutableStateFlow(leerAnunciosPersonalizados(catalogStorePrefs))
-    }
-    private val deletedAnnouncementIdsFlow by lazy {
-        MutableStateFlow(loadPersistedIdSet(catalogStorePrefs, "deleted_announcement_ids"))
-    }
+    fun observeProducts(): Flow<List<Product>> = productsFlow.asStateFlow()
 
-    private fun mergedProducts(
-        custom: List<Product>,
-        deletedIds: Set<String>,
-        overrides: Map<String, Boolean>
-    ): List<Product> =
-        (custom + todosProductosIniciales())
-            .distinctBy { it.id }
-            .filter { it.id !in deletedIds }
-            .map { p -> overrides[p.id]?.let { inStock -> p.copy(inStock = inStock) } ?: p }
+    fun observeLoading(): Flow<Boolean> = isLoadingFlow.asStateFlow()
 
-    fun observeProducts(): Flow<List<Product>> =
-        combine(
-            customProductsFlow,
-            deletedProductIdsFlow,
-            productStockOverridesFlow
-        ) { custom, deletedIds, overrides ->
-            mergedProducts(custom, deletedIds, overrides)
-        }.flowOn(Dispatchers.IO)
+    fun observeError(): Flow<String?> = errorFlow.asStateFlow()
 
-    fun observeAnnouncements(): Flow<List<Announcement>> =
-        combine(
-            customAnnouncementsFlow,
-            deletedAnnouncementIdsFlow,
-            announcementActiveOverridesFlow
-        ) { custom, deletedIds, overrides ->
-            (custom + anunciosInicialesTienda())
-                .distinctBy { it.id }
-                .filter { it.id !in deletedIds }
-                .map { ann -> overrides[ann.id]?.let { active -> ann.copy(isActive = active) } ?: ann }
-        }.flowOn(Dispatchers.IO)
-
-    fun getProductById(productId: String): Product? =
-        mergedProducts(
-            customProductsFlow.value,
-            deletedProductIdsFlow.value,
-            productStockOverridesFlow.value
-        ).find { it.id == productId }
-
-    suspend fun addProduct(product: Product): String {
-        val productId = product.id.ifBlank { "prod_${UUID.randomUUID()}" }
-        val category = product.category.ifBlank { "camisa" }
-        val fallback = LocalBoutiqueMedia.fallbackImageForCategory(category)
-        val sourceVideo = product.videoUrl.takeIf { product.isVideo }.orEmpty()
-        val coverSource = if (product.isVideo) {
-            if (product.imageUrl.isNotBlank() && product.imageUrl != sourceVideo) product.imageUrl else fallback
-        } else {
-            product.imageUrl.ifBlank { product.images.firstOrNull() ?: fallback }
+    suspend fun refreshProducts(): List<Product> = fetchMutex.withLock {
+        isLoadingFlow.value = true
+        errorFlow.value = null
+        try {
+            val remoteProducts = fetchProductsFromBackend()
+            productsFlow.value = remoteProducts
+            remoteProducts
+        } catch (e: Exception) {
+            Log.e("EleganCatalog", "Error al obtener productos desde el backend.", e)
+            errorFlow.value = e.localizedMessage ?: "No se pudo cargar el catálogo desde el servidor."
+            emptyList()
+        } finally {
+            isLoadingFlow.value = false
         }
+    }
 
-        val savedVideoUrl = if (product.isVideo && sourceVideo.isNotBlank()) {
-            persistirArchivoMultimediaLocal(appContext, sourceVideo, productId, "video")
-        } else ""
-        val savedCoverUrl = persistirArchivoMultimediaLocal(appContext, coverSource, productId, "cover")
-            .ifBlank { fallback }
-        val gallery = (product.images + listOfNotNull(product.imageUrl.takeIf { it.isNotBlank() }))
-            .distinct()
-            .filterNot { it == coverSource || it == sourceVideo }
-            .mapIndexed { idx, uri -> persistirArchivoMultimediaLocal(appContext, uri, productId, "gallery_$idx") }
-            .filter { it.isNotBlank() }
+    suspend fun fetchProductsFromBackend(): List<Product> = withContext(Dispatchers.IO) {
+        val rawBody = ApiAutenticacionMovil.service.products().use { it.string() }
+        val parsed = parseBackendProductsJson(rawBody, BuildConfig.ELEGAN_API_BASE_URL)
+        productsFlow.value = parsed
+        parsed
+    }
 
-        val finalProduct = product.copy(
-            id = productId,
-            category = category,
-            imageUrl = savedCoverUrl,
-            images = (listOf(savedCoverUrl) + gallery).distinct(),
-            videoUrl = savedVideoUrl,
-            isVideo = product.isVideo || savedVideoUrl.isNotBlank(),
-            createdAt = product.createdAt ?: nowIsoUtc()
-        )
+    suspend fun getProductById(productId: String): Product? {
+        if (productId.isBlank()) return null
+        val remoteProducts = fetchProductsFromBackend()
+        return remoteProducts.find { it.id == productId }
+    }
+}
 
-        withContext(Dispatchers.IO) {
-            val updated = listOf(finalProduct) + customProductsFlow.value.filterNot { it.id == productId }
-            customProductsFlow.value = updated
-            guardarProductosPersonalizados(catalogStorePrefs, updated)
-            if (productId in deletedProductIdsFlow.value) {
-                val updatedDeleted = deletedProductIdsFlow.value - productId
-                deletedProductIdsFlow.value = updatedDeleted
-                savePersistedIdSet(catalogStorePrefs, "deleted_product_ids", updatedDeleted)
+internal fun parseBackendProductsJson(
+    rawJson: String,
+    baseUrl: String = BuildConfig.ELEGAN_API_BASE_URL
+): List<Product> {
+    val trimmed = rawJson.trim()
+    if (trimmed.isEmpty()) return emptyList()
+
+    val root = JSONTokener(trimmed).nextValue()
+    val itemsArray: JSONArray = when (root) {
+        is JSONArray -> root
+        is JSONObject -> {
+            root.optJSONArray("items")
+                ?: root.optJSONArray("products")
+                ?: root.optJSONArray("data")
+                ?: JSONArray()
+        }
+        else -> JSONArray()
+    }
+
+    return buildList {
+        for (i in 0 until itemsArray.length()) {
+            val obj = itemsArray.optJSONObject(i) ?: continue
+            val product = mapJsonObjectToProduct(obj, baseUrl)
+            if (product != null) add(product)
+        }
+    }
+}
+
+private fun mapJsonObjectToProduct(obj: JSONObject, baseUrl: String): Product? {
+    val id = obj.optString("id", "").ifBlank { obj.optString("_id", "") }.trim()
+    val name = obj.optString("name", "").ifBlank { obj.optString("title", "") }.trim()
+    if (id.isBlank() || name.isBlank()) return null
+
+    val description = obj.optString("description", "").trim()
+    val category = obj.optString("category", "todo").trim().ifBlank { "todo" }
+    val price = parseDoubleField(obj, "price")
+    val rating = parseDoubleField(obj, "rating", defaultValue = 5.0).let {
+        if (it <= 0.0) 5.0 else it
+    }
+    val reviewCount = obj.optLong("reviewCount", obj.optLong("review_count", 0L)).coerceAtLeast(0L)
+
+    val rawImageUrl = obj.optString("imageUrl", "")
+        .ifBlank { obj.optString("image_url", "") }
+        .ifBlank { obj.optString("image", "") }
+        .ifBlank { obj.optString("coverImage", "") }
+        .let { resolveBackendMediaUrl(it, baseUrl) }
+
+    val rawImages = (parseStringList(obj.optJSONArray("images")) +
+        parseStringList(obj.optJSONArray("gallery")))
+        .map { resolveBackendMediaUrl(it, baseUrl) }
+        .filter { it.isNotBlank() }
+        .distinct()
+
+    val effectiveImageUrl = rawImageUrl.ifBlank {
+        rawImages.firstOrNull { !it.endsWith(".mp4", ignoreCase = true) }.orEmpty()
+    }
+    val effectiveImages = if (effectiveImageUrl.isNotBlank()) {
+        (listOf(effectiveImageUrl) + rawImages).distinct()
+    } else {
+        rawImages
+    }
+
+    val rawVideoUrl = obj.optString("videoUrl", "")
+        .ifBlank { obj.optString("video_url", "") }
+        .ifBlank { obj.optString("video", "") }
+        .let { resolveBackendMediaUrl(it, baseUrl) }
+
+    val isVideo = parseBooleanField(obj, "isVideo", "is_video", defaultValue = false) ||
+        rawVideoUrl.isNotBlank()
+
+    val inStock = parseBooleanField(obj, "inStock", "in_stock", defaultValue = true)
+    val isFeatured = parseBooleanField(obj, "isFeatured", "is_featured", "featured", defaultValue = false)
+    val mediaFormat = obj.optString("mediaFormat", obj.optString("media_format", "1:1"))
+        .trim()
+        .ifBlank { "1:1" }
+
+    val sizes = parseStringList(obj.optJSONArray("sizes"))
+    val colors = parseStringList(obj.optJSONArray("colors"))
+    val createdAt = obj.optString("createdAt", obj.optString("created_at", ""))
+        .trim()
+        .takeIf { it.isNotBlank() }
+
+    return Product(
+        id = id,
+        name = name,
+        description = description,
+        category = category,
+        price = price,
+        imageUrl = effectiveImageUrl,
+        images = effectiveImages,
+        colors = colors,
+        rating = rating,
+        reviewCount = reviewCount,
+        sizes = sizes,
+        inStock = inStock,
+        isFeatured = isFeatured,
+        mediaFormat = mediaFormat,
+        videoUrl = rawVideoUrl,
+        isVideo = isVideo,
+        createdAt = createdAt
+    )
+}
+
+private fun parseDoubleField(obj: JSONObject, key: String, defaultValue: Double = 0.0): Double {
+    if (!obj.has(key) || obj.isNull(key)) return defaultValue
+    val raw = obj.opt(key)
+    return when (raw) {
+        is Number -> raw.toDouble()
+        is String -> raw.trim().toDoubleOrNull() ?: defaultValue
+        else -> defaultValue
+    }
+}
+
+private fun parseBooleanField(obj: JSONObject, vararg keys: String, defaultValue: Boolean): Boolean {
+    for (key in keys) {
+        if (!obj.has(key) || obj.isNull(key)) continue
+        return when (val raw = obj.opt(key)) {
+            is Boolean -> raw
+            is Number -> raw.toInt() != 0
+            is String -> raw.equals("true", ignoreCase = true) || raw == "1"
+            else -> defaultValue
+        }
+    }
+    return defaultValue
+}
+
+private fun parseStringList(array: JSONArray?): List<String> {
+    if (array == null) return emptyList()
+    return buildList {
+        for (i in 0 until array.length()) {
+            when (val item = array.opt(i)) {
+                is String -> item.trim().takeIf { it.isNotBlank() }?.let(::add)
+                is JSONObject -> {
+                    val url = item.optString("url", "")
+                        .ifBlank { item.optString("imageUrl", "") }
+                        .ifBlank { item.optString("name", "") }
+                        .trim()
+                    if (url.isNotBlank()) add(url)
+                }
             }
         }
-        return productId
     }
+}
 
-    suspend fun addAnnouncement(announcement: Announcement): String {
-        val id = announcement.id.ifBlank { "ann_${UUID.randomUUID()}" }
-        val image = if (announcement.imageUrl.isNotBlank()) {
-            persistirArchivoMultimediaLocal(appContext, announcement.imageUrl, id, "announcement_img")
-        } else {
-            LocalBoutiqueMedia.fallbackImageForCategory(announcement.targetCategory)
-        }
-        val video = if (announcement.videoUrl.isNotBlank()) {
-            persistirArchivoMultimediaLocal(appContext, announcement.videoUrl, id, "announcement_video")
-        } else ""
-
-        val finalAnnouncement = announcement.copy(
-            id = id,
-            imageUrl = image,
-            videoUrl = video,
-            isVideo = announcement.hasVideo || video.isNotBlank(),
-            createdAt = announcement.createdAt ?: nowIsoUtc()
-        )
-
-        withContext(Dispatchers.IO) {
-            val updated = listOf(finalAnnouncement) + customAnnouncementsFlow.value.filterNot { it.id == id }
-            customAnnouncementsFlow.value = updated
-            guardarAnunciosPersonalizados(catalogStorePrefs, updated)
-            if (id in deletedAnnouncementIdsFlow.value) {
-                val updatedDeleted = deletedAnnouncementIdsFlow.value - id
-                deletedAnnouncementIdsFlow.value = updatedDeleted
-                savePersistedIdSet(catalogStorePrefs, "deleted_announcement_ids", updatedDeleted)
-            }
-        }
-        return id
+private fun resolveBackendMediaUrl(rawUrl: String, baseUrl: String): String {
+    val clean = rawUrl.trim()
+    if (clean.isBlank()) return ""
+    if (clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true)) {
+        return clean
     }
-
-    suspend fun deleteProduct(productId: String) {
-        withContext(Dispatchers.IO) {
-            val updatedCustom = customProductsFlow.value.filterNot { it.id == productId }
-            customProductsFlow.value = updatedCustom
-            guardarProductosPersonalizados(catalogStorePrefs, updatedCustom)
-
-            val updatedDeleted = deletedProductIdsFlow.value + productId
-            deletedProductIdsFlow.value = updatedDeleted
-            savePersistedIdSet(catalogStorePrefs, "deleted_product_ids", updatedDeleted)
-        }
-    }
-
-    suspend fun toggleProductStock(productId: String, inStock: Boolean) {
-        val updated = productStockOverridesFlow.value + (productId to inStock)
-        productStockOverridesFlow.value = updated
-        withContext(Dispatchers.IO) {
-            saveBooleanOverrideMap(publicationStatePrefs, "product_stock_overrides", updated)
-        }
-    }
-
-    suspend fun deleteAnnouncement(announcementId: String) {
-        withContext(Dispatchers.IO) {
-            val updatedCustom = customAnnouncementsFlow.value.filterNot { it.id == announcementId }
-            customAnnouncementsFlow.value = updatedCustom
-            guardarAnunciosPersonalizados(catalogStorePrefs, updatedCustom)
-
-            val updatedDeleted = deletedAnnouncementIdsFlow.value + announcementId
-            deletedAnnouncementIdsFlow.value = updatedDeleted
-            savePersistedIdSet(catalogStorePrefs, "deleted_announcement_ids", updatedDeleted)
-        }
-    }
-
-    suspend fun toggleAnnouncementActive(announcementId: String, isActive: Boolean) {
-        val updated = announcementActiveOverridesFlow.value + (announcementId to isActive)
-        announcementActiveOverridesFlow.value = updated
-        withContext(Dispatchers.IO) {
-            saveBooleanOverrideMap(publicationStatePrefs, "announcement_active_overrides", updated)
-        }
-    }
+    if (clean.startsWith("//")) return "https:$clean"
+    val cleanBase = baseUrl.trimEnd('/')
+    return if (clean.startsWith("/")) "$cleanBase$clean" else "$cleanBase/$clean"
 }

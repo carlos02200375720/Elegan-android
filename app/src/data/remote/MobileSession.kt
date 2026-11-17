@@ -23,7 +23,7 @@ object MobileSession {
         AlmacenCifradoSesion.clear(context)
 
     fun deleteAccount(context: Context) =
-        AlmacenCuentasLocales.deleteCurrentAccount(context)
+        AlmacenCifradoSesion.clear(context)
 
     suspend fun registerUser(
         context: Context,
