@@ -75,7 +75,6 @@ internal class ControladorInteraccionesPublicacion(
         // El flujo de productos cambia al cargar/actualizar el catálogo, no al desplazar el feed.
         scope.launch {
             products
-                .let { state -> state }
                 .map { list -> list.map { it.productId() }.filter { it.isNotBlank() }.distinct() }
                 .distinctUntilChanged()
                 .collect { ids ->
