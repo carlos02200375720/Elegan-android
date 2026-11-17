@@ -17,7 +17,7 @@ android {
     versionCode = 1
     versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    buildConfigField("String", "ELEGAN_API_BASE_URL", "\"https://elegan-backend-587849039182.us-east1.run.app/\"")
+    buildConfigField("String", "ELEGAN_API_BASE_URL", "\"https://backend-elegan-rd-587849039182.us-central1.run.app/\"")
   }
   signingConfigs {
     create("release") {
