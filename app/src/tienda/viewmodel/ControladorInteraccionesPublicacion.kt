@@ -87,10 +87,28 @@ internal class ControladorInteraccionesPublicacion(
         scope.launch {
             try {
                 repository.refreshSavedProducts()
+                repository.refreshPublicationLikes()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 Log.e("EleganViewModel", "No se pudieron sincronizar los guardados.", e)
+            }
+        }
+    }
+
+    /**
+     * Carga conteos en una sola petición para el conjunto de publicaciones indicado.
+     * No se ejecuta desde la composición ni durante el desplazamiento del feed.
+     */
+    fun refreshPublicationLikeCounts(productIds: Collection<String>) {
+        if (productIds.isEmpty()) return
+        scope.launch {
+            try {
+                repository.refreshPublicationLikeCounts(productIds)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.w("EleganViewModel", "No se pudieron sincronizar los conteos de likes.", e)
             }
         }
     }
