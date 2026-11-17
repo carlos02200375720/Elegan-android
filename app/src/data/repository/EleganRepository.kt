@@ -9,7 +9,9 @@ import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
+import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.CoroutineScope
+import com.squareup.moshi.JsonObject
 import kotlinx.coroutines.flow.Flow
 
 class EleganRepository(context: Context) {
@@ -35,6 +37,12 @@ class EleganRepository(context: Context) {
     )
 
     fun observeProducts(): Flow<List<Product>> = catalogoRepo.observeProducts()
+
+    /** Descarga el catálogo publicado desde el backend; conserva cada producto como JSON crudo. */
+    suspend fun fetchPublishedProducts(): List<JsonObject> {
+        val response = ApiAutenticacionMovil.service.products()
+        return (response["items"] as? List<*>)?.mapNotNull { it as? JsonObject }.orEmpty()
+    }
 
     suspend fun seedProductsIfEmpty() {
         // El catálogo se alimenta directamente desde el almacenamiento local.
