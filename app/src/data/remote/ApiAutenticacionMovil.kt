@@ -1,6 +1,7 @@
 package com.example.data.remote
 
 import com.example.BuildConfig
+import com.squareup.moshi.JsonObject
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import retrofit2.Retrofit
@@ -59,6 +60,10 @@ internal data class PerfilActualizadoRespuesta(
 )
 
 internal interface EleganAuthApi {
+    // Catálogo público: el backend devuelve { items: [...] } con productos publicados.
+    @GET("api/movil/products")
+    suspend fun products(): JsonObject
+
     @POST("api/movil/auth/register")
     suspend fun register(@Body request: RegistroRequest): AuthResponse
 
