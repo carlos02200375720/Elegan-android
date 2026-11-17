@@ -76,6 +76,12 @@ class EleganRepository(context: Context) {
 
     suspend fun refreshSavedProducts(): Set<String> = guardadosYLikesRepo.refreshSavedProducts()
 
+    suspend fun refreshPublicationLikes(): Set<String> =
+        guardadosYLikesRepo.refreshPublicationLikes()
+
+    suspend fun refreshPublicationLikeCounts(productIds: Collection<String>) =
+        guardadosYLikesRepo.refreshPublicationLikeCounts(productIds)
+
     suspend fun setProductSaved(productId: String, isSaved: Boolean) =
         guardadosYLikesRepo.setProductSaved(productId, isSaved)
 
