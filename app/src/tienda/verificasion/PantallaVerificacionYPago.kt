@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CartItem
+import com.example.data.model.PayPalOrderSession
 import com.example.data.model.UserProfile
 import com.example.data.model.defaultBankAccounts
 import kotlinx.coroutines.launch
@@ -42,6 +43,26 @@ fun VerificasionScreen(
     shipping: Double,
     total: Double,
     userProfile: UserProfile?,
+    payPalSession: PayPalOrderSession? = null,
+    isProcessingPayPal: Boolean = false,
+    payPalError: String? = null,
+    onCreatePayPalOrder: (
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+        onSessionReady: (PayPalOrderSession) -> Unit
+    ) -> Unit = { _, _, _, _, _, _ -> },
+    onCapturePayPalOrder: (
+        paypalOrderId: String,
+        name: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String
+    ) -> Unit = { _, _, _, _, _, _ -> },
+    onClearPayPalState: () -> Unit = {},
     onConfirmOrder: (name: String, email: String, phone: String, address: String, city: String, payment: String, paymentProofUri: String) -> Unit,
     onBack: () -> Unit
 ) {
@@ -62,6 +83,7 @@ fun VerificasionScreen(
             return
         }
         when (option) {
+            OPCION_PAGO_PAYPAL -> estado.showPayPalPage = true
             OPCION_PAGO_TARJETA -> estado.showCardPaymentPage = true
             OPCION_PAGO_CONTRAENTREGA -> estado.showCashOnDeliveryPage = true
             OPCION_PAGO_TRANSFERENCIA -> estado.showBankTransferPage = true
@@ -72,7 +94,10 @@ fun VerificasionScreen(
         }
     }
 
-    val anyOverlayOpen = estado.showBankTransferPage || estado.showCardPaymentPage || estado.showCashOnDeliveryPage
+    val anyOverlayOpen = estado.showPayPalPage ||
+        estado.showBankTransferPage ||
+        estado.showCardPaymentPage ||
+        estado.showCashOnDeliveryPage
     BackHandler(enabled = !anyOverlayOpen) { onBack() }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -83,7 +108,7 @@ fun VerificasionScreen(
             bottomBar = {
                 BarraInferiorConfirmarPago(
                     total = total,
-                    isSubmitting = estado.isSubmitting,
+                    isSubmitting = estado.isSubmitting || isProcessingPayPal,
                     onConfirmClick = {
                         openPaymentFlow(estado.selectedPayment, "Por favor completa los datos de entrega requeridos.")
                     }
@@ -140,6 +165,7 @@ fun VerificasionScreen(
         }
 
         PanelesDeslizantesPago(
+            showPayPalPage = estado.showPayPalPage,
             showBankTransferPage = estado.showBankTransferPage,
             showCardPaymentPage = estado.showCardPaymentPage,
             showCashOnDeliveryPage = estado.showCashOnDeliveryPage,
@@ -147,6 +173,33 @@ fun VerificasionScreen(
             phone = estado.phone, address = estado.address, city = estado.city,
             cartItems = cartItems, bankAccounts = bankAccounts, paymentProofUri = estado.paymentProofUri,
             isSubmitting = estado.isSubmitting,
+            payPalSession = payPalSession,
+            isProcessingPayPal = isProcessingPayPal,
+            payPalError = payPalError,
+            onClosePayPal = {
+                estado.showPayPalPage = false
+                onClearPayPalState()
+            },
+            onCreatePayPalOrder = { onSessionReady ->
+                onCreatePayPalOrder(
+                    estado.customerName,
+                    estado.email,
+                    estado.phone,
+                    estado.address,
+                    estado.city,
+                    onSessionReady
+                )
+            },
+            onCapturePayPalOrder = { paypalOrderId ->
+                onCapturePayPalOrder(
+                    paypalOrderId,
+                    estado.customerName,
+                    estado.email,
+                    estado.phone,
+                    estado.address,
+                    estado.city
+                )
+            },
             onCloseBankTransfer = { estado.showBankTransferPage = false },
             onCloseCardPayment = { estado.showCardPaymentPage = false },
             onCloseCashOnDelivery = { estado.showCashOnDeliveryPage = false },

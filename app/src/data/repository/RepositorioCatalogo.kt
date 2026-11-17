@@ -49,10 +49,22 @@ internal class RepositorioCatalogo {
         items
     }
 
-    suspend fun getProductById(productId: String): ProductJson? {
-        if (productId.isBlank()) return null
-        val remoteProducts = fetchProductsFromBackend()
-        return remoteProducts.find { it.productId() == productId }
+    suspend fun getProductById(productId: String): ProductJson? = withContext(Dispatchers.IO) {
+        if (productId.isBlank()) return@withContext null
+        try {
+            val response = ApiAutenticacionMovil.service.productById(productId)
+            val candidate = (response["item"] as? Map<*, *>)
+                ?: (response["product"] as? Map<*, *>)
+                ?: (response["data"] as? Map<*, *>)
+                ?: response
+            val typed: ProductJson = candidate.entries
+                .mapNotNull { (k, v) -> k?.toString()?.let { it to v } }
+                .toMap()
+            typed.takeIf { it.productId().isNotBlank() && it.productName().isNotBlank() }
+        } catch (e: Exception) {
+            Log.w("EleganCatalog", "No se pudo consultar el producto $productId desde el backend.", e)
+            productsFlow.value.find { it.productId() == productId }
+        }
     }
 }
 

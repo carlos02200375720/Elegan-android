@@ -1,7 +1,10 @@
 package com.example.ui.viewmodel
 
+import com.example.data.model.AnnouncementJson
 import com.example.data.model.ProductJson
+import com.example.data.model.productId
 import com.example.data.repository.EleganRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,6 +33,13 @@ internal class ControladorCatalogoYAnuncios(
             initialValue = emptyList()
         )
 
+    val announcements: StateFlow<List<AnnouncementJson>> = repository.observeAnnouncements()
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
     val isLoading: StateFlow<Boolean> = repository.observeProductsLoading()
         .stateIn(
             scope = scope,
@@ -50,6 +60,12 @@ internal class ControladorCatalogoYAnuncios(
         }
     }
 
+    fun refreshAnnouncements() {
+        scope.launch {
+            repository.refreshAnnouncements()
+        }
+    }
+
     fun setCategory(category: String) {
         _selectedCategory.value = category
     }
@@ -60,6 +76,20 @@ internal class ControladorCatalogoYAnuncios(
 
     fun selectProduct(product: ProductJson) {
         _selectedProduct.value = product
+        val productId = product.productId()
+        if (productId.isNotBlank()) {
+            scope.launch {
+                try {
+                    val fresh = repository.getProductById(productId)
+                    if (fresh != null && _selectedProduct.value?.productId() == productId) {
+                        _selectedProduct.value = fresh
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+            }
+        }
     }
 
     fun clearSelection() {

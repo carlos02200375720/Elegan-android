@@ -43,6 +43,17 @@ internal fun PantallasSecundariasNavegacion(
     val lastOrderId by viewModel.lastCreatedOrderId.collectAsState()
     val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsState()
     val lastOrderDetails by viewModel.lastOrderDetails.collectAsState()
+    val payPalSession by viewModel.payPalOrderSession.collectAsState()
+    val isProcessingPayPal by viewModel.isProcessingPayPal.collectAsState()
+    val payPalError by viewModel.payPalError.collectAsState()
+
+    LaunchedEffect(screen) {
+        when (screen) {
+            Screen.CARRITO -> viewModel.refreshCart()
+            Screen.CHATS -> viewModel.refreshMessages()
+            else -> {}
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -105,6 +116,8 @@ internal fun PantallasSecundariasNavegacion(
             }
 
             Screen.VERIFICASION -> {
+                val itemsSummary = cartItems.joinToString(", ") { "${it.quantity}x ${it.name}" }
+                val totalItemCount = cartItems.sumOf { it.quantity }
                 VerificasionScreen(
                     cartItems = cartItems,
                     subtotal = checkoutSubtotal,
@@ -112,8 +125,38 @@ internal fun PantallasSecundariasNavegacion(
                     shipping = checkoutShipping,
                     total = checkoutTotal,
                     userProfile = userProfile,
+                    payPalSession = payPalSession,
+                    isProcessingPayPal = isProcessingPayPal,
+                    payPalError = payPalError,
+                    onCreatePayPalOrder = { name, email, phone, addr, city, onSessionReady ->
+                        viewModel.startPayPalOrder(
+                            customerName = name,
+                            email = email,
+                            phone = phone,
+                            address = addr,
+                            city = city,
+                            total = checkoutTotal,
+                            itemCount = totalItemCount,
+                            itemsSummary = itemsSummary,
+                            onSessionReady = onSessionReady
+                        )
+                    },
+                    onCapturePayPalOrder = { paypalOrderId, name, email, phone, addr, city ->
+                        viewModel.capturePayPalOrder(
+                            paypalOrderId = paypalOrderId,
+                            customerName = name,
+                            email = email,
+                            phone = phone,
+                            address = addr,
+                            city = city,
+                            total = checkoutTotal,
+                            itemCount = totalItemCount,
+                            itemsSummary = itemsSummary,
+                            onSuccess = { onNavigateTo(Screen.GRACIA) }
+                        )
+                    },
+                    onClearPayPalState = { viewModel.clearPayPalState() },
                     onConfirmOrder = { name, email, phone, addr, city, payMethod, paymentProofUri ->
-                        val itemsSummary = cartItems.joinToString(", ") { "${it.quantity}x ${it.name}" }
                         viewModel.placeOrder(
                             customerName = name,
                             email = email,
@@ -122,7 +165,7 @@ internal fun PantallasSecundariasNavegacion(
                             city = city,
                             paymentMethod = payMethod,
                             total = checkoutTotal,
-                            itemCount = cartItems.sumOf { it.quantity },
+                            itemCount = totalItemCount,
                             itemsSummary = itemsSummary,
                             paymentProofUri = paymentProofUri,
                             onSuccess = { onNavigateTo(Screen.GRACIA) }

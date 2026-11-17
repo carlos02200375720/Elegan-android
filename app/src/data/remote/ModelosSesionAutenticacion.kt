@@ -16,6 +16,11 @@ data class AuthUser(
 
     val effectiveId: String
         get() = originalId?.takeIf { it.isNotBlank() } ?: id
+
+    val canUploadMedia: Boolean
+        get() = isAdmin ||
+            role.equals("admin", ignoreCase = true) ||
+            role.equals("superadmin", ignoreCase = true)
 }
 
 data class AuthResponse(

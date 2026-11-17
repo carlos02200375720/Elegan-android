@@ -29,9 +29,12 @@ internal fun SuperficieTextureVideo(
                         val s = Surface(st)
                         state.surfaceRef = s
                         try {
-                            state.mediaPlayerRef?.setSurface(s)
-                            if ((state.isPlaying || isFocused) && state.isPrepared) {
-                                state.mediaPlayerRef?.start()
+                            val mp = state.mediaPlayerRef
+                            if (mp != null && !state.isDisposed && !state.hasError) {
+                                mp.setSurface(s)
+                                if ((state.isPlaying || isFocused) && state.isPrepared) {
+                                    state.iniciarSiPreparado()
+                                }
                             }
                         } catch (_: Exception) {}
                         ajustarTransformacionVideo(this@apply, state.videoWidth, state.videoHeight)
@@ -42,9 +45,12 @@ internal fun SuperficieTextureVideo(
                     }
 
                     override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+                        state.pausarSiEsPosible()
                         try {
-                            state.mediaPlayerRef?.pause()
-                            state.mediaPlayerRef?.setSurface(null)
+                            val mp = state.mediaPlayerRef
+                            if (mp != null && !state.isDisposed) {
+                                mp.setSurface(null)
+                            }
                         } catch (_: Exception) {}
                         state.surfaceRef?.release()
                         state.surfaceRef = null

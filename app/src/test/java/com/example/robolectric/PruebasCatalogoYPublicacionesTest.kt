@@ -1,5 +1,12 @@
 package com.example
 
+import android.media.MediaPlayer
+import com.example.data.model.announcementBadge
+import com.example.data.model.announcementCategory
+import com.example.data.model.announcementId
+import com.example.data.model.announcementImageUrl
+import com.example.data.model.announcementMessage
+import com.example.data.model.announcementTitle
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
 import com.example.data.model.productImageUrl
@@ -9,7 +16,10 @@ import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.productVideoUrl
 import com.example.data.repository.EleganRepository
+import com.example.data.repository.extractAnnouncementsJson
 import com.example.data.repository.extractJsonItems
+import com.example.data.repository.extractSavedProductIdsJson
+import com.example.ui.components.EstadoReproductorVideo
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -21,7 +31,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowMediaPlayer
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -83,6 +95,48 @@ class PruebasCatalogoYPublicacionesTest {
     }
 
     @Test
+    fun `test announcements and saved products json extractors handle backend formats`() {
+        val announcementsPayload = mapOf(
+            "announcements" to listOf(
+                mapOf(
+                    "id" to "ann_1",
+                    "title" to "Colección Otoño",
+                    "message" to "20% en sastrería italiana",
+                    "image_url" to "/uploads/otono.jpg",
+                    "category" to "camisa",
+                    "badge" to "NUEVO",
+                    "active" to true
+                ),
+                mapOf(
+                    "id" to "ann_inactive",
+                    "title" to "Oculto",
+                    "message" to "No debe mostrarse",
+                    "active" to false
+                )
+            )
+        )
+
+        val announcements = extractAnnouncementsJson(announcementsPayload)
+        assertEquals(1, announcements.size)
+        assertEquals("ann_1", announcements.first().announcementId())
+        assertEquals("Colección Otoño", announcements.first().announcementTitle())
+        assertEquals("20% en sastrería italiana", announcements.first().announcementMessage())
+        assertEquals("camisa", announcements.first().announcementCategory())
+        assertEquals("NUEVO", announcements.first().announcementBadge())
+        assertTrue(announcements.first().announcementImageUrl().endsWith("/uploads/otono.jpg"))
+
+        val savedFromIds = extractSavedProductIdsJson(
+            mapOf("product_ids" to listOf("p1", "p2"))
+        )
+        assertEquals(setOf("p1", "p2"), savedFromIds)
+
+        val savedFromItems = extractSavedProductIdsJson(
+            mapOf("items" to listOf(mapOf("product_id" to "p3"), mapOf("id" to "p4")))
+        )
+        assertEquals(setOf("p3", "p4"), savedFromItems)
+    }
+
+    @Test
     fun `test saved products and publication save counter update in memory without local storage`() = runBlocking {
         val context = obtenerContextoPrueba()
         val repo = EleganRepository(context)
@@ -123,5 +177,34 @@ class PruebasCatalogoYPublicacionesTest {
         val stats2 = repo.observePublicationStats().first()
         assertFalse(likedIds2.contains("prod_like_1"))
         assertEquals(0L, stats2["prod_like_1"]?.likesCount ?: 0L)
+    }
+
+    @Test
+    fun `test video player state avoids pause or start calls when not prepared or disposed`() {
+        val mp = MediaPlayer()
+        val shadow = shadowOf(mp)
+        val state = EstadoReproductorVideo(initialAutoPlay = false, initialFocused = false)
+        state.mediaPlayerRef = mp
+
+        // En estado IDLE/PREPARING (isPrepared = false, hasStarted = false) no debe llamar pause/start/seekTo
+        state.pausarReproduccion()
+        state.iniciarReproduccion()
+        state.repetirVideo()
+        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
+
+        // Incluso marcado como preparado pero sin haber iniciado, pausar no debe invocar mp.pause()
+        state.isPrepared = true
+        state.hasStarted = false
+        state.pausarSiEsPosible()
+        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
+
+        // Con error o dispuesto, ninguna operación debe invocar al MediaPlayer nativo
+        state.hasError = true
+        state.hasStarted = true
+        state.pausarSiEsPosible()
+        state.iniciarSiPreparado()
+        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
+
+        mp.release()
     }
 }

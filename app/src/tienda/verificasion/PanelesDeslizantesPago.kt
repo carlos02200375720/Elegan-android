@@ -8,9 +8,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
+import com.example.data.model.PayPalOrderSession
 
 @Composable
 internal fun PanelesDeslizantesPago(
+    showPayPalPage: Boolean,
     showBankTransferPage: Boolean,
     showCardPaymentPage: Boolean,
     showCashOnDeliveryPage: Boolean,
@@ -24,6 +26,12 @@ internal fun PanelesDeslizantesPago(
     bankAccounts: List<BankAccountInfo>,
     paymentProofUri: Uri?,
     isSubmitting: Boolean,
+    payPalSession: PayPalOrderSession?,
+    isProcessingPayPal: Boolean,
+    payPalError: String?,
+    onClosePayPal: () -> Unit,
+    onCreatePayPalOrder: (onSessionReady: (PayPalOrderSession) -> Unit) -> Unit,
+    onCapturePayPalOrder: (paypalOrderId: String) -> Unit,
     onCloseBankTransfer: () -> Unit,
     onCloseCardPayment: () -> Unit,
     onCloseCashOnDelivery: () -> Unit,
@@ -41,6 +49,22 @@ internal fun PanelesDeslizantesPago(
         targetOffsetX = { fullWidth -> fullWidth },
         animationSpec = tween(durationMillis = 280)
     )
+
+    AnimatedVisibility(visible = showPayPalPage, enter = slideEnter, exit = slideExit) {
+        PantallaPagoPayPal(
+            total = total,
+            customerName = customerName,
+            customerEmail = email,
+            itemCount = cartItems.sumOf { it.quantity },
+            itemsSummary = cartItems.joinToString(", ") { "${it.quantity}x ${it.name}" },
+            payPalSession = payPalSession,
+            isProcessing = isProcessingPayPal,
+            errorMessage = payPalError,
+            onBack = onClosePayPal,
+            onCreatePayPalOrder = onCreatePayPalOrder,
+            onCapturePayPalOrder = onCapturePayPalOrder
+        )
+    }
 
     AnimatedVisibility(visible = showBankTransferPage, enter = slideEnter, exit = slideExit) {
         TranfereciaScreen(

@@ -23,9 +23,11 @@ internal class EstadoReproductorVideo(
 ) {
     var isPlaying by mutableStateOf(initialAutoPlay || initialFocused)
     var isPrepared by mutableStateOf(false)
+    var hasStarted by mutableStateOf(false)
     var isCompleted by mutableStateOf(false)
     var isMuted by mutableStateOf(false)
     var hasError by mutableStateOf(false)
+    var isDisposed by mutableStateOf(false)
     var showOverlayControls by mutableStateOf(true)
     var isFirstFrameRendered by mutableStateOf(false)
     var shouldLoadPlayer by mutableStateOf(false)
@@ -48,32 +50,58 @@ internal class EstadoReproductorVideo(
         }
     }
 
+    fun iniciarSiPreparado() {
+        val mp = mediaPlayerRef ?: return
+        if (!isPrepared || hasError || isDisposed) return
+        try {
+            if (!mp.isPlaying) {
+                mp.start()
+            }
+            hasStarted = true
+        } catch (_: Exception) {}
+    }
+
+    fun reiniciarYReproducirSiPreparado() {
+        val mp = mediaPlayerRef ?: return
+        if (!isPrepared || hasError || isDisposed) return
+        try {
+            mp.seekTo(0)
+            if (!mp.isPlaying) {
+                mp.start()
+            }
+            hasStarted = true
+        } catch (_: Exception) {}
+    }
+
+    fun pausarSiEsPosible() {
+        val mp = mediaPlayerRef ?: return
+        if (!isPrepared || hasError || !hasStarted || isDisposed) return
+        try {
+            if (mp.isPlaying) {
+                mp.pause()
+            }
+        } catch (_: Exception) {}
+    }
+
     fun repetirVideo() {
         isCompleted = false
         shouldLoadPlayer = true
         isPlaying = true
         showOverlayControls = false
-        try {
-            mediaPlayerRef?.seekTo(0)
-            mediaPlayerRef?.start()
-        } catch (_: Exception) {}
+        reiniciarYReproducirSiPreparado()
     }
 
     fun iniciarReproduccion() {
         shouldLoadPlayer = true
         isPlaying = true
         showOverlayControls = false
-        try {
-            mediaPlayerRef?.start()
-        } catch (_: Exception) {}
+        iniciarSiPreparado()
     }
 
     fun pausarReproduccion() {
         isPlaying = false
         showOverlayControls = true
-        try {
-            mediaPlayerRef?.pause()
-        } catch (_: Exception) {}
+        pausarSiEsPosible()
     }
 }
 
@@ -105,28 +133,17 @@ internal fun EfectoFocoYControlesVideo(
             state.shouldLoadPlayer = true
             state.isPlaying = true
             state.showOverlayControls = false
-            state.mediaPlayerRef?.let { mp ->
-                try {
-                    if (state.isPrepared) {
-                        if (state.isCompleted) {
-                            mp.seekTo(0)
-                            state.isCompleted = false
-                        }
-                        if (!mp.isPlaying) {
-                            mp.start()
-                        }
-                    }
-                } catch (_: Exception) {}
+            if (state.isPrepared && !state.hasError) {
+                if (state.isCompleted) {
+                    state.isCompleted = false
+                    state.reiniciarYReproducirSiPreparado()
+                } else {
+                    state.iniciarSiPreparado()
+                }
             }
         } else {
             state.isPlaying = false
-            state.mediaPlayerRef?.let { mp ->
-                try {
-                    if (state.isPrepared && mp.isPlaying) {
-                        mp.pause()
-                    }
-                } catch (_: Exception) {}
-            }
+            state.pausarSiEsPosible()
             state.shouldLoadPlayer = false
         }
     }

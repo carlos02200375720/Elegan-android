@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -29,6 +30,7 @@ internal fun PantallasConBarraInferior(
     onSignOut: () -> Unit
 ) {
     val products by viewModel.products.collectAsState()
+    val announcements by viewModel.announcements.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
     val orders by viewModel.orders.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
@@ -40,6 +42,12 @@ internal fun PantallasConBarraInferior(
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val isLoadingProducts by viewModel.isLoadingProducts.collectAsState()
     val productsError by viewModel.productsError.collectAsState()
+
+    LaunchedEffect(screen) {
+        if (screen == Screen.PERFIL) {
+            viewModel.refreshOrders()
+        }
+    }
 
     Scaffold(
         contentWindowInsets = if (screen == Screen.PERFIL) {
@@ -73,6 +81,7 @@ internal fun PantallasConBarraInferior(
                 Screen.INICIO -> {
                     InicioScreen(
                         featuredProducts = products.filter { it.productInStock() },
+                        announcements = announcements,
                         userProfile = userProfile,
                         cartItemCount = cartItems.sumOf { it.quantity },
                         savedProductIds = savedProductIds,

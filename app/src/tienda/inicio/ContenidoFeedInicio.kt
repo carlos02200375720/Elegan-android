@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.data.model.AnnouncementJson
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
 import com.example.data.model.productHasVideo
@@ -36,6 +37,7 @@ import com.example.ui.theme.EleganCharcoal
 internal fun ContenidoFeedInicio(
     listState: LazyListState,
     featuredProducts: List<ProductJson>,
+    announcements: List<AnnouncementJson> = emptyList(),
     savedProductIds: Set<String>,
     localSavedProductIds: Set<String>,
     publicationStats: Map<String, PublicationStats>,
@@ -90,6 +92,16 @@ internal fun ContenidoFeedInicio(
                     products = featuredProducts,
                     modifier = categoriesModifier
                 )
+            }
+
+            if (announcements.isNotEmpty()) {
+                item(key = "announcements_section") {
+                    SeccionAnunciosInicio(
+                        announcements = announcements,
+                        onAnnouncementClick = onNavigateToCatalogo,
+                        modifier = categoriesModifier
+                    )
+                }
             }
 
             item(key = "feed_spacer") {

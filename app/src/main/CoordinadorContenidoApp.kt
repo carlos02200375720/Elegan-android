@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +30,10 @@ fun AppContent(
     onSignOut: () -> Unit,
     onAccountDeleted: () -> Unit = onSignOut
 ) {
+    LaunchedEffect(Unit) {
+        viewModel.syncAccountData()
+    }
+
     var currentScreen by remember { mutableStateOf(Screen.INICIO) }
     var previousScreen by remember { mutableStateOf(Screen.INICIO) }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }

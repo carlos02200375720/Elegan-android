@@ -23,7 +23,9 @@ internal fun CicloVidaMediaPlayer(
         if (!state.shouldLoadPlayer) {
             onDispose {}
         } else {
+            state.isDisposed = false
             state.isPrepared = false
+            state.hasStarted = false
             state.isCompleted = false
             state.hasError = false
             state.isFirstFrameRendered = false
@@ -38,11 +40,11 @@ internal fun CicloVidaMediaPlayer(
                         .setUsage(AudioAttributes.USAGE_MEDIA)
                         .build()
                 )
-                isLooping = true
                 setOnPreparedListener { player ->
-                    if (disposed.get()) return@setOnPreparedListener
+                    if (disposed.get() || state.isDisposed) return@setOnPreparedListener
                     state.isPrepared = true
                     state.hasError = false
+                    runCatching { player.isLooping = true }
                     val w = player.videoWidth
                     val h = player.videoHeight
                     if (w > 0 && h > 0) {
@@ -57,7 +59,7 @@ internal fun CicloVidaMediaPlayer(
                     }
                     if (state.isPlaying || isFocused) {
                         state.isPlaying = true
-                        player.start()
+                        state.iniciarSiPreparado()
                     }
                 }
                 setOnVideoSizeChangedListener { _, w, h ->
@@ -70,12 +72,15 @@ internal fun CicloVidaMediaPlayer(
                 }
                 setOnCompletionListener {
                     if (disposed.get()) return@setOnCompletionListener
+                    state.hasStarted = false
                     state.isCompleted = true
                     state.isPlaying = false
                     state.showOverlayControls = true
                 }
                 setOnErrorListener { _, _, _ ->
                     if (!disposed.get()) {
+                        state.isPrepared = false
+                        state.hasStarted = false
                         state.hasError = true
                         state.isPlaying = false
                     }
@@ -108,7 +113,10 @@ internal fun CicloVidaMediaPlayer(
                     if (failed && !disposed.get()) {
                         withContext(Dispatchers.Main) {
                             if (!disposed.get()) {
+                                state.isPrepared = false
+                                state.hasStarted = false
                                 state.hasError = true
+                                state.isPlaying = false
                             }
                         }
                     }
@@ -117,14 +125,17 @@ internal fun CicloVidaMediaPlayer(
 
             onDispose {
                 disposed.set(true)
+                state.isDisposed = true
+                state.isPrepared = false
+                state.hasStarted = false
                 if (state.mediaPlayerRef == mp) {
                     state.mediaPlayerRef = null
                 }
-                try {
-                    mp.setSurface(null)
-                } catch (_: Exception) {}
                 videoReleaseScope.launch {
                     synchronized(mp) {
+                        try {
+                            mp.setSurface(null)
+                        } catch (_: Exception) {}
                         try {
                             // release() basta para liberar el reproductor y su decodificador.
                             mp.release()

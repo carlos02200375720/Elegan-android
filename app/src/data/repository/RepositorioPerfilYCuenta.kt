@@ -111,7 +111,7 @@ internal class RepositorioPerfilYCuenta(
 
     suspend fun deleteUserAccountData() {
         withContext(Dispatchers.IO) {
-            carritoRepo.clearCart()
+            carritoRepo.clearCart(syncRemote = false)
             guardadosYLikesRepo.clearUserData()
             pedidosRepo.clearUserData()
             mensajesRepo.clearUserData()

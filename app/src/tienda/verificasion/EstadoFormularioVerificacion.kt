@@ -27,6 +27,7 @@ internal class EstadoFormularioVerificacion(
     var city by mutableStateOf(initialCity)
 
     val paymentOptions = listOf(
+        OPCION_PAGO_PAYPAL,
         OPCION_PAGO_TARJETA,
         OPCION_PAGO_CONTRAENTREGA,
         OPCION_PAGO_TRANSFERENCIA
@@ -34,6 +35,7 @@ internal class EstadoFormularioVerificacion(
     var selectedPayment by mutableStateOf(paymentOptions[0])
     var isSubmitting by mutableStateOf(false)
 
+    var showPayPalPage by mutableStateOf(false)
     var showBankTransferPage by mutableStateOf(false)
     var showCardPaymentPage by mutableStateOf(false)
     var showCashOnDeliveryPage by mutableStateOf(false)
@@ -44,6 +46,7 @@ internal class EstadoFormularioVerificacion(
         customerName.isNotBlank() && email.isNotBlank() && address.isNotBlank() && city.isNotBlank()
 
     fun mensajeCampoFaltante(option: String): String = when (option) {
+        OPCION_PAGO_PAYPAL -> "Completa los datos de entrega para continuar con el pago por PayPal."
         OPCION_PAGO_TARJETA -> "Completa los datos de entrega para continuar con el pago con tarjeta."
         OPCION_PAGO_CONTRAENTREGA -> "Completa los datos de entrega para ver las instrucciones de pago contra entrega."
         else -> "Completa los datos de entrega para continuar con la transferencia."

@@ -114,7 +114,7 @@ private fun ProductJson.readStringArray(key: String): List<String> {
     }
 }
 
-private fun resolveBackendMediaUrl(rawUrl: String): String {
+internal fun resolveBackendMediaUrl(rawUrl: String): String {
     val clean = rawUrl.trim()
     if (clean.isBlank()) return ""
     if (clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true)) {
@@ -124,6 +124,37 @@ private fun resolveBackendMediaUrl(rawUrl: String): String {
     val cleanBase = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
     return if (clean.startsWith("/")) "$cleanBase$clean" else "$cleanBase/$clean"
 }
+
+typealias AnnouncementJson = Map<String, Any?>
+
+fun AnnouncementJson.announcementId(): String =
+    firstNonBlankString("id", "_id")
+
+fun AnnouncementJson.announcementTitle(): String =
+    firstNonBlankString("title", "name", "headline")
+
+fun AnnouncementJson.announcementMessage(): String =
+    firstNonBlankString("message", "description", "body", "subtitle", "content")
+
+fun AnnouncementJson.announcementImageUrl(): String =
+    firstNonBlankString("imageUrl", "image_url", "image", "bannerUrl", "banner_url")
+        .let(::resolveBackendMediaUrl)
+
+fun AnnouncementJson.announcementCategory(): String =
+    firstNonBlankString("category", "targetCategory", "target_category")
+
+fun AnnouncementJson.announcementBadge(): String =
+    firstNonBlankString("badge", "tag", "label")
+
+fun AnnouncementJson.announcementActive(): Boolean =
+    readBoolean("active", "isActive", "is_active", "published", defaultValue = true)
+
+@Immutable
+data class PayPalOrderSession(
+    val paypalOrderId: String,
+    val approveUrl: String,
+    val status: String = "CREATED"
+)
 
 @Immutable
 data class PublicationStats(

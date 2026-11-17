@@ -1,8 +1,11 @@
 package com.example.data.repository
 
 import android.content.Context
+import android.net.Uri
+import com.example.data.model.AnnouncementJson
 import com.example.data.model.CartItem
 import com.example.data.model.Order
+import com.example.data.model.PayPalOrderSession
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
@@ -15,9 +18,11 @@ class EleganRepository(context: Context) {
     private val appContext = context.applicationContext
 
     private val catalogoRepo = RepositorioCatalogo()
+    private val anunciosRepo = RepositorioAnuncios()
+    private val mediaRepo = RepositorioMedia(appContext)
     private val carritoRepo = RepositorioCarrito(appContext)
     private val estadisticasRepo = RepositorioEstadisticasPublicaciones()
-    private val guardadosYLikesRepo = RepositorioGuardadosYLikes(estadisticasRepo)
+    private val guardadosYLikesRepo = RepositorioGuardadosYLikes(appContext, estadisticasRepo)
     private val comentariosRepo = RepositorioComentarios(
         appContext = appContext,
         statsRepo = estadisticasRepo
@@ -45,7 +50,13 @@ class EleganRepository(context: Context) {
 
     suspend fun getProductById(productId: String): ProductJson? = catalogoRepo.getProductById(productId)
 
+    fun observeAnnouncements(): Flow<List<AnnouncementJson>> = anunciosRepo.observeAnnouncements()
+
+    suspend fun refreshAnnouncements(): List<AnnouncementJson> = anunciosRepo.refreshAnnouncements()
+
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
+
+    suspend fun refreshCart(): List<CartItem> = carritoRepo.refreshCart()
 
     suspend fun addToCart(
         product: ProductJson,
@@ -62,6 +73,8 @@ class EleganRepository(context: Context) {
     suspend fun clearCart() = carritoRepo.clearCart()
 
     fun observeSavedProductIds(): Flow<Set<String>> = guardadosYLikesRepo.observeSavedProductIds()
+
+    suspend fun refreshSavedProducts(): Set<String> = guardadosYLikesRepo.refreshSavedProducts()
 
     suspend fun setProductSaved(productId: String, isSaved: Boolean) =
         guardadosYLikesRepo.setProductSaved(productId, isSaved)
@@ -85,6 +98,52 @@ class EleganRepository(context: Context) {
         guardadosYLikesRepo.recordPublicationShare(productId)
 
     fun observeOrders(): Flow<List<Order>> = pedidosRepo.observeOrders()
+
+    suspend fun refreshOrders(): List<Order> = pedidosRepo.refreshOrders()
+
+    suspend fun createPayPalOrder(
+        customerName: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+        total: Double,
+        itemCount: Long,
+        itemsSummary: String,
+        cartItems: List<CartItem>
+    ): PayPalOrderSession = pedidosRepo.createPayPalOrder(
+        customerName = customerName,
+        email = email,
+        phone = phone,
+        address = address,
+        city = city,
+        total = total,
+        itemCount = itemCount,
+        itemsSummary = itemsSummary,
+        cartItems = cartItems
+    )
+
+    suspend fun capturePayPalOrder(
+        paypalOrderId: String,
+        customerName: String,
+        email: String,
+        phone: String,
+        address: String,
+        city: String,
+        total: Double,
+        itemCount: Long,
+        itemsSummary: String
+    ): String = pedidosRepo.capturePayPalOrder(
+        paypalOrderId = paypalOrderId,
+        customerName = customerName,
+        email = email,
+        phone = phone,
+        address = address,
+        city = city,
+        total = total,
+        itemCount = itemCount,
+        itemsSummary = itemsSummary
+    )
 
     suspend fun createOrder(
         customerName: String,
@@ -112,12 +171,16 @@ class EleganRepository(context: Context) {
 
     fun observeMessages(): Flow<List<SupportMessage>> = mensajesRepo.observeMessages()
 
+    suspend fun refreshMessages(): List<SupportMessage> = mensajesRepo.refreshMessages()
+
     suspend fun sendSupportMessage(
         text: String,
         mediaUri: String = "",
         mediaType: String = "",
         scope: CoroutineScope
     ) = mensajesRepo.sendSupportMessage(text, mediaUri, mediaType, scope)
+
+    suspend fun uploadMedia(mediaUri: Uri): String = mediaRepo.uploadMedia(mediaUri)
 
     fun observeUserProfile(): Flow<UserProfile?> = perfilYCuentaRepo.observeUserProfile()
 

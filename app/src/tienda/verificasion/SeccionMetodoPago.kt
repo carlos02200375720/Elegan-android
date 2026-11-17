@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.LocalShipping
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
+internal const val OPCION_PAGO_PAYPAL = "PayPal (Pago en Línea Seguro)"
 internal const val OPCION_PAGO_TARJETA = "Tarjeta de Crédito / Débito (Visa / Mastercard)"
 internal const val OPCION_PAGO_CONTRAENTREGA = "Pago Contra Entrega (Efectivo al recibir)"
 internal const val OPCION_PAGO_TRANSFERENCIA = "Transferencia Bancaria Inmediata"
@@ -93,6 +95,13 @@ internal fun SeccionMetodoPago(
         }
 
         when (selectedPayment) {
+            OPCION_PAGO_PAYPAL -> TarjetaAccionMetodoPago(
+                icon = Icons.Default.AccountBalanceWallet,
+                iconTint = Color(0xFF003087),
+                text = "Pagar con tu cuenta o tarjeta vía PayPal",
+                testTag = "open_paypal_payment_btn",
+                onClick = { onOpenSelectedAction(OPCION_PAGO_PAYPAL) }
+            )
             OPCION_PAGO_TARJETA -> TarjetaAccionMetodoPago(
                 icon = Icons.Default.CreditCard,
                 iconTint = EleganBurgundy,

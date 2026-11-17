@@ -1,12 +1,22 @@
 package com.example
 
+import android.net.Uri
 import com.example.data.model.ProductJson
 import com.example.data.model.productName
+import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
 import com.example.data.repository.EleganRepository
+import com.example.data.repository.extractCapturedOrderIdJson
+import com.example.data.repository.extractCartItemsJson
+import com.example.data.repository.extractMessagesJson
+import com.example.data.repository.extractOrdersJson
+import com.example.data.repository.extractPayPalSessionJson
+import com.example.data.repository.extractUploadedMediaUrl
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -110,5 +120,116 @@ class PruebasPerfilPedidosYSoporteTest {
 
             MobileSession.clear(context)
         }
+    }
+
+    @Test
+    fun `test cart paypal orders messages and media json extractors`() {
+        val cartItems = extractCartItemsJson(
+            mapOf(
+                "items" to listOf(
+                    mapOf(
+                        "id" to "cart_1",
+                        "product_id" to "prod_99",
+                        "name" to "Mocasín Veneciano",
+                        "price" to "185.50",
+                        "quantity" to 2,
+                        "selected_size" to "42",
+                        "selected_color" to "Tabaco",
+                        "image_url" to "/uploads/mocasin.jpg"
+                    )
+                )
+            ),
+            fallbackUserId = "u1"
+        )
+        assertEquals(1, cartItems.size)
+        assertEquals("cart_1", cartItems.first().id)
+        assertEquals("prod_99", cartItems.first().productId)
+        assertEquals(185.5, cartItems.first().price, 0.01)
+        assertEquals(2L, cartItems.first().quantity)
+        assertEquals("42", cartItems.first().selectedSize)
+        assertTrue(cartItems.first().imageUrl.endsWith("/uploads/mocasin.jpg"))
+
+        val paypalSession = extractPayPalSessionJson(
+            mapOf(
+                "id" to "PAYPAL_ORD_123",
+                "status" to "CREATED",
+                "links" to listOf(
+                    mapOf("rel" to "self", "href" to "https://api.paypal.com/self"),
+                    mapOf("rel" to "approve", "href" to "https://www.paypal.com/checkoutnow?token=PAYPAL_ORD_123")
+                )
+            )
+        )
+        assertNotNull(paypalSession)
+        assertEquals("PAYPAL_ORD_123", paypalSession?.paypalOrderId)
+        assertEquals("https://www.paypal.com/checkoutnow?token=PAYPAL_ORD_123", paypalSession?.approveUrl)
+
+        val capturedId = extractCapturedOrderIdJson(
+            mapOf("order" to mapOf("order_id" to "ORD_FINAL_900"))
+        )
+        assertEquals("ORD_FINAL_900", capturedId)
+
+        val orders = extractOrdersJson(
+            mapOf(
+                "orders" to listOf(
+                    mapOf(
+                        "id" to "ORD_FINAL_900",
+                        "customer_name" to "Carlos Méndez",
+                        "payment_method" to "PayPal",
+                        "total" to 371.0,
+                        "item_count" to 2,
+                        "status" to "pagado"
+                    )
+                )
+            ),
+            fallbackUserId = "u1"
+        )
+        assertEquals(1, orders.size)
+        assertEquals("ORD_FINAL_900", orders.first().id)
+        assertEquals("PayPal", orders.first().paymentMethod)
+        assertEquals(371.0, orders.first().total, 0.01)
+
+        val messages = extractMessagesJson(
+            mapOf(
+                "messages" to listOf(
+                    mapOf(
+                        "id" to "m1",
+                        "role" to "admin",
+                        "message" to "Tu pedido ha sido confirmado",
+                        "media_url" to "/uploads/guia.jpg",
+                        "media_type" to "image"
+                    )
+                )
+            ),
+            fallbackUserId = "u1"
+        )
+        assertEquals(1, messages.size)
+        assertEquals("support", messages.first().sender)
+        assertTrue(messages.first().mediaUrl.endsWith("/uploads/guia.jpg"))
+
+        val mediaUrl = extractUploadedMediaUrl(
+            mapOf("media" to mapOf("url" to "/uploads/foto_admin.jpg"))
+        )
+        assertNotNull(mediaUrl)
+        assertTrue(mediaUrl.orEmpty().endsWith("/uploads/foto_admin.jpg"))
+    }
+
+    @Test
+    fun `test media upload permissions allow admin or superadmin and reject customer`(): Unit = runBlocking {
+        assertFalse(AuthUser(role = "customer").canUploadMedia)
+        assertTrue(AuthUser(role = "admin").canUploadMedia)
+        assertTrue(AuthUser(role = "superadmin").canUploadMedia)
+        assertTrue(AuthUser(role = "customer", isAdmin = true).canUploadMedia)
+
+        val context = obtenerContextoPrueba()
+        reiniciarSesionClienteDemo(context)
+
+        val repo = EleganRepository(context)
+        val result = runCatching {
+            repo.uploadMedia(Uri.parse("content://media/external/images/1"))
+        }
+        assertTrue(result.isFailure)
+        assertTrue(result.exceptionOrNull() is SecurityException)
+
+        MobileSession.clear(context)
     }
 }

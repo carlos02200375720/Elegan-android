@@ -83,6 +83,18 @@ internal class ControladorInteraccionesPublicacion(
         }
         .stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyList())
 
+    fun refreshSavedProducts() {
+        scope.launch {
+            try {
+                repository.refreshSavedProducts()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EleganViewModel", "No se pudieron sincronizar los guardados.", e)
+            }
+        }
+    }
+
     fun toggleSaveProduct(productId: String, onResult: (Result<Boolean>) -> Unit) {
         val shouldSave = productId !in savedProductIds.value
         scope.launch {

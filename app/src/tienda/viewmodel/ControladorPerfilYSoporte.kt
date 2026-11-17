@@ -1,8 +1,11 @@
 package com.example.ui.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
+import com.example.data.remote.MobileSession
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 internal class ControladorPerfilYSoporte(
+    private val appContext: Context,
     private val repository: EleganRepository,
     private val scope: CoroutineScope
 ) {
@@ -24,11 +28,37 @@ internal class ControladorPerfilYSoporte(
         .catch { emit(null) }
         .stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = null)
 
+    fun refreshMessages() {
+        scope.launch {
+            try {
+                repository.refreshMessages()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EleganViewModel", "Error al sincronizar mensajes: ${e.message}")
+            }
+        }
+    }
+
     fun sendSupportMessage(text: String, mediaUri: String, mediaType: String) {
         if (text.isBlank() && mediaUri.isBlank()) return
         scope.launch {
             try {
-                repository.sendSupportMessage(text, mediaUri, mediaType, scope)
+                var resolvedMediaUrl = mediaUri
+                val user = MobileSession.user(appContext)
+                if (
+                    mediaUri.isNotBlank() &&
+                    !mediaUri.startsWith("http://", ignoreCase = true) &&
+                    !mediaUri.startsWith("https://", ignoreCase = true) &&
+                    user?.canUploadMedia == true
+                ) {
+                    try {
+                        resolvedMediaUrl = repository.uploadMedia(Uri.parse(mediaUri))
+                    } catch (uploadError: Exception) {
+                        Log.w("EleganViewModel", "No se pudo subir multimedia vía /api/movil/media.", uploadError)
+                    }
+                }
+                repository.sendSupportMessage(text, resolvedMediaUrl, mediaType, scope)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
