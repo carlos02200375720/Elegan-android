@@ -10,10 +10,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -68,6 +70,19 @@ internal class ControladorInteraccionesPublicacion(
         Log.e("EleganViewModel", "No se pudieron cargar las estadísticas de publicaciones.", error)
         emit(emptyMap())
     }.stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyMap())
+
+    init {
+        // El flujo de productos cambia al cargar/actualizar el catálogo, no al desplazar el feed.
+        scope.launch {
+            products
+                .let { state -> state }
+                .map { list -> list.map { it.productId() }.filter { it.isNotBlank() }.distinct() }
+                .distinctUntilChanged()
+                .collect { ids ->
+                    if (ids.isNotEmpty()) repository.refreshPublicationLikeCounts(ids)
+                }
+        }
+    }
 
     private val _commentsProductId = MutableStateFlow<String?>(null)
 
