@@ -103,6 +103,9 @@ internal class RepositorioGuardadosYLikes(
     private suspend fun ensureLikesLoaded(token: String) {
         if (likesLoadedToken == token) return
         refreshPublicationLikes()
+        if (likesLoadedToken != token) {
+            throw IllegalStateException("No se pudieron sincronizar los likes con el servidor.")
+        }
     }
 
     suspend fun refreshPublicationLikeCounts(productIds: Collection<String>) = withContext(Dispatchers.IO) {
@@ -115,14 +118,17 @@ internal class RepositorioGuardadosYLikes(
         if (ids.isEmpty()) return@withContext
 
         try {
-            val response = ApiAutenticacionMovil.service.getLikeCounts("Bearer $token", ids)
-            val counts = response["counts"] as? Map<*, *> ?: return@withContext
-            counts.forEach { (rawId, rawCount) ->
-                val id = rawId as? String ?: return@forEach
-                val count = (rawCount as? Number)?.toLong()
-                    ?: (rawCount as? String)?.toLongOrNull()
-                    ?: return@forEach
-                statsRepo.updateLikesCount(id, count)
+            // El backend limita la consulta a 100 IDs por petición.
+            ids.chunked(100).forEach { batch ->
+                val response = ApiAutenticacionMovil.service.getLikeCounts("Bearer $token", batch)
+                val counts = response["counts"] as? Map<*, *> ?: return@forEach
+                counts.forEach { (rawId, rawCount) ->
+                    val id = rawId as? String ?: return@forEach
+                    val count = (rawCount as? Number)?.toLong()
+                        ?: (rawCount as? String)?.toLongOrNull()
+                        ?: return@forEach
+                    statsRepo.updateLikesCount(id, count)
+                }
             }
         } catch (e: Exception) {
             Log.w("EleganLikes", "No se pudieron actualizar los conteos de likes.", e)
