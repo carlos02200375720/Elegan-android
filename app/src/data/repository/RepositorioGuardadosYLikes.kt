@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 internal class RepositorioGuardadosYLikes(
@@ -21,6 +23,10 @@ internal class RepositorioGuardadosYLikes(
     private val savedFlow = MutableStateFlow<Set<String>>(emptySet())
     private val likedPublicationIds = ConcurrentHashMap.newKeySet<String>()
     private val likedFlow = MutableStateFlow<Set<String>>(emptySet())
+    private val likeMutexes = ConcurrentHashMap<String, Mutex>()
+
+    @Volatile
+    private var likesLoadedToken: String? = null
 
     private fun activeBackendToken(): String? {
         if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return null
@@ -78,14 +84,90 @@ internal class RepositorioGuardadosYLikes(
         }
     }
 
-    fun togglePublicationLike(productId: String): Boolean {
-        require(productId.isNotBlank())
-        val targetLiked = productId !in likedPublicationIds
-        if (targetLiked) likedPublicationIds.add(productId) else likedPublicationIds.remove(productId)
-        likedFlow.value = likedPublicationIds.toSet()
+    suspend fun refreshPublicationLikes(): Set<String> = withContext(Dispatchers.IO) {
+        val token = activeBackendToken() ?: return@withContext emptySet()
+        try {
+            val response = ApiAutenticacionMovil.service.getLikes("Bearer $token")
+            val remoteIds = extractLikeIdsJson(response)
+            likedPublicationIds.clear()
+            likedPublicationIds.addAll(remoteIds)
+            likedFlow.value = likedPublicationIds.toSet()
+            likesLoadedToken = token
+            likedFlow.value
+        } catch (e: Exception) {
+            Log.w("EleganLikes", "No se pudieron cargar los likes desde el servidor.", e)
+            likedPublicationIds.toSet()
+        }
+    }
 
-        statsRepo.adjustLikes(productId, if (targetLiked) 1L else -1L)
-        return targetLiked
+    private suspend fun ensureLikesLoaded(token: String) {
+        if (likesLoadedToken == token) return
+        refreshPublicationLikes()
+    }
+
+    suspend fun refreshPublicationLikeCounts(productIds: Collection<String>) = withContext(Dispatchers.IO) {
+        val token = activeBackendToken() ?: return@withContext
+        val ids = productIds.asSequence()
+            .map(String::trim)
+            .filter(String::isNotBlank)
+            .distinct()
+            .toList()
+        if (ids.isEmpty()) return@withContext
+
+        try {
+            val response = ApiAutenticacionMovil.service.getLikeCounts("Bearer $token", ids)
+            val counts = response["counts"] as? Map<*, *> ?: return@withContext
+            counts.forEach { (rawId, rawCount) ->
+                val id = rawId as? String ?: return@forEach
+                val count = (rawCount as? Number)?.toLong()
+                    ?: (rawCount as? String)?.toLongOrNull()
+                    ?: return@forEach
+                statsRepo.updateLikesCount(id, count)
+            }
+        } catch (e: Exception) {
+            Log.w("EleganLikes", "No se pudieron actualizar los conteos de likes.", e)
+        }
+    }
+
+    suspend fun togglePublicationLike(productId: String): Boolean = withContext(Dispatchers.IO) {
+        require(productId.isNotBlank())
+        val token = activeBackendToken()
+            ?: throw IllegalStateException("Debes iniciar sesión para dar like.")
+        ensureLikesLoaded(token)
+
+        likeMutexes.getOrPut(productId) { Mutex() }.withLock {
+            val wasLiked = productId in likedPublicationIds
+            val targetLiked = !wasLiked
+
+            // Actualización optimista: el corazón cambia inmediatamente en la interfaz.
+            if (targetLiked) likedPublicationIds.add(productId) else likedPublicationIds.remove(productId)
+            likedFlow.value = likedPublicationIds.toSet()
+            statsRepo.adjustLikes(productId, if (targetLiked) 1L else -1L)
+
+            try {
+                val response = ApiAutenticacionMovil.service.setLike(
+                    authorization = "Bearer $token",
+                    productId = productId,
+                    request = mapOf("liked" to targetLiked)
+                )
+                val confirmedLiked = response["liked"] as? Boolean ?: targetLiked
+                val likesCount = (response["likesCount"] as? Number)?.toLong()
+                if (confirmedLiked != targetLiked) {
+                    if (confirmedLiked) likedPublicationIds.add(productId)
+                    else likedPublicationIds.remove(productId)
+                    likedFlow.value = likedPublicationIds.toSet()
+                    statsRepo.adjustLikes(productId, if (confirmedLiked) 1L else -1L)
+                }
+                if (likesCount != null) statsRepo.updateLikesCount(productId, likesCount)
+                confirmedLiked
+            } catch (e: Exception) {
+                // Revierte el corazón y el contador si el servidor no confirma el cambio.
+                if (wasLiked) likedPublicationIds.add(productId) else likedPublicationIds.remove(productId)
+                likedFlow.value = likedPublicationIds.toSet()
+                statsRepo.adjustLikes(productId, if (wasLiked) 1L else -1L)
+                throw e
+            }
+        }
     }
 
     fun recordPublicationShare(productId: String) {
@@ -98,8 +180,15 @@ internal class RepositorioGuardadosYLikes(
         savedFlow.value = emptySet()
         likedPublicationIds.clear()
         likedFlow.value = emptySet()
+        likesLoadedToken = null
+        likeMutexes.clear()
         statsRepo.clearUserData()
     }
+}
+
+internal fun extractLikeIdsJson(response: Map<String, Any?>): Set<String> {
+    val ids = response["ids"] as? List<*> ?: return emptySet()
+    return ids.mapNotNull { (it as? String)?.trim()?.takeIf(String::isNotBlank) }.toSet()
 }
 
 internal fun extractSavedProductIdsJson(response: Map<String, Any?>): Set<String> {
