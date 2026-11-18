@@ -314,6 +314,35 @@ class PruebasCatalogoYPublicacionesTest {
             )
         )
         assertEquals(listOf("gafa", "perfume"), fromData?.map { it.id })
+        assertFalse("No debe inventar la categoría 'todo' si el backend no la envía", fromData.orEmpty().any { it.id.equals("todo", ignoreCase = true) })
         assertTrue(fromData?.last()?.imageUrl?.endsWith("/uploads/perfume.jpg") == true)
+    }
+
+    @Test
+    fun `test refreshCategories forces backend query after initial load without inventing todo`(): Unit = runBlocking {
+        var calls = 0
+        val repo = RepositorioCategorias(
+            fetchRemotePayload = {
+                calls++
+                when (calls) {
+                    1 -> mapOf("items" to listOf(mapOf("id" to "camisa", "name" to "Camisas")))
+                    else -> mapOf(
+                        "items" to listOf(
+                            mapOf("id" to "camisa", "name" to "Camisas"),
+                            mapOf("id" to "correa", "name" to "Correas")
+                        )
+                    )
+                }
+            }
+        )
+
+        repo.loadCategoriesOnce()
+        repo.loadCategoriesOnce()
+        assertEquals(1, calls)
+
+        val refreshed = repo.refreshCategories()
+        assertEquals(2, calls)
+        assertEquals(listOf("camisa", "correa"), refreshed.map { it.id })
+        assertFalse(refreshed.any { it.id.equals("todo", ignoreCase = true) })
     }
 }

@@ -35,8 +35,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
+import com.example.data.model.isAllCategoriesFilter
 import com.example.data.model.productCategory
 import com.example.data.model.productDescription
 import com.example.data.model.productId
@@ -71,7 +73,7 @@ fun CatalogoScreen(
     val filteredProducts = remember(products, selectedCategory, searchQuery) {
         products.filter { prod ->
             val category = prod.productCategory()
-            val matchesCat = selectedCategory == "todo" || category.equals(selectedCategory, ignoreCase = true)
+            val matchesCat = isAllCategoriesFilter(selectedCategory) || category.equals(selectedCategory, ignoreCase = true)
             val matchesQuery = searchQuery.isBlank() ||
                 prod.productName().contains(searchQuery, ignoreCase = true) ||
                 prod.productDescription().contains(searchQuery, ignoreCase = true) ||
@@ -170,11 +172,11 @@ fun CatalogoScreen(
                             isCompact = isCompact,
                             isLoading = isLoadingProducts && products.isEmpty(),
                             errorMessage = if (products.isEmpty()) productsError else null,
-                            hasActiveFilters = searchQuery.isNotBlank() || selectedCategory != "todo",
+                            hasActiveFilters = searchQuery.isNotBlank() || !isAllCategoriesFilter(selectedCategory),
                             onRetry = onRefreshProducts,
                             onResetFilters = {
                                 searchQuery = ""
-                                onCategoryChange("todo")
+                                onCategoryChange(ALL_CATEGORIES_FILTER)
                             }
                         )
                     }

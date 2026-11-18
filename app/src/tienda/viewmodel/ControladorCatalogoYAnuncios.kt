@@ -1,5 +1,6 @@
 package com.example.ui.viewmodel
 
+import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
@@ -18,7 +19,7 @@ internal class ControladorCatalogoYAnuncios(
     private val repository: EleganRepository,
     private val scope: CoroutineScope
 ) {
-    private val _selectedCategory = MutableStateFlow("todo")
+    private val _selectedCategory = MutableStateFlow(ALL_CATEGORIES_FILTER)
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
     private val _selectedProduct = MutableStateFlow<ProductJson?>(null)

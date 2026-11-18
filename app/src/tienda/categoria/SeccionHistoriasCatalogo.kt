@@ -35,8 +35,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
+import com.example.data.model.isAllCategoriesFilter
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -89,13 +91,13 @@ fun CatalogoCategoryStoriesSection(
                 )
             }
 
-            if (selectedCategory != "todo") {
+            if (!isAllCategoriesFilter(selectedCategory)) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = EleganBurgundy.copy(alpha = 0.12f),
                     border = BorderStroke(1.dp, EleganBurgundy.copy(alpha = 0.35f)),
-                    modifier = Modifier.clickable { onCategoryChange("todo") }
+                    modifier = Modifier.clickable { onCategoryChange(ALL_CATEGORIES_FILTER) }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),

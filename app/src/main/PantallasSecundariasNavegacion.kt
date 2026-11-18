@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.productId
 import com.example.ui.CarritoScreen
 import com.example.ui.CategoriaScreen
@@ -50,6 +51,7 @@ internal fun PantallasSecundariasNavegacion(
 
     LaunchedEffect(screen) {
         when (screen) {
+            Screen.CATEGORIA -> viewModel.loadCategoriesOnce()
             Screen.CARRITO -> viewModel.refreshCart()
             Screen.CHATS -> viewModel.refreshMessages()
             else -> {}
@@ -110,7 +112,7 @@ internal fun PantallasSecundariasNavegacion(
                         onNavigateTo(Screen.VERIFICASION)
                     },
                     onExploreCatalog = {
-                        viewModel.setCategory("todo")
+                        viewModel.setCategory(ALL_CATEGORIES_FILTER)
                         onNavigateTo(Screen.CATALOGO)
                     },
                     onBack = { onNavigateTo(Screen.PRODUCTO) }

@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.CategoryItem
+import com.example.data.model.isAllCategoriesFilter
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -63,11 +64,12 @@ internal fun TarjetaCategoriaMenu(
                 .padding(if (isCompact) 12.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val isAllCategory = isAllCategoriesFilter(catItem.id)
             Box(
                 modifier = Modifier
                     .size(if (isCompact) 42.dp else 48.dp)
                     .clip(CircleShape)
-                    .background(if (catItem.id == "todo") EleganBurgundy else Color(0xFFF6EFE9)),
+                    .background(if (isAllCategory) EleganBurgundy else Color(0xFFF6EFE9)),
                 contentAlignment = Alignment.Center
             ) {
                 if (catItem.imageUrl.isNotBlank()) {
@@ -80,7 +82,7 @@ internal fun TarjetaCategoriaMenu(
                     Icon(
                         imageVector = getCategoryStoryIcon(catItem),
                         contentDescription = catItem.title,
-                        tint = if (catItem.id == "todo") Color.White else EleganBurgundy,
+                        tint = if (isAllCategory) Color.White else EleganBurgundy,
                         modifier = Modifier.size(if (isCompact) 21.dp else 24.dp)
                     )
                 }

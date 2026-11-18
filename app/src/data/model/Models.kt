@@ -289,3 +289,8 @@ data class CategoryItem(
     val iconName: String = "",
     val sortOrder: Int = Int.MAX_VALUE
 )
+
+const val ALL_CATEGORIES_FILTER = "todo"
+
+fun isAllCategoriesFilter(categoryId: String): Boolean =
+    categoryId.isBlank() || categoryId.equals(ALL_CATEGORIES_FILTER, ignoreCase = true)
