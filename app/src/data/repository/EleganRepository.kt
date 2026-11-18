@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.CartItem
+import com.example.data.model.CategoryItem
 import com.example.data.model.Order
 import com.example.data.model.PayPalOrderSession
 import com.example.data.model.ProductJson
@@ -18,6 +19,7 @@ class EleganRepository(context: Context) {
     private val appContext = context.applicationContext
 
     private val catalogoRepo = RepositorioCatalogo()
+    private val categoriasRepo = RepositorioCategorias()
     private val anunciosRepo = RepositorioAnuncios()
     private val mediaRepo = RepositorioMedia(appContext)
     private val carritoRepo = RepositorioCarrito(appContext)
@@ -53,6 +55,12 @@ class EleganRepository(context: Context) {
     fun observeAnnouncements(): Flow<List<AnnouncementJson>> = anunciosRepo.observeAnnouncements()
 
     suspend fun refreshAnnouncements(): List<AnnouncementJson> = anunciosRepo.refreshAnnouncements()
+
+    fun observeCategories(): Flow<List<CategoryItem>> = categoriasRepo.observeCategories()
+
+    suspend fun loadCategoriesOnce(): List<CategoryItem> = categoriasRepo.loadCategoriesOnce()
+
+    suspend fun refreshCategories(): List<CategoryItem> = categoriasRepo.refreshCategories()
 
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
 

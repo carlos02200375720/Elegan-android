@@ -16,7 +16,9 @@ import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.productVideoUrl
 import com.example.data.repository.EleganRepository
+import com.example.data.repository.RepositorioCategorias
 import com.example.data.repository.extractAnnouncementsJson
+import com.example.data.repository.extractCategoriesJson
 import com.example.data.repository.extractJsonItems
 import com.example.data.repository.extractSavedProductIdsJson
 import com.example.ui.components.EstadoReproductorVideo
@@ -206,5 +208,112 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
 
         mp.release()
+    }
+
+    @Test
+    fun `test categories repository starts empty without local fallback and loads once`(): Unit = runBlocking {
+        var fetchCalls = 0
+        val repo = RepositorioCategorias(
+            fetchRemotePayload = {
+                fetchCalls++
+                mapOf(
+                    "items" to listOf(
+                        mapOf(
+                            "id" to "camisa",
+                            "title" to "Camisas & Trajes",
+                            "subtitle" to "Sastrería italiana",
+                            "iconName" to "dry_cleaning",
+                            "active" to true
+                        ),
+                        mapOf(
+                            "id" to "oculta",
+                            "title" to "Inactiva",
+                            "active" to false
+                        )
+                    )
+                )
+            }
+        )
+
+        assertTrue(
+            "Las categorías deben iniciar vacías sin categorías locales ni de respaldo",
+            repo.observeCategories().first().isEmpty()
+        )
+
+        val firstLoad = repo.loadCategoriesOnce()
+        assertEquals(1, fetchCalls)
+        assertEquals(1, firstLoad.size)
+        assertEquals("camisa", firstLoad.first().id)
+        assertEquals("Camisas & Trajes", firstLoad.first().title)
+
+        // Navegar entre pantallas / llamadas repetidas no debe duplicar la consulta
+        val secondLoad = repo.loadCategoriesOnce()
+        assertEquals(1, fetchCalls)
+        assertEquals(firstLoad, secondLoad)
+    }
+
+    @Test
+    fun `test categories repository preserves valid list during failed or invalid refresh`(): Unit = runBlocking {
+        var step = 0
+        val repo = RepositorioCategorias(
+            fetchRemotePayload = {
+                step++
+                when (step) {
+                    1 -> mapOf(
+                        "categories" to listOf(
+                            mapOf("id" to "gorra", "name" to "Gorras & Boinas")
+                        )
+                    )
+                    2 -> throw RuntimeException("Timeout de red")
+                    3 -> mapOf("error" to "bad_gateway")
+                    else -> listOf(
+                        mapOf("id" to "gorra", "name" to "Gorras & Boinas"),
+                        mapOf("id" to "zapato", "name" to "Zapatos Oxford")
+                    )
+                }
+            }
+        )
+
+        repo.loadCategoriesOnce()
+        assertEquals(listOf("gorra"), repo.observeCategories().first().map { it.id })
+
+        // Error de red: conserva la lista compartida
+        repo.refreshCategories()
+        assertEquals(listOf("gorra"), repo.observeCategories().first().map { it.id })
+
+        // Respuesta inválida sin lista de categorías: conserva la lista compartida
+        repo.refreshCategories()
+        assertEquals(listOf("gorra"), repo.observeCategories().first().map { it.id })
+
+        // Respuesta válida del backend: actualiza la lista
+        repo.refreshCategories()
+        assertEquals(listOf("gorra", "zapato"), repo.observeCategories().first().map { it.id })
+    }
+
+    @Test
+    fun `test categories json extractor handles backend formats and rejects invalid payloads`() {
+        assertEquals(null, extractCategoriesJson(null))
+        assertEquals(null, extractCategoriesJson(mapOf("status" to "ok")))
+
+        val fromData = extractCategoriesJson(
+            mapOf(
+                "data" to listOf(
+                    mapOf(
+                        "slug" to "perfume",
+                        "label" to "Perfumes",
+                        "description" to "Fragancias",
+                        "image_url" to "/uploads/perfume.jpg",
+                        "sortOrder" to 2
+                    ),
+                    mapOf(
+                        "id" to "gafa",
+                        "title" to "Gafas",
+                        "sortOrder" to 1
+                    )
+                )
+            )
+        )
+        assertEquals(listOf("gafa", "perfume"), fromData?.map { it.id })
+        assertTrue(fromData?.last()?.imageUrl?.endsWith("/uploads/perfume.jpg") == true)
     }
 }

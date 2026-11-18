@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productCategory
 import com.example.data.model.productDescription
@@ -47,6 +48,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun CatalogoScreen(
     products: List<ProductJson>,
+    categories: List<CategoryItem> = emptyList(),
     selectedCategory: String,
     onCategoryChange: (String) -> Unit,
     onNavigateToMenu: () -> Unit,
@@ -129,13 +131,16 @@ fun CatalogoScreen(
                 horizontalArrangement = Arrangement.spacedBy(columnGap),
                 verticalArrangement = Arrangement.spacedBy(rowGap)
             ) {
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    CatalogoCategoryStoriesSection(
-                        selectedCategory = selectedCategory,
-                        categoryListState = categoryListState,
-                        onCategoryChange = onCategoryChange,
-                        products = products
-                    )
+                if (categories.isNotEmpty()) {
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        CatalogoCategoryStoriesSection(
+                            categories = categories,
+                            selectedCategory = selectedCategory,
+                            categoryListState = categoryListState,
+                            onCategoryChange = onCategoryChange,
+                            products = products
+                        )
+                    }
                 }
 
                 item(span = { GridItemSpan(maxLineSpan) }) {

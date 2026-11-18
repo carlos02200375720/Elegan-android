@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import com.example.data.model.AnnouncementJson
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
@@ -27,6 +28,7 @@ import com.example.data.model.productVideoUrl
 @Composable
 fun InicioScreen(
     featuredProducts: List<ProductJson>,
+    categories: List<CategoryItem> = emptyList(),
     announcements: List<AnnouncementJson> = emptyList(),
     userProfile: UserProfile? = null,
     cartItemCount: Long = 0L,
@@ -88,6 +90,7 @@ fun InicioScreen(
         ContenidoFeedInicio(
             listState = listState,
             featuredProducts = featuredProducts,
+            categories = categories,
             announcements = announcements,
             savedProductIds = savedProductIds,
             localSavedProductIds = localSavedProductIds,

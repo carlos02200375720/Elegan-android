@@ -15,7 +15,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,15 +25,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productCategory
-import com.example.data.remote.ApiAutenticacionMovil
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoriaScreen(
+    categories: List<CategoryItem>,
     products: List<ProductJson>,
     onCategorySelected: (String) -> Unit,
     onDeleteAccount: () -> Unit = {},
@@ -44,12 +44,6 @@ fun CategoriaScreen(
 
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
-    var categoryItems by remember { mutableStateOf(emptyList<CategoriaItem>()) }
-
-    LaunchedEffect(Unit) {
-        runCatching { cargarCategoriasPublicadas() }
-            .onSuccess { categoryItems = it }
-    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -89,18 +83,31 @@ fun CategoriaScreen(
                     )
                 }
 
-                items(categoryItems, key = { it.id }) { catItem ->
-                    val count = if (catItem.id == "todo") {
-                        products.size
-                    } else {
-                        products.count { it.productCategory().equals(catItem.id, ignoreCase = true) }
+                if (categories.isEmpty()) {
+                    item {
+                        Text(
+                            text = "No hay categorías disponibles en este momento.",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = Color.Gray,
+                                fontSize = if (isCompact) 13.sp else 14.sp
+                            ),
+                            modifier = Modifier.padding(vertical = 12.dp)
+                        )
                     }
-                    TarjetaCategoriaMenu(
-                        catItem = catItem,
-                        productCount = count,
-                        isCompact = isCompact,
-                        onClick = { onCategorySelected(catItem.id) }
-                    )
+                } else {
+                    items(categories, key = { it.id }) { catItem ->
+                        val count = if (catItem.id.equals("todo", ignoreCase = true)) {
+                            products.size
+                        } else {
+                            products.count { it.productCategory().equals(catItem.id, ignoreCase = true) }
+                        }
+                        TarjetaCategoriaMenu(
+                            catItem = catItem,
+                            productCount = count,
+                            isCompact = isCompact,
+                            onClick = { onCategorySelected(catItem.id) }
+                        )
+                    }
                 }
 
                 item {

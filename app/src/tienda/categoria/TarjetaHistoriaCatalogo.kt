@@ -19,12 +19,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +36,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Precision
+import com.example.data.model.CategoryItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -41,12 +46,24 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun CatalogoCategoryStoryCard(
-    category: CategoriaItem,
+    category: CategoryItem,
     cardWidth: Dp,
     isSelected: Boolean,
     imageUrl: String? = null,
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val imageRequest = remember(imageUrl, context) {
+        imageUrl?.takeIf { it.isNotBlank() }?.let { url ->
+            ImageRequest.Builder(context)
+                .data(url)
+                .size(400, 700)
+                .precision(Precision.INEXACT)
+                .allowRgb565(true)
+                .crossfade(false)
+                .build()
+        }
+    }
     val borderStroke = if (isSelected) {
         BorderStroke(
             2.5.dp,
@@ -81,7 +98,7 @@ fun CatalogoCategoryStoryCard(
                 )
         ) {
             Icon(
-                imageVector = category.icon,
+                imageVector = getCategoryStoryIcon(category),
                 contentDescription = null,
                 tint = EleganGold.copy(alpha = 0.72f),
                 modifier = Modifier
@@ -89,9 +106,9 @@ fun CatalogoCategoryStoryCard(
                     .size(28.dp)
             )
 
-            if (!imageUrl.isNullOrBlank()) {
+            if (imageRequest != null) {
                 AsyncImage(
-                    model = imageUrl,
+                    model = imageRequest,
                     contentDescription = category.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
@@ -126,7 +143,7 @@ fun CatalogoCategoryStoryCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = category.icon,
+                    imageVector = getCategoryStoryIcon(category),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(12.dp)

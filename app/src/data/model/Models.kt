@@ -279,3 +279,13 @@ data class UserProfile(
     val city: String = "",
     val updatedAt: String? = null
 )
+
+@Immutable
+data class CategoryItem(
+    val id: String,
+    val title: String,
+    val subtitle: String = "",
+    val imageUrl: String = "",
+    val iconName: String = "",
+    val sortOrder: Int = Int.MAX_VALUE
+)

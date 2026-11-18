@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.model.CategoryItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -40,7 +41,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 internal fun TarjetaCategoriaMenu(
-    catItem: CategoriaItem,
+    catItem: CategoryItem,
     productCount: Int,
     isCompact: Boolean,
     onClick: () -> Unit
@@ -69,7 +70,7 @@ internal fun TarjetaCategoriaMenu(
                     .background(if (catItem.id == "todo") EleganBurgundy else Color(0xFFF6EFE9)),
                 contentAlignment = Alignment.Center
             ) {
-                if (!catItem.imageUrl.isNullOrBlank()) {
+                if (catItem.imageUrl.isNotBlank()) {
                     AsyncImage(
                         model = catItem.imageUrl,
                         contentDescription = catItem.title,
@@ -77,7 +78,7 @@ internal fun TarjetaCategoriaMenu(
                     )
                 } else {
                     Icon(
-                        imageVector = catItem.icon,
+                        imageVector = getCategoryStoryIcon(catItem),
                         contentDescription = catItem.title,
                         tint = if (catItem.id == "todo") Color.White else EleganBurgundy,
                         modifier = Modifier.size(if (isCompact) 21.dp else 24.dp)
@@ -115,16 +116,18 @@ internal fun TarjetaCategoriaMenu(
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = catItem.subtitle,
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        color = Color.Gray,
-                        fontSize = if (isCompact) 11.5.sp else 12.sp
-                    ),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (catItem.subtitle.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = catItem.subtitle,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            color = Color.Gray,
+                            fontSize = if (isCompact) 11.5.sp else 12.sp
+                        ),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(8.dp))

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
+import com.example.data.model.CategoryItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -45,7 +46,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun CategoryStoryCard(
-    category: CategoriaItem,
+    category: CategoryItem,
     cardWidth: Dp,
     imageUrl: String? = null,
     onClick: () -> Unit
@@ -88,7 +89,7 @@ fun CategoryStoryCard(
                 )
         ) {
             Icon(
-                imageVector = category.icon,
+                imageVector = getCategoryStoryIcon(category),
                 contentDescription = null,
                 tint = EleganGold.copy(alpha = 0.72f),
                 modifier = Modifier
@@ -129,7 +130,7 @@ fun CategoryStoryCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = category.icon,
+                    imageVector = getCategoryStoryIcon(category),
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(12.dp)

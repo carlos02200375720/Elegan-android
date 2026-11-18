@@ -1,6 +1,7 @@
 package com.example.ui.viewmodel
 
 import com.example.data.model.AnnouncementJson
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productId
 import com.example.data.repository.EleganRepository
@@ -40,6 +41,13 @@ internal class ControladorCatalogoYAnuncios(
             initialValue = emptyList()
         )
 
+    val categories: StateFlow<List<CategoryItem>> = repository.observeCategories()
+        .stateIn(
+            scope = scope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
     val isLoading: StateFlow<Boolean> = repository.observeProductsLoading()
         .stateIn(
             scope = scope,
@@ -63,6 +71,18 @@ internal class ControladorCatalogoYAnuncios(
     fun refreshAnnouncements() {
         scope.launch {
             repository.refreshAnnouncements()
+        }
+    }
+
+    fun loadCategoriesOnce() {
+        scope.launch {
+            repository.loadCategoriesOnce()
+        }
+    }
+
+    fun refreshCategories() {
+        scope.launch {
+            repository.refreshCategories()
         }
     }
 

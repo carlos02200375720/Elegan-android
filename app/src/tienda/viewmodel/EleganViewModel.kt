@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.CartItem
+import com.example.data.model.CategoryItem
 import com.example.data.model.Order
 import com.example.data.model.PayPalOrderSession
 import com.example.data.model.ProductJson
@@ -32,6 +33,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val searchQuery: StateFlow<String> = catalogoCtrl.searchQuery
     val products: StateFlow<List<ProductJson>> = catalogoCtrl.products
     val announcements: StateFlow<List<AnnouncementJson>> = catalogoCtrl.announcements
+    val categories: StateFlow<List<CategoryItem>> = catalogoCtrl.categories
     val isLoadingProducts: StateFlow<Boolean> = catalogoCtrl.isLoading
     val productsError: StateFlow<String?> = catalogoCtrl.error
 
@@ -56,6 +58,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     init {
         catalogoCtrl.refreshProducts()
         catalogoCtrl.refreshAnnouncements()
+        catalogoCtrl.loadCategoriesOnce()
         syncAccountData()
     }
 
@@ -69,6 +72,10 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun refreshProducts() = catalogoCtrl.refreshProducts()
 
     fun refreshAnnouncements() = catalogoCtrl.refreshAnnouncements()
+
+    fun loadCategoriesOnce() = catalogoCtrl.loadCategoriesOnce()
+
+    fun refreshCategories() = catalogoCtrl.refreshCategories()
 
     fun refreshCart() = pedidosCtrl.refreshCart()
 

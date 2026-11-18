@@ -19,11 +19,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,22 +28,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
 @Composable
 fun CategoryStoriesSection(
+    categories: List<CategoryItem>,
     onNavigateToCatalogo: (String) -> Unit,
     onNavigateToMenu: () -> Unit,
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    var categories by remember { mutableStateOf(emptyList<CategoriaItem>()) }
-    LaunchedEffect(Unit) {
-        runCatching { cargarCategoriasPublicadas() }
-            .onSuccess { categories = it }
-    }
+    if (categories.isEmpty()) return
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()

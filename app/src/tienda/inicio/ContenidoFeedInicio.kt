@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.data.model.AnnouncementJson
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
 import com.example.data.model.productHasVideo
@@ -37,6 +38,7 @@ import com.example.ui.theme.EleganCharcoal
 internal fun ContenidoFeedInicio(
     listState: LazyListState,
     featuredProducts: List<ProductJson>,
+    categories: List<CategoryItem> = emptyList(),
     announcements: List<AnnouncementJson> = emptyList(),
     savedProductIds: Set<String>,
     localSavedProductIds: Set<String>,
@@ -85,13 +87,16 @@ internal fun ContenidoFeedInicio(
                 )
             }
 
-            item(key = "categories_section") {
-                CategoryStoriesSection(
-                    onNavigateToCatalogo = onNavigateToCatalogo,
-                    onNavigateToMenu = onNavigateToMenu,
-                    products = featuredProducts,
-                    modifier = categoriesModifier
-                )
+            if (categories.isNotEmpty()) {
+                item(key = "categories_section") {
+                    CategoryStoriesSection(
+                        categories = categories,
+                        onNavigateToCatalogo = onNavigateToCatalogo,
+                        onNavigateToMenu = onNavigateToMenu,
+                        products = featuredProducts,
+                        modifier = categoriesModifier
+                    )
+                }
             }
 
             if (announcements.isNotEmpty()) {

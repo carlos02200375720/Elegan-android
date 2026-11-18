@@ -31,6 +31,7 @@ internal fun PantallasConBarraInferior(
 ) {
     val products by viewModel.products.collectAsState()
     val announcements by viewModel.announcements.collectAsState()
+    val categories by viewModel.categories.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
     val orders by viewModel.orders.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
@@ -81,6 +82,7 @@ internal fun PantallasConBarraInferior(
                 Screen.INICIO -> {
                     InicioScreen(
                         featuredProducts = products.filter { it.productInStock() },
+                        categories = categories,
                         announcements = announcements,
                         userProfile = userProfile,
                         cartItemCount = cartItems.sumOf { it.quantity },
@@ -111,7 +113,10 @@ internal fun PantallasConBarraInferior(
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         isLoadingProducts = isLoadingProducts,
                         productsError = productsError,
-                        onRefreshProducts = { viewModel.refreshProducts() }
+                    onRefreshProducts = {
+                        viewModel.refreshProducts()
+                        viewModel.loadCategoriesOnce()
+                    }
                     )
                 }
 
@@ -119,6 +124,7 @@ internal fun PantallasConBarraInferior(
                     BackHandler { onNavigateTo(Screen.INICIO) }
                     CatalogoScreen(
                         products = products.filter { it.productInStock() },
+                        categories = categories,
                         selectedCategory = selectedCategory,
                         onCategoryChange = { viewModel.setCategory(it) },
                         onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
@@ -137,7 +143,10 @@ internal fun PantallasConBarraInferior(
                         onToggleSaveProduct = { id -> viewModel.toggleSaveProduct(id) },
                         isLoadingProducts = isLoadingProducts,
                         productsError = productsError,
-                        onRefreshProducts = { viewModel.refreshProducts() }
+                        onRefreshProducts = {
+                            viewModel.refreshProducts()
+                            viewModel.loadCategoriesOnce()
+                        }
                     )
                 }
 

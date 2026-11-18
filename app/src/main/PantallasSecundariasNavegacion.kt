@@ -35,6 +35,7 @@ internal fun PantallasSecundariasNavegacion(
     onAccountDeleted: () -> Unit
 ) {
     val products by viewModel.products.collectAsState()
+    val categories by viewModel.categories.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
@@ -64,6 +65,7 @@ internal fun PantallasSecundariasNavegacion(
         when (screen) {
             Screen.CATEGORIA -> {
                 CategoriaScreen(
+                    categories = categories,
                     products = products,
                     onCategorySelected = { cat ->
                         viewModel.setCategory(cat)
