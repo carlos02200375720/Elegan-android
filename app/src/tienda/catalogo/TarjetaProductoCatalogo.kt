@@ -92,25 +92,27 @@ fun ProductGridCard(
                         modifier = Modifier.fillMaxSize()
                     )
 
-                    Surface(
-                        shape = RoundedCornerShape(bottomEnd = 8.dp),
-                        color = EleganBurgundyDark,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .widthIn(max = this@BoxWithConstraints.maxWidth * 0.78f)
-                    ) {
-                        Text(
-                            text = productCategory.uppercase(),
-                            color = Color.White,
-                            fontSize = if (isCompactCard) 7.5.sp else 8.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.padding(
-                                horizontal = if (isCompactCard) 5.dp else 6.dp,
-                                vertical = 2.dp
+                    if (productCategory.isNotBlank()) {
+                        Surface(
+                            shape = RoundedCornerShape(bottomEnd = 8.dp),
+                            color = EleganBurgundyDark,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .widthIn(max = this@BoxWithConstraints.maxWidth * 0.78f)
+                        ) {
+                            Text(
+                                text = productCategory.uppercase(),
+                                color = Color.White,
+                                fontSize = if (isCompactCard) 7.5.sp else 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.padding(
+                                    horizontal = if (isCompactCard) 5.dp else 6.dp,
+                                    vertical = 2.dp
+                                )
                             )
-                        )
+                        }
                     }
                 }
 

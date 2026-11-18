@@ -52,7 +52,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun InicioHeroBanner(
-    onNavigateToCatalogo: (String) -> Unit,
+    onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -212,7 +212,7 @@ fun InicioHeroBanner(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 12.dp)) {
                     Button(
-                        onClick = { onNavigateToCatalogo("todo") },
+                        onClick = { onNavigateToCatalogo(null) },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = EleganGold,
                             contentColor = EleganCharcoal

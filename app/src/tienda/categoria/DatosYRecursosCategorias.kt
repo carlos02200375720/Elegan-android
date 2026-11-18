@@ -16,18 +16,13 @@ import androidx.compose.material.icons.filled.Watch
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
-import com.example.data.model.isAllCategoriesFilter
 import com.example.data.model.productCategory
 import com.example.data.model.productImageUrl
 
 fun resolveCategoryCoverImage(category: CategoryItem, products: List<ProductJson>): String? {
     if (category.imageUrl.isNotBlank()) return category.imageUrl
-    val match = if (isAllCategoriesFilter(category.id)) {
-        products.firstOrNull { it.productImageUrl().isNotBlank() }
-    } else {
-        products.firstOrNull {
-            it.productCategory().equals(category.id, ignoreCase = true) && it.productImageUrl().isNotBlank()
-        }
+    val match = products.firstOrNull {
+        it.productCategory() == category.id && it.productImageUrl().isNotBlank()
     }
     return match?.productImageUrl()?.takeIf { it.isNotBlank() }
 }

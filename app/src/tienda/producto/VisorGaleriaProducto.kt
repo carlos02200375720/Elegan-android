@@ -100,21 +100,23 @@ fun VisorGaleriaProducto(
             }
         }
 
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = EleganBurgundyDark.copy(alpha = 0.9f),
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 12.dp, bottom = 12.dp)
-        ) {
-            Text(
-                text = productCategory.uppercase(),
-                color = Color.White,
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                letterSpacing = 0.5.sp
-            )
+        if (productCategory.isNotBlank()) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = EleganBurgundyDark.copy(alpha = 0.9f),
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, bottom = 12.dp)
+            ) {
+                Text(
+                    text = productCategory.uppercase(),
+                    color = Color.White,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                    letterSpacing = 0.5.sp
+                )
+            }
         }
 
         if (mediaItems.isNotEmpty()) {

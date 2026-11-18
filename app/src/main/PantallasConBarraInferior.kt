@@ -14,7 +14,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.productColors
 import com.example.data.model.productInStock
 import com.example.data.model.productSizes
@@ -63,7 +62,7 @@ internal fun PantallasConBarraInferior(
                 cartItemCount = cartItems.sumOf { it.quantity },
                 onNavigateToInicio = { onNavigateTo(Screen.INICIO) },
                 onNavigateToCatalogo = {
-                    viewModel.setCategory(ALL_CATEGORIES_FILTER)
+                    viewModel.setCategory(null)
                     onNavigateTo(Screen.CATALOGO)
                 },
                 onNavigateToCarrito = { onNavigateTo(Screen.CARRITO) },

@@ -19,7 +19,7 @@ fun ProductJson.productDescription(): String =
     firstNonBlankString("description")
 
 fun ProductJson.productCategory(): String =
-    firstNonBlankString("category").ifBlank { "todo" }
+    firstNonBlankString("category")
 
 fun ProductJson.productPrice(): Double {
     val raw = this["price"] ?: return 0.0
@@ -289,8 +289,3 @@ data class CategoryItem(
     val iconName: String = "",
     val sortOrder: Int = Int.MAX_VALUE
 )
-
-const val ALL_CATEGORIES_FILTER = "todo"
-
-fun isAllCategoriesFilter(categoryId: String): Boolean =
-    categoryId.isBlank() || categoryId.equals(ALL_CATEGORIES_FILTER, ignoreCase = true)

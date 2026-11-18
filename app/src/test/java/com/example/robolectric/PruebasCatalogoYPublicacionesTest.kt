@@ -6,7 +6,9 @@ import com.example.data.model.announcementCategory
 import com.example.data.model.announcementId
 import com.example.data.model.announcementImageUrl
 import com.example.data.model.announcementMessage
+import com.example.data.model.ProductJson
 import com.example.data.model.announcementTitle
+import com.example.data.model.productCategory
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
 import com.example.data.model.productImageUrl
@@ -344,5 +346,25 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(2, calls)
         assertEquals(listOf("camisa", "correa"), refreshed.map { it.id })
         assertFalse(refreshed.any { it.id.equals("todo", ignoreCase = true) })
+    }
+
+    @Test
+    fun `test categories preserve exact backend ids omit missing ids and keep case distinctness`() {
+        val extracted = extractCategoriesJson(
+            mapOf(
+                "items" to listOf(
+                    mapOf("title" to "Sin Identificador", "subtitle" to "Debe omitirse"),
+                    mapOf("id" to "Camisa", "title" to "Camisas Mayúscula"),
+                    mapOf("id" to "camisa", "title" to "Camisas Minúscula"),
+                    mapOf("id" to "Camisa", "title" to "Duplicado Exacto")
+                )
+            )
+        )
+
+        assertEquals(listOf("Camisa", "camisa"), extracted?.map { it.id })
+        assertEquals(listOf("Camisas Mayúscula", "Camisas Minúscula"), extracted?.map { it.title })
+
+        val productWithoutCategory: ProductJson = mapOf("id" to "p_no_cat", "name" to "Traje")
+        assertEquals("", productWithoutCategory.productCategory())
     }
 }

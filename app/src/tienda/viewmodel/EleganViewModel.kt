@@ -28,7 +28,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     private val pedidosCtrl = ControladorCarritoYPedidos(repository, viewModelScope)
     private val perfilCtrl = ControladorPerfilYSoporte(application, repository, viewModelScope)
 
-    val selectedCategory: StateFlow<String> = catalogoCtrl.selectedCategory
+    val selectedCategory: StateFlow<String?> = catalogoCtrl.selectedCategory
     val selectedProduct: StateFlow<ProductJson?> = catalogoCtrl.selectedProduct
     val searchQuery: StateFlow<String> = catalogoCtrl.searchQuery
     val products: StateFlow<List<ProductJson>> = catalogoCtrl.products
@@ -83,7 +83,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshMessages() = perfilCtrl.refreshMessages()
 
-    fun setCategory(category: String) = catalogoCtrl.setCategory(category)
+    fun setCategory(category: String?) = catalogoCtrl.setCategory(category)
 
     fun setSearchQuery(query: String) = catalogoCtrl.setSearchQuery(query)
 

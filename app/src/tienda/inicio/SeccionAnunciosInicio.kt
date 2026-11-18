@@ -52,7 +52,7 @@ import com.example.ui.theme.EleganGold
 @Composable
 internal fun SeccionAnunciosInicio(
     announcements: List<AnnouncementJson>,
-    onAnnouncementClick: (String) -> Unit,
+    onAnnouncementClick: (String?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (announcements.isEmpty()) return
@@ -102,7 +102,7 @@ internal fun SeccionAnunciosInicio(
                 val message = item.announcementMessage()
                 val imageUrl = item.announcementImageUrl()
                 val badge = item.announcementBadge().ifBlank { "COMUNICADO" }
-                val targetCat = item.announcementCategory().ifBlank { "todo" }
+                val targetCat = item.announcementCategory().takeIf { it.isNotBlank() }
 
                 Card(
                     modifier = Modifier

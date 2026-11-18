@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
-import com.example.data.model.isAllCategoriesFilter
 import com.example.data.model.productCategory
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
@@ -97,11 +96,7 @@ fun CategoriaScreen(
                     }
                 } else {
                     items(categories, key = { it.id }) { catItem ->
-                        val count = if (isAllCategoriesFilter(catItem.id)) {
-                            products.size
-                        } else {
-                            products.count { it.productCategory().equals(catItem.id, ignoreCase = true) }
-                        }
+                        val count = products.count { it.productCategory() == catItem.id }
                         TarjetaCategoriaMenu(
                             catItem = catItem,
                             productCount = count,

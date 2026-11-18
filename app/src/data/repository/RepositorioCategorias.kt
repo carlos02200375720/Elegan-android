@@ -98,7 +98,7 @@ internal fun extractCategoriesJson(rawPayload: Any?): List<CategoryItem>? {
 
     return parsed
         .sortedBy { it.sortOrder }
-        .distinctBy { it.id.lowercase() }
+        .distinctBy { it.id }
 }
 
 private fun parseCategoryMap(map: Map<*, *>, fallbackIndex: Int): CategoryItem? {
@@ -109,16 +109,16 @@ private fun parseCategoryMap(map: Map<*, *>, fallbackIndex: Int): CategoryItem? 
     )
     if (!isActive) return null
 
+    val rawId = firstNonBlankCategoryString(
+        map,
+        "id", "slug", "key", "code", "_id", "categoryId", "category_id"
+    )
+    if (rawId.isBlank()) return null
+
     val rawTitle = firstNonBlankCategoryString(
         map,
         "title", "name", "label", "nombre"
     )
-    val rawId = firstNonBlankCategoryString(
-        map,
-        "id", "slug", "key", "code", "_id", "categoryId", "category_id"
-    ).ifBlank { rawTitle.lowercase() }
-
-    if (rawId.isBlank()) return null
 
     val resolvedTitle = rawTitle.ifBlank {
         rawId.replaceFirstChar { it.uppercase() }

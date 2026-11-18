@@ -41,7 +41,7 @@ fun InicioScreen(
     onOpenComments: (String?) -> Unit,
     onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
-    onNavigateToCatalogo: (String) -> Unit,
+    onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = onNavigateToMenu,

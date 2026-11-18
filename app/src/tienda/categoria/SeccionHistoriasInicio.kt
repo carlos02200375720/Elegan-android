@@ -36,7 +36,7 @@ import com.example.ui.theme.EleganCharcoal
 @Composable
 fun CategoryStoriesSection(
     categories: List<CategoryItem>,
-    onNavigateToCatalogo: (String) -> Unit,
+    onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToMenu: () -> Unit,
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier

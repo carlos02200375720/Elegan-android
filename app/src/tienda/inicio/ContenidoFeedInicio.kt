@@ -53,7 +53,7 @@ internal fun ContenidoFeedInicio(
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
     onOpenCommentsForProduct: (ProductJson) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
-    onNavigateToCatalogo: (String) -> Unit,
+    onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToChats: () -> Unit,

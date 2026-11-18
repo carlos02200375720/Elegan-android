@@ -35,25 +35,23 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.data.model.ALL_CATEGORIES_FILTER
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
-import com.example.data.model.isAllCategoriesFilter
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
 @Composable
 fun CatalogoCategoryStoriesSection(
     categories: List<CategoryItem>,
-    selectedCategory: String,
+    selectedCategory: String?,
     categoryListState: LazyListState,
-    onCategoryChange: (String) -> Unit,
+    onCategoryChange: (String?) -> Unit,
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     if (categories.isEmpty()) return
     LaunchedEffect(selectedCategory, categories) {
-        val index = categories.indexOfFirst { it.id.equals(selectedCategory, ignoreCase = true) }
+        val index = if (selectedCategory == null) -1 else categories.indexOfFirst { it.id == selectedCategory }
         if (index >= 0) categoryListState.animateScrollToItem(index)
     }
     Column(
@@ -91,13 +89,13 @@ fun CatalogoCategoryStoriesSection(
                 )
             }
 
-            if (!isAllCategoriesFilter(selectedCategory)) {
+            if (selectedCategory != null) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = EleganBurgundy.copy(alpha = 0.12f),
                     border = BorderStroke(1.dp, EleganBurgundy.copy(alpha = 0.35f)),
-                    modifier = Modifier.clickable { onCategoryChange(ALL_CATEGORIES_FILTER) }
+                    modifier = Modifier.clickable { onCategoryChange(null) }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
@@ -138,7 +136,7 @@ fun CatalogoCategoryStoriesSection(
                 contentPadding = PaddingValues(vertical = 2.dp)
             ) {
                 items(categories, key = { it.id }) { cat ->
-                    val isSelected = selectedCategory.equals(cat.id, ignoreCase = true)
+                    val isSelected = selectedCategory == cat.id
                     CatalogoCategoryStoryCard(
                         category = cat,
                         cardWidth = cardWidth,
