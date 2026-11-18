@@ -343,7 +343,8 @@ internal class RepositorioGuardadosYLikes(
                 statsRepo.recordShare(productId)
                 return@withContext statsRepo.statsFlow.value[productId]?.sharesCount ?: 1L
             }
-            throw IllegalStateException("Debes iniciar sesión para registrar compartidos.")
+            // Compartir contenido no debe depender de que exista una sesión iniciada.
+            return@withContext statsRepo.statsFlow.value[productId]?.sharesCount ?: 0L
         }
 
         shareMutexes.getOrPut(productId) { Mutex() }.withLock {
