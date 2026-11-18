@@ -347,9 +347,10 @@ internal class RepositorioGuardadosYLikes(
         }
 
         shareMutexes.getOrPut(productId) { Mutex() }.withLock {
-            val previousSharesCount = statsRepo.statsFlow.value[productId]?.sharesCount
-            statsRepo.recordShare(productId)
-
+            // Nunca incrementamos localmente antes de recibir confirmación del backend.
+            // Si la ruta opcional todavía no está desplegada o falla la red, el contador
+            // permanece intacto y la acción de compartir puede continuar.
+            val previousSharesCount = statsRepo.statsFlow.value[productId]?.sharesCount ?: 0L
             try {
                 val response = apiProvider().recordShare(
                     authorization = "Bearer $token",
@@ -361,16 +362,13 @@ internal class RepositorioGuardadosYLikes(
                     statsRepo.updateSharesCount(productId, remoteCount)
                     remoteCount
                 } else {
-                    statsRepo.statsFlow.value[productId]?.sharesCount ?: 1L
+                    previousSharesCount
                 }
-            } catch (e: Exception) {
-                if (previousSharesCount != null) {
-                    statsRepo.updateSharesCount(productId, previousSharesCount)
-                } else {
-                    statsRepo.adjustShares(productId, -1L)
-                }
-                Log.w("EleganShares", "No se pudo registrar el compartido de $productId en el backend.", e)
+            } catch (e: CancellationException) {
                 throw e
+            } catch (e: Exception) {
+                Log.w("EleganShares", "No se pudo registrar el compartido de $productId; se conserva el conteo confirmado.", e)
+                previousSharesCount
             }
         }
     }
