@@ -51,7 +51,7 @@ fun CatalogoCategoryStoriesSection(
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    var categories by remember { mutableStateOf(storeCategoriesList) }
+    var categories by remember { mutableStateOf(emptyList<CategoriaItem>()) }
     LaunchedEffect(Unit) {
         runCatching { cargarCategoriasPublicadas() }
             .onSuccess { categories = it }
