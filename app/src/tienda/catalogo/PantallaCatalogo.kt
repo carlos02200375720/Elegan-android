@@ -36,7 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ProductJson
-import com.example.data.model.StoreCategory
 import com.example.data.model.productCategory
 import com.example.data.model.productDescription
 import com.example.data.model.productId
@@ -66,14 +65,6 @@ fun CatalogoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val notifier = LocalEleganNotifier.current
     val categoryListState = rememberLazyListState()
-
-    LaunchedEffect(selectedCategory) {
-        val categories = StoreCategory.entries
-        val targetIndex = categories.indexOfFirst { it.id.equals(selectedCategory, ignoreCase = true) }
-        if (targetIndex >= 0) {
-            categoryListState.animateScrollToItem(targetIndex)
-        }
-    }
 
     val filteredProducts = remember(products, selectedCategory, searchQuery) {
         products.filter { prod ->
