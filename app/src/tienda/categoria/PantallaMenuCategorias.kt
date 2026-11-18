@@ -69,7 +69,8 @@ fun CategoriaScreen(
                     title = name,
                     subtitle = item["description"]?.toString()?.ifBlank { "Explora esta categoría" }
                         ?: "Explora esta categoría",
-                    icon = known?.icon ?: Icons.Default.GridView
+                    icon = known?.icon ?: Icons.Default.GridView,
+                    imageUrl = item["imageUrl"]?.toString()?.takeIf { it.isNotBlank() }
                 )
             }.orEmpty()
             categoryItems = listOf(
