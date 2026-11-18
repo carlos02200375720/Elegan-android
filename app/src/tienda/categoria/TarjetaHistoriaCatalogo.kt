@@ -126,7 +126,7 @@ fun CatalogoCategoryStoryCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = getCategoryStoryIcon(category),
+                    imageVector = category.icon,
                     contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(12.dp)
