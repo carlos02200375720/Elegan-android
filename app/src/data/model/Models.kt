@@ -279,15 +279,3 @@ data class UserProfile(
     val city: String = "",
     val updatedAt: String? = null
 )
-
-enum class StoreCategory(val id: String, val title: String, val iconName: String) {
-    TODO("todo", "Todo", "grid_view"),
-    GORRA("gorra", "Gorras & Boinas", "checkroom"),
-    GAFA("gafa", "Gafas de Sol", "visibility"),
-    CAMISA("camisa", "Camisas & Trajes", "dry_cleaning"),
-    CORREA("correa", "Correas de Cuero", "straighten"),
-    PANTALONE("pantalone", "Pantalones de Vestir", "styler"),
-    ZAPATO("zapato", "Zapatos Oxford", "ice_skating"),
-    INTERIORE("interiore", "Ropa Interior", "layers"),
-    PERFUME("perfume", "Perfumes & Fragancias", "spa")
-}
