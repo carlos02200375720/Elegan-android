@@ -67,7 +67,6 @@ internal data class PerfilActualizadoRespuesta(
 )
 
 internal interface EleganAuthApi {
-    // 1. Autenticación (/api/movil/auth)
     @POST("api/movil/auth/register")
     suspend fun register(@Body request: RegistroRequest): AuthResponse
 
@@ -83,18 +82,18 @@ internal interface EleganAuthApi {
     @POST("api/movil/auth/logout")
     suspend fun logout(@Header("Authorization") authorization: String)
 
-    // 2. Productos (/api/movil/products)
     @GET("api/movil/products")
     suspend fun products(): Map<String, Any?>
 
     @GET("api/movil/products/{product_id}")
     suspend fun productById(@Path("product_id") productId: String): Map<String, Any?>
 
-    // 3. Anuncios (/api/movil/announcements)
+    @GET("api/movil/categories")
+    suspend fun categories(): Map<String, Any?>
+
     @GET("api/movil/announcements")
     suspend fun announcements(): Map<String, Any?>
 
-    // 4. Carrito (/api/movil/cart)
     @GET("api/movil/cart")
     suspend fun getCart(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -120,7 +119,6 @@ internal interface EleganAuthApi {
     @DELETE("api/movil/cart")
     suspend fun clearCart(@Header("Authorization") authorization: String): Map<String, Any?>
 
-    // 5. Productos guardados (/api/movil/saved)
     @GET("api/movil/saved")
     suspend fun getSaved(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -131,7 +129,6 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
-    // 6. Likes de publicaciones (/api/movil/likes)
     @GET("api/movil/likes")
     suspend fun getLikes(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -148,7 +145,6 @@ internal interface EleganAuthApi {
         @retrofit2.http.Query("productIds") productIds: List<String>
     ): Map<String, Any?>
 
-    // 7. Comentarios de publicaciones (/api/movil/comments)
     @GET("api/movil/comments/{product_id}")
     suspend fun getPublicationComments(
         @Header("Authorization") authorization: String,
@@ -162,7 +158,6 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
-    // 7. Usuario (/api/movil/usuario)
     @GET("api/movil/usuario")
     suspend fun profile(@Header("Authorization") authorization: String): PerfilRespuesta
 
@@ -172,11 +167,9 @@ internal interface EleganAuthApi {
         @Body request: PerfilActualizarRequest
     ): PerfilActualizadoRespuesta
 
-    // 8. Órdenes (/api/movil/orders) — Nota: POST /api/movil/orders devuelve HTTP 410 (usar PayPal)
     @GET("api/movil/orders")
     suspend fun getOrders(@Header("Authorization") authorization: String): Map<String, Any?>
 
-    // 9. Pagos PayPal (/api/movil/payments/paypal)
     @POST("api/movil/payments/paypal/orders")
     suspend fun createPayPalOrder(
         @Header("Authorization") authorization: String,
@@ -190,7 +183,6 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
     ): Map<String, Any?>
 
-    // 10. Mensajes (/api/movil/messages)
     @GET("api/movil/messages")
     suspend fun getMessages(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -200,7 +192,6 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
-    // 11. Multimedia (/api/movil/media) — Requiere rol admin o superadmin
     @Multipart
     @POST("api/movil/media")
     suspend fun uploadMedia(
