@@ -1,6 +1,5 @@
 package com.example.ui
 
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -26,31 +25,15 @@ internal class EstadoFormularioVerificacion(
     var address by mutableStateOf(initialAddress)
     var city by mutableStateOf(initialCity)
 
-    val paymentOptions = listOf(
-        OPCION_PAGO_PAYPAL,
-        OPCION_PAGO_TARJETA,
-        OPCION_PAGO_CONTRAENTREGA,
-        OPCION_PAGO_TRANSFERENCIA
-    )
+    val paymentOptions = listOf(OPCION_PAGO_PAYPAL)
     var selectedPayment by mutableStateOf(paymentOptions[0])
-    var isSubmitting by mutableStateOf(false)
-
     var showPayPalPage by mutableStateOf(false)
-    var showBankTransferPage by mutableStateOf(false)
-    var showCardPaymentPage by mutableStateOf(false)
-    var showCashOnDeliveryPage by mutableStateOf(false)
-    var showProofDisclosureDialog by mutableStateOf(false)
-    var paymentProofUri by mutableStateOf<Uri?>(null)
 
     fun isDeliveryFormValid(): Boolean =
         customerName.isNotBlank() && email.isNotBlank() && address.isNotBlank() && city.isNotBlank()
 
-    fun mensajeCampoFaltante(option: String): String = when (option) {
-        OPCION_PAGO_PAYPAL -> "Completa los datos de entrega para continuar con el pago por PayPal."
-        OPCION_PAGO_TARJETA -> "Completa los datos de entrega para continuar con el pago con tarjeta."
-        OPCION_PAGO_CONTRAENTREGA -> "Completa los datos de entrega para ver las instrucciones de pago contra entrega."
-        else -> "Completa los datos de entrega para continuar con la transferencia."
-    }
+    fun mensajeCampoFaltante(): String =
+        "Completa los datos de entrega para continuar con el pago por PayPal."
 }
 
 @Composable

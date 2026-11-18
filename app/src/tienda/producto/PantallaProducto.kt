@@ -34,8 +34,8 @@ fun ProductoScreen(
     cartItemCount: Long,
     isSaved: Boolean = false,
     onToggleSave: ((Result<Boolean>) -> Unit) -> Unit = {},
-    onAddToCart: (ProductJson, String, String, Long) -> Unit,
-    onBuyNow: (ProductJson, String, String, Long) -> Unit,
+    onAddToCart: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
+    onBuyNow: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCart: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -53,23 +53,42 @@ fun ProductoScreen(
     val mediaItems = remember(product) { getProductMediaItems(product) }
     val pagerState = rememberPagerState(pageCount = { mediaItems.size })
 
+    fun notifyMessage(message: String) {
+        if (notifier != null) {
+            notifier.show(message)
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar(message)
+            }
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
             BarraInferiorCompraProducto(
                 onAddToCart = {
-                    onAddToCart(product, selectedSize, selectedColor, quantity)
-                    if (notifier != null) {
-                        notifier.show("¡Añadido al carrito con éxito!")
-                    } else {
-                        scope.launch {
-                            snackbarHostState.showSnackbar("¡Añadido al carrito con éxito!")
+                    onAddToCart(product, selectedSize, selectedColor, quantity) { result ->
+                        if (result.isSuccess) {
+                            notifyMessage("¡Añadido al carrito con éxito!")
+                        } else {
+                            notifyMessage(
+                                result.exceptionOrNull()?.localizedMessage?.takeIf { it.isNotBlank() }
+                                    ?: "No se pudo agregar al carrito. Verifica tu conexión."
+                            )
                         }
                     }
                 },
                 onBuyNow = {
-                    onBuyNow(product, selectedSize, selectedColor, quantity)
+                    onBuyNow(product, selectedSize, selectedColor, quantity) { result ->
+                        if (result.isFailure) {
+                            notifyMessage(
+                                result.exceptionOrNull()?.localizedMessage?.takeIf { it.isNotBlank() }
+                                    ?: "No se pudo sincronizar el carrito con el servidor."
+                            )
+                        }
+                    }
                 }
             )
         },

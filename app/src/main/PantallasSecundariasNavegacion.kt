@@ -37,6 +37,7 @@ internal fun PantallasSecundariasNavegacion(
     val products by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState()
     val cartItems by viewModel.cartItems.collectAsState()
+    val cartError by viewModel.cartError.collectAsState()
     val messages by viewModel.messages.collectAsState()
     val userProfile by viewModel.userProfile.collectAsState()
     val savedProductIds by viewModel.savedProductIds.collectAsState()
@@ -88,10 +89,16 @@ internal fun PantallasSecundariasNavegacion(
                         cartItemCount = cartItems.sumOf { it.quantity },
                         isSaved = savedProductIds.contains(prodId),
                         onToggleSave = { onResult -> viewModel.toggleSaveProduct(prodId, onResult) },
-                        onAddToCart = { p, s, color, q -> viewModel.addToCart(p, s, q, color) },
-                        onBuyNow = { p, s, color, q ->
-                            viewModel.addToCart(p, s, q, color)
-                            onNavigateTo(Screen.CARRITO)
+                        onAddToCart = { p, s, color, q, onResult ->
+                            viewModel.addToCart(p, s, q, color, onResult)
+                        },
+                        onBuyNow = { p, s, color, q, onResult ->
+                            viewModel.addToCart(p, s, q, color) { result ->
+                                onResult(result)
+                                if (result.isSuccess) {
+                                    onNavigateTo(Screen.CARRITO)
+                                }
+                            }
                         },
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         onBack = { onNavigateTo(Screen.CATALOGO) }
@@ -104,6 +111,8 @@ internal fun PantallasSecundariasNavegacion(
             Screen.CARRITO -> {
                 CarritoScreen(
                     cartItems = cartItems,
+                    cartError = cartError,
+                    onRetrySync = { viewModel.refreshCart() },
                     onUpdateQuantity = { id, qty -> viewModel.updateCartQuantity(id, qty) },
                     onRemoveItem = { id -> viewModel.removeFromCart(id) },
                     onNavigateToVerificasion = { sub, disc, ship, tot ->
@@ -159,21 +168,6 @@ internal fun PantallasSecundariasNavegacion(
                         )
                     },
                     onClearPayPalState = { viewModel.clearPayPalState() },
-                    onConfirmOrder = { name, email, phone, addr, city, payMethod, paymentProofUri ->
-                        viewModel.placeOrder(
-                            customerName = name,
-                            email = email,
-                            phone = phone,
-                            address = addr,
-                            city = city,
-                            paymentMethod = payMethod,
-                            total = checkoutTotal,
-                            itemCount = totalItemCount,
-                            itemsSummary = itemsSummary,
-                            paymentProofUri = paymentProofUri,
-                            onSuccess = { onNavigateTo(Screen.GRACIA) }
-                        )
-                    },
                     onBack = { onNavigateTo(Screen.CARRITO) }
                 )
             }

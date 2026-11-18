@@ -1,10 +1,6 @@
 package com.example.ui
 
-import android.content.Context
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -26,13 +22,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CartItem
 import com.example.data.model.PayPalOrderSession
 import com.example.data.model.UserProfile
-import com.example.data.model.defaultBankAccounts
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,42 +57,21 @@ fun VerificasionScreen(
         city: String
     ) -> Unit = { _, _, _, _, _, _ -> },
     onClearPayPalState: () -> Unit = {},
-    onConfirmOrder: (name: String, email: String, phone: String, address: String, city: String, payment: String, paymentProofUri: String) -> Unit,
     onBack: () -> Unit
 ) {
-    val context = LocalContext.current
     val estado = rememberEstadoFormularioVerificacion(userProfile = userProfile)
-    val legalPrefs = remember(context) { context.getSharedPreferences("elegan_legal_prefs", Context.MODE_PRIVATE) }
-    val bankAccounts = remember { defaultBankAccounts() }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    val proofPickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) estado.paymentProofUri = uri }
-
-    fun openPaymentFlow(option: String, missingMsg: String) {
+    fun openPayPalCheckout(missingMsg: String) {
         if (!estado.isDeliveryFormValid()) {
             scope.launch { snackbarHostState.showSnackbar(missingMsg) }
             return
         }
-        when (option) {
-            OPCION_PAGO_PAYPAL -> estado.showPayPalPage = true
-            OPCION_PAGO_TARJETA -> estado.showCardPaymentPage = true
-            OPCION_PAGO_CONTRAENTREGA -> estado.showCashOnDeliveryPage = true
-            OPCION_PAGO_TRANSFERENCIA -> estado.showBankTransferPage = true
-            else -> {
-                estado.isSubmitting = true
-                onConfirmOrder(estado.customerName, estado.email, estado.phone, estado.address, estado.city, option, "")
-            }
-        }
+        estado.showPayPalPage = true
     }
 
-    val anyOverlayOpen = estado.showPayPalPage ||
-        estado.showBankTransferPage ||
-        estado.showCardPaymentPage ||
-        estado.showCashOnDeliveryPage
-    BackHandler(enabled = !anyOverlayOpen) { onBack() }
+    BackHandler(enabled = !estado.showPayPalPage) { onBack() }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -108,9 +81,9 @@ fun VerificasionScreen(
             bottomBar = {
                 BarraInferiorConfirmarPago(
                     total = total,
-                    isSubmitting = estado.isSubmitting || isProcessingPayPal,
+                    isSubmitting = isProcessingPayPal,
                     onConfirmClick = {
-                        openPaymentFlow(estado.selectedPayment, "Por favor completa los datos de entrega requeridos.")
+                        openPayPalCheckout("Por favor completa los datos de entrega requeridos.")
                     }
                 )
             },
@@ -149,13 +122,12 @@ fun VerificasionScreen(
                         SeccionMetodoPago(
                             paymentOptions = estado.paymentOptions,
                             selectedPayment = estado.selectedPayment,
-                            paymentProofUri = estado.paymentProofUri,
                             onSelectOption = { opt ->
                                 estado.selectedPayment = opt
-                                openPaymentFlow(opt, estado.mensajeCampoFaltante(opt))
+                                openPayPalCheckout(estado.mensajeCampoFaltante())
                             },
-                            onOpenSelectedAction = { opt ->
-                                openPaymentFlow(opt, "Por favor completa los datos de entrega requeridos.")
+                            onOpenSelectedAction = {
+                                openPayPalCheckout("Por favor completa los datos de entrega requeridos.")
                             }
                         )
                     }
@@ -166,13 +138,10 @@ fun VerificasionScreen(
 
         PanelesDeslizantesPago(
             showPayPalPage = estado.showPayPalPage,
-            showBankTransferPage = estado.showBankTransferPage,
-            showCardPaymentPage = estado.showCardPaymentPage,
-            showCashOnDeliveryPage = estado.showCashOnDeliveryPage,
-            total = total, customerName = estado.customerName, email = estado.email,
-            phone = estado.phone, address = estado.address, city = estado.city,
-            cartItems = cartItems, bankAccounts = bankAccounts, paymentProofUri = estado.paymentProofUri,
-            isSubmitting = estado.isSubmitting,
+            total = total,
+            customerName = estado.customerName,
+            email = estado.email,
+            cartItems = cartItems,
             payPalSession = payPalSession,
             isProcessingPayPal = isProcessingPayPal,
             payPalError = payPalError,
@@ -199,53 +168,7 @@ fun VerificasionScreen(
                     estado.address,
                     estado.city
                 )
-            },
-            onCloseBankTransfer = { estado.showBankTransferPage = false },
-            onCloseCardPayment = { estado.showCardPaymentPage = false },
-            onCloseCashOnDelivery = { estado.showCashOnDeliveryPage = false },
-            onPickPaymentProof = {
-                if (!legalPrefs.getBoolean("seen_transfer_proof_disclosure", false)) {
-                    estado.showProofDisclosureDialog = true
-                } else {
-                    proofPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                }
-            },
-            onRemovePaymentProof = { estado.paymentProofUri = null },
-            onConfirmTransferPayment = {
-                if (estado.paymentProofUri != null && !estado.isSubmitting) {
-                    estado.isSubmitting = true
-                    onConfirmOrder(
-                        estado.customerName, estado.email, estado.phone, estado.address, estado.city,
-                        estado.selectedPayment, estado.paymentProofUri.toString()
-                    )
-                }
-            },
-            onConfirmCardPayment = { label ->
-                if (!estado.isSubmitting) {
-                    estado.isSubmitting = true
-                    onConfirmOrder(estado.customerName, estado.email, estado.phone, estado.address, estado.city, label, "")
-                }
-            },
-            onConfirmCashOnDelivery = {
-                if (!estado.isSubmitting) {
-                    estado.isSubmitting = true
-                    onConfirmOrder(
-                        estado.customerName, estado.email, estado.phone, estado.address, estado.city,
-                        OPCION_PAGO_CONTRAENTREGA, ""
-                    )
-                }
             }
         )
-
-        if (estado.showProofDisclosureDialog) {
-            DialogoAvisoComprobante(
-                onConfirm = {
-                    legalPrefs.edit().putBoolean("seen_transfer_proof_disclosure", true).apply()
-                    estado.showProofDisclosureDialog = false
-                    proofPickerLauncher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                },
-                onDismiss = { estado.showProofDisclosureDialog = false }
-            )
-        }
     }
 }

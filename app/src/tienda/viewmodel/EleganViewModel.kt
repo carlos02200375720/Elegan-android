@@ -44,6 +44,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val publicationComments: StateFlow<List<PublicationComment>> = interaccionesCtrl.publicationComments
 
     val cartItems: StateFlow<List<CartItem>> = pedidosCtrl.cartItems
+    val cartError: StateFlow<String?> = pedidosCtrl.cartError
     val orders: StateFlow<List<Order>> = pedidosCtrl.orders
     val lastCreatedOrderId: StateFlow<String?> = pedidosCtrl.lastCreatedOrderId
     val lastOrderPaymentMethod: StateFlow<String> = pedidosCtrl.lastOrderPaymentMethod
@@ -77,7 +78,9 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshCategories() = catalogoCtrl.refreshCategories()
 
-    fun refreshCart() = pedidosCtrl.refreshCart()
+    fun refreshCart(onResult: (Result<Unit>) -> Unit = {}) = pedidosCtrl.refreshCart(onResult)
+
+    fun clearCartError() = pedidosCtrl.clearCartError()
 
     fun refreshOrders() = pedidosCtrl.refreshOrders()
 
@@ -108,15 +111,26 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun recordPublicationShare(productId: String, onResult: (Result<Unit>) -> Unit = {}) =
         interaccionesCtrl.recordPublicationShare(productId, onResult)
 
-    fun addToCart(product: ProductJson, size: String, quantity: Long = 1L, color: String = "") =
-        pedidosCtrl.addToCart(product, size, quantity, color)
+    fun addToCart(
+        product: ProductJson,
+        size: String,
+        quantity: Long = 1L,
+        color: String = "",
+        onResult: (Result<Unit>) -> Unit = {}
+    ) = pedidosCtrl.addToCart(product, size, quantity, color, onResult)
 
-    fun updateCartQuantity(cartItemId: String, quantity: Long) =
-        pedidosCtrl.updateCartQuantity(cartItemId, quantity)
+    fun updateCartQuantity(
+        cartItemId: String,
+        quantity: Long,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) = pedidosCtrl.updateCartQuantity(cartItemId, quantity, onResult)
 
-    fun removeFromCart(cartItemId: String) = pedidosCtrl.removeFromCart(cartItemId)
+    fun removeFromCart(
+        cartItemId: String,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) = pedidosCtrl.removeFromCart(cartItemId, onResult)
 
-    fun clearCart() = pedidosCtrl.clearCart()
+    fun clearCart(onResult: (Result<Unit>) -> Unit = {}) = pedidosCtrl.clearCart(onResult)
 
     fun setProductSaved(productId: String, isSaved: Boolean, onResult: (Result<Unit>) -> Unit = {}) =
         interaccionesCtrl.setProductSaved(productId, isSaved, onResult)
@@ -168,32 +182,6 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     fun clearPayPalState() = pedidosCtrl.clearPayPalState()
-
-    fun placeOrder(
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        paymentMethod: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        paymentProofUri: String = "",
-        onSuccess: (String) -> Unit
-    ) = pedidosCtrl.placeOrder(
-        customerName = customerName,
-        email = email,
-        phone = phone,
-        address = address,
-        city = city,
-        paymentMethod = paymentMethod,
-        total = total,
-        itemCount = itemCount,
-        itemsSummary = itemsSummary,
-        paymentProofUri = paymentProofUri,
-        onSuccess = onSuccess
-    )
 
     fun sendSupportMessage(text: String, mediaUri: String = "", mediaType: String = "") =
         perfilCtrl.sendSupportMessage(text, mediaUri, mediaType)

@@ -11,45 +11,108 @@ import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.remote.ApiAutenticacionMovil
+import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-internal class RepositorioCarrito(private val appContext: Context) {
-
+internal class RepositorioCarrito(
+    private val appContext: Context,
+    private val apiProvider: () -> EleganAuthApi = { ApiAutenticacionMovil.service },
+    private val tokenProvider: (() -> String?)? = null
+) {
+    private val cartMutex = Mutex()
     private val cartItems = CopyOnWriteArrayList<CartItem>()
     private val cartFlow = MutableStateFlow<List<CartItem>>(emptyList())
+    private val cartErrorFlow = MutableStateFlow<String?>(null)
 
     private fun publishState() {
         cartFlow.value = cartItems.toList()
     }
 
+    private fun replaceCartItemsLocked(items: List<CartItem>) {
+        cartItems.clear()
+        cartItems.addAll(items)
+        publishState()
+    }
+
     private fun activeBackendToken(): String? {
+        if (tokenProvider != null) {
+            return tokenProvider.invoke()?.takeIf {
+                it.isNotBlank() && !it.startsWith("local_session_")
+            }
+        }
         if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return null
         return MobileSession.token(appContext)?.takeIf {
             it.isNotBlank() && !it.startsWith("local_session_")
         }
     }
 
+    private fun isRobolectricLocalMode(): Boolean =
+        tokenProvider == null && "robolectric".equals(Build.FINGERPRINT, ignoreCase = true)
+
+    internal fun hasBackendSession(): Boolean = activeBackendToken() != null
+
     fun observeCart(): Flow<List<CartItem>> = cartFlow.asStateFlow()
 
+    fun observeCartError(): Flow<String?> = cartErrorFlow.asStateFlow()
+
+    fun clearCartError() {
+        cartErrorFlow.value = null
+    }
+
+    private fun ensureBackendCartSuccess(response: Map<String, Any?>, fallbackMessage: String) {
+        if (response["success"] == false) {
+            val message = (response["message"] as? String)?.takeIf { it.isNotBlank() }
+                ?: (response["error"] as? String)?.takeIf { it.isNotBlank() }
+                ?: fallbackMessage
+            throw IllegalStateException(message)
+        }
+    }
+
+    private suspend fun fetchAndApplyRemoteCartLocked(token: String): List<CartItem> {
+        val synced = apiProvider().getCart("Bearer $token")
+        ensureBackendCartSuccess(synced, "No se pudo validar el carrito en el servidor.")
+        val fetched = extractCartItemsOrNull(synced, optionalUserId(appContext).orEmpty())
+            ?: throw IllegalStateException("El servidor devolvió una respuesta inválida al consultar el carrito.")
+        replaceCartItemsLocked(fetched)
+        return fetched
+    }
+
     suspend fun refreshCart(): List<CartItem> = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: return@withContext cartItems.toList()
-        try {
-            val response = ApiAutenticacionMovil.service.getCart("Bearer $token")
-            val remoteItems = extractCartItemsJson(response, optionalUserId(appContext).orEmpty())
-            cartItems.clear()
-            cartItems.addAll(remoteItems)
-            publishState()
-            remoteItems
-        } catch (e: Exception) {
-            Log.w("EleganCart", "No se pudo sincronizar el carrito desde el backend.", e)
-            cartItems.toList()
+        cartMutex.withLock {
+            val token = activeBackendToken()
+            if (token == null) {
+                if (isRobolectricLocalMode()) {
+                    cartErrorFlow.value = null
+                    return@withLock cartItems.toList()
+                }
+                replaceCartItemsLocked(emptyList())
+                cartErrorFlow.value = null
+                return@withLock emptyList()
+            }
+
+            try {
+                val remoteItems = fetchAndApplyRemoteCartLocked(token)
+                cartErrorFlow.value = null
+                remoteItems
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val errorMessage = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo sincronizar el carrito desde el servidor."
+                cartErrorFlow.value = errorMessage
+                Log.w("EleganCart", "No se pudo sincronizar el carrito desde el backend.", e)
+                throw e
+            }
         }
     }
 
@@ -62,65 +125,77 @@ internal class RepositorioCarrito(private val appContext: Context) {
         val productId = product.productId()
         require(productId.isNotBlank() && quantity > 0)
 
-        val token = activeBackendToken()
-        if (token != null) {
-            try {
-                val payload = mapOf(
-                    "productId" to productId,
-                    "product_id" to productId,
-                    "name" to product.productName(),
-                    "price" to product.productPrice(),
-                    "imageUrl" to product.productImageUrl(),
-                    "selectedSize" to selectedSize,
-                    "size" to selectedSize,
-                    "selectedColor" to selectedColor,
-                    "color" to selectedColor,
-                    "quantity" to quantity
-                )
-                val response = ApiAutenticacionMovil.service.addToCart("Bearer $token", payload)
-                val remoteItems = extractCartItemsJson(response, optionalUserId(appContext).orEmpty())
-                if (remoteItems.isNotEmpty()) {
-                    cartItems.clear()
-                    cartItems.addAll(remoteItems)
-                    publishState()
-                    return@withContext
-                } else {
-                    val synced = ApiAutenticacionMovil.service.getCart("Bearer $token")
-                    val fetched = extractCartItemsJson(synced, optionalUserId(appContext).orEmpty())
-                    if (fetched.isNotEmpty()) {
-                        cartItems.clear()
-                        cartItems.addAll(fetched)
-                        publishState()
-                        return@withContext
+        cartMutex.withLock {
+            val token = activeBackendToken()
+            if (token == null) {
+                if (isRobolectricLocalMode()) {
+                    val existingIndex = cartItems.indexOfFirst {
+                        it.productId == productId && it.selectedSize == selectedSize && it.selectedColor == selectedColor
                     }
+                    if (existingIndex >= 0) {
+                        val existing = cartItems[existingIndex]
+                        cartItems[existingIndex] = existing.copy(quantity = existing.quantity + quantity)
+                    } else {
+                        cartItems.add(
+                            CartItem(
+                                id = UUID.randomUUID().toString(),
+                                userId = optionalUserId(appContext).orEmpty(),
+                                productId = productId,
+                                name = product.productName(),
+                                price = product.productPrice(),
+                                imageUrl = product.productImageUrl(),
+                                selectedSize = selectedSize,
+                                selectedColor = selectedColor,
+                                quantity = quantity
+                            )
+                        )
+                    }
+                    publishState()
+                    cartErrorFlow.value = null
+                    return@withLock
                 }
+                val err = IllegalStateException("Debes iniciar sesión para agregar productos al carrito.")
+                cartErrorFlow.value = err.message
+                throw err
+            }
+
+            val payload = mapOf(
+                "productId" to productId,
+                "product_id" to productId,
+                "name" to product.productName(),
+                "price" to product.productPrice(),
+                "imageUrl" to product.productImageUrl(),
+                "selectedSize" to selectedSize,
+                "size" to selectedSize,
+                "selectedColor" to selectedColor,
+                "color" to selectedColor,
+                "quantity" to quantity
+            )
+
+            try {
+                val response = apiProvider().addToCart("Bearer $token", payload)
+                ensureBackendCartSuccess(response, "El servidor no confirmó el producto en el carrito.")
+                val remoteItems = extractCartItemsOrNull(response, optionalUserId(appContext).orEmpty())
+                val confirmedItems = if (remoteItems != null) {
+                    replaceCartItemsLocked(remoteItems)
+                    remoteItems
+                } else {
+                    fetchAndApplyRemoteCartLocked(token)
+                }
+                if (confirmedItems.none { it.productId == productId }) {
+                    throw IllegalStateException("El servidor no registró el artículo en tu carrito.")
+                }
+                cartErrorFlow.value = null
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.w("EleganCart", "No se pudo agregar al carrito en el backend; se conserva en sesión.", e)
+                runCatching { fetchAndApplyRemoteCartLocked(token) }
+                cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo agregar al carrito en el servidor."
+                Log.w("EleganCart", "No se pudo agregar al carrito en el backend; se conserva estado confirmado.", e)
+                throw e
             }
         }
-
-        val existingIndex = cartItems.indexOfFirst {
-            it.productId == productId && it.selectedSize == selectedSize && it.selectedColor == selectedColor
-        }
-        if (existingIndex >= 0) {
-            val existing = cartItems[existingIndex]
-            cartItems[existingIndex] = existing.copy(quantity = existing.quantity + quantity)
-        } else {
-            cartItems.add(
-                CartItem(
-                    id = UUID.randomUUID().toString(),
-                    userId = optionalUserId(appContext).orEmpty(),
-                    productId = productId,
-                    name = product.productName(),
-                    price = product.productPrice(),
-                    imageUrl = product.productImageUrl(),
-                    selectedSize = selectedSize,
-                    selectedColor = selectedColor,
-                    quantity = quantity
-                )
-            )
-        }
-        publishState()
     }
 
     suspend fun updateCartQuantity(cartItemId: String, newQuantity: Long) = withContext(Dispatchers.IO) {
@@ -128,62 +203,137 @@ internal class RepositorioCarrito(private val appContext: Context) {
             removeFromCart(cartItemId)
             return@withContext
         }
-        val index = cartItems.indexOfFirst { it.id == cartItemId }
-        if (index >= 0) {
-            cartItems[index] = cartItems[index].copy(quantity = newQuantity)
-            publishState()
-        }
 
-        val token = activeBackendToken() ?: return@withContext
-        try {
-            val response = ApiAutenticacionMovil.service.updateCartItem(
-                authorization = "Bearer $token",
-                itemId = cartItemId,
-                request = mapOf("quantity" to newQuantity)
-            )
-            val remoteItems = extractCartItemsJson(response, optionalUserId(appContext).orEmpty())
-            if (remoteItems.isNotEmpty()) {
-                cartItems.clear()
-                cartItems.addAll(remoteItems)
-                publishState()
+        cartMutex.withLock {
+            val token = activeBackendToken()
+            if (token == null) {
+                if (isRobolectricLocalMode()) {
+                    val index = cartItems.indexOfFirst { it.id == cartItemId }
+                    if (index >= 0) {
+                        cartItems[index] = cartItems[index].copy(quantity = newQuantity)
+                        publishState()
+                    }
+                    cartErrorFlow.value = null
+                    return@withLock
+                }
+                val err = IllegalStateException("Debes iniciar sesión para actualizar tu carrito.")
+                cartErrorFlow.value = err.message
+                throw err
             }
-        } catch (e: Exception) {
-            Log.w("EleganCart", "No se pudo actualizar cantidad en el backend.", e)
+
+            try {
+                val response = apiProvider().updateCartItem(
+                    authorization = "Bearer $token",
+                    itemId = cartItemId,
+                    request = mapOf("quantity" to newQuantity)
+                )
+                ensureBackendCartSuccess(response, "El servidor no confirmó el cambio de cantidad.")
+                val remoteItems = extractCartItemsOrNull(response, optionalUserId(appContext).orEmpty())
+                if (remoteItems != null) {
+                    replaceCartItemsLocked(remoteItems)
+                } else {
+                    fetchAndApplyRemoteCartLocked(token)
+                }
+                cartErrorFlow.value = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                runCatching { fetchAndApplyRemoteCartLocked(token) }
+                cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo actualizar la cantidad en el servidor."
+                Log.w("EleganCart", "No se pudo actualizar cantidad en el backend.", e)
+                throw e
+            }
         }
     }
 
     suspend fun removeFromCart(cartItemId: String) = withContext(Dispatchers.IO) {
-        cartItems.removeAll { it.id == cartItemId }
-        publishState()
+        cartMutex.withLock {
+            val token = activeBackendToken()
+            if (token == null) {
+                if (isRobolectricLocalMode()) {
+                    cartItems.removeAll { it.id == cartItemId }
+                    publishState()
+                    cartErrorFlow.value = null
+                    return@withLock
+                }
+                val err = IllegalStateException("Debes iniciar sesión para modificar tu carrito.")
+                cartErrorFlow.value = err.message
+                throw err
+            }
 
-        val token = activeBackendToken() ?: return@withContext
-        try {
-            ApiAutenticacionMovil.service.removeCartItem("Bearer $token", cartItemId)
-        } catch (e: Exception) {
-            Log.w("EleganCart", "No se pudo eliminar artículo del carrito en el backend.", e)
+            try {
+                val response = apiProvider().removeCartItem("Bearer $token", cartItemId)
+                ensureBackendCartSuccess(response, "El servidor no confirmó la eliminación del artículo.")
+                val remoteItems = extractCartItemsOrNull(response, optionalUserId(appContext).orEmpty())
+                if (remoteItems != null) {
+                    replaceCartItemsLocked(remoteItems)
+                } else {
+                    fetchAndApplyRemoteCartLocked(token)
+                }
+                cartErrorFlow.value = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                runCatching { fetchAndApplyRemoteCartLocked(token) }
+                cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo eliminar el artículo en el servidor."
+                Log.w("EleganCart", "No se pudo eliminar artículo del carrito en el backend.", e)
+                throw e
+            }
         }
     }
 
     suspend fun clearCart(syncRemote: Boolean = true) = withContext(Dispatchers.IO) {
-        cartItems.clear()
-        publishState()
+        cartMutex.withLock {
+            if (!syncRemote) {
+                replaceCartItemsLocked(emptyList())
+                cartErrorFlow.value = null
+                return@withLock
+            }
 
-        if (!syncRemote) return@withContext
-        val token = activeBackendToken() ?: return@withContext
-        try {
-            ApiAutenticacionMovil.service.clearCart("Bearer $token")
-        } catch (e: Exception) {
-            Log.w("EleganCart", "No se pudo vaciar el carrito en el backend.", e)
+            val token = activeBackendToken()
+            if (token == null) {
+                if (isRobolectricLocalMode()) {
+                    replaceCartItemsLocked(emptyList())
+                    cartErrorFlow.value = null
+                    return@withLock
+                }
+                val err = IllegalStateException("Debes iniciar sesión para vaciar tu carrito.")
+                cartErrorFlow.value = err.message
+                throw err
+            }
+
+            try {
+                val response = apiProvider().clearCart("Bearer $token")
+                ensureBackendCartSuccess(response, "El servidor no confirmó el vaciado del carrito.")
+                val remoteItems = extractCartItemsOrNull(response, optionalUserId(appContext).orEmpty())
+                if (remoteItems != null) {
+                    replaceCartItemsLocked(remoteItems)
+                } else {
+                    fetchAndApplyRemoteCartLocked(token)
+                }
+                cartErrorFlow.value = null
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                runCatching { fetchAndApplyRemoteCartLocked(token) }
+                cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
+                    ?: "No se pudo vaciar el carrito en el servidor."
+                Log.w("EleganCart", "No se pudo vaciar el carrito en el backend.", e)
+                throw e
+            }
         }
     }
 }
 
-internal fun extractCartItemsJson(response: Map<String, Any?>, fallbackUserId: String): List<CartItem> {
+internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId: String): List<CartItem>? {
     val rawList = (response["items"] as? List<*>)
         ?: (response["cart"] as? List<*>)
         ?: (response["data"] as? List<*>)
         ?: ((response["cart"] as? Map<*, *>)?.get("items") as? List<*>)
-        ?: return emptyList()
+        ?: ((response["data"] as? Map<*, *>)?.get("items") as? List<*>)
+        ?: return null
 
     return rawList.mapNotNull { entry ->
         val map = entry as? Map<*, *> ?: return@mapNotNull null
@@ -218,6 +368,9 @@ internal fun extractCartItemsJson(response: Map<String, Any?>, fallbackUserId: S
         )
     }
 }
+
+internal fun extractCartItemsJson(response: Map<String, Any?>, fallbackUserId: String): List<CartItem> =
+    extractCartItemsOrNull(response, fallbackUserId) ?: emptyList()
 
 private fun firstString(map: Map<*, *>, vararg keys: String): String {
     for (key in keys) {

@@ -64,6 +64,10 @@ class EleganRepository(context: Context) {
 
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
 
+    fun observeCartError(): Flow<String?> = carritoRepo.observeCartError()
+
+    fun clearCartError() = carritoRepo.clearCartError()
+
     suspend fun refreshCart(): List<CartItem> = carritoRepo.refreshCart()
 
     suspend fun addToCart(
@@ -163,30 +167,6 @@ class EleganRepository(context: Context) {
         total = total,
         itemCount = itemCount,
         itemsSummary = itemsSummary
-    )
-
-    suspend fun createOrder(
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        paymentMethod: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        paymentProofUri: String = ""
-    ): String = pedidosRepo.createOrder(
-        customerName = customerName,
-        email = email,
-        phone = phone,
-        address = address,
-        city = city,
-        paymentMethod = paymentMethod,
-        total = total,
-        itemCount = itemCount,
-        itemsSummary = itemsSummary,
-        paymentProofUri = paymentProofUri
     )
 
     fun observeMessages(): Flow<List<SupportMessage>> = mensajesRepo.observeMessages()

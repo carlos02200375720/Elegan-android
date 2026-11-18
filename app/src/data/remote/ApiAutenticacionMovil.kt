@@ -228,14 +228,30 @@ internal object ApiAutenticacionMovil {
             .build()
     }
 
-    val service: EleganAuthApi by lazy {
-        val moshi = Moshi.Builder()
+    private val moshi: Moshi by lazy {
+        Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
+            .build()
+    }
+
+    val service: EleganAuthApi by lazy {
+        Retrofit.Builder()
+            .baseUrl(BuildConfig.ELEGAN_API_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(EleganAuthApi::class.java)
+    }
+
+    val uploadService: EleganAuthApi by lazy {
+        val uploadClient = okHttpClient.newBuilder()
+            .readTimeout(180, TimeUnit.SECONDS)
+            .writeTimeout(180, TimeUnit.SECONDS)
             .build()
 
         Retrofit.Builder()
             .baseUrl(BuildConfig.ELEGAN_API_BASE_URL)
-            .client(okHttpClient)
+            .client(uploadClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(EleganAuthApi::class.java)

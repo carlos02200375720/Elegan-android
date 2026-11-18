@@ -1,6 +1,5 @@
 package com.example.ui
 
-import android.net.Uri
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,11 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.LocalShipping
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,15 +35,11 @@ import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
 internal const val OPCION_PAGO_PAYPAL = "PayPal (Pago en Línea Seguro)"
-internal const val OPCION_PAGO_TARJETA = "Tarjeta de Crédito / Débito (Visa / Mastercard)"
-internal const val OPCION_PAGO_CONTRAENTREGA = "Pago Contra Entrega (Efectivo al recibir)"
-internal const val OPCION_PAGO_TRANSFERENCIA = "Transferencia Bancaria Inmediata"
 
 @Composable
 internal fun SeccionMetodoPago(
     paymentOptions: List<String>,
     selectedPayment: String,
-    paymentProofUri: Uri?,
     onSelectOption: (String) -> Unit,
     onOpenSelectedAction: (String) -> Unit
 ) {
@@ -94,38 +85,13 @@ internal fun SeccionMetodoPago(
             }
         }
 
-        when (selectedPayment) {
-            OPCION_PAGO_PAYPAL -> TarjetaAccionMetodoPago(
+        if (selectedPayment == OPCION_PAGO_PAYPAL) {
+            TarjetaAccionMetodoPago(
                 icon = Icons.Default.AccountBalanceWallet,
                 iconTint = Color(0xFF003087),
                 text = "Pagar con tu cuenta o tarjeta vía PayPal",
                 testTag = "open_paypal_payment_btn",
                 onClick = { onOpenSelectedAction(OPCION_PAGO_PAYPAL) }
-            )
-            OPCION_PAGO_TARJETA -> TarjetaAccionMetodoPago(
-                icon = Icons.Default.CreditCard,
-                iconTint = EleganBurgundy,
-                text = "Ingresar datos de tarjeta dentro de la app",
-                testTag = "open_card_payment_btn",
-                onClick = { onOpenSelectedAction(OPCION_PAGO_TARJETA) }
-            )
-            OPCION_PAGO_CONTRAENTREGA -> TarjetaAccionMetodoPago(
-                icon = Icons.Default.LocalShipping,
-                iconTint = EleganBurgundy,
-                text = "Ver instrucciones y compromiso contra entrega",
-                testTag = "open_cash_on_delivery_btn",
-                onClick = { onOpenSelectedAction(OPCION_PAGO_CONTRAENTREGA) }
-            )
-            OPCION_PAGO_TRANSFERENCIA -> TarjetaAccionMetodoPago(
-                icon = if (paymentProofUri != null) Icons.Default.CheckCircle else Icons.Default.AccountBalance,
-                iconTint = if (paymentProofUri != null) Color(0xFF2E7D32) else EleganBurgundy,
-                text = if (paymentProofUri != null) {
-                    "Comprobante adjuntado • Ver cuentas"
-                } else {
-                    "Ver cuentas bancarias y subir comprobante"
-                },
-                testTag = "open_bank_transfer_sheet_btn",
-                onClick = { onOpenSelectedAction(OPCION_PAGO_TRANSFERENCIA) }
             )
         }
     }

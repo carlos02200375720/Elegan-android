@@ -7,9 +7,10 @@ import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.PayPalOrderSession
 import com.example.data.remote.ApiAutenticacionMovil
+import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
-import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,12 +19,19 @@ import kotlinx.coroutines.withContext
 
 internal class RepositorioPedidos(
     private val appContext: Context,
-    private val carritoRepo: RepositorioCarrito
+    private val carritoRepo: RepositorioCarrito,
+    private val apiProvider: () -> EleganAuthApi = { ApiAutenticacionMovil.service },
+    private val tokenProvider: (() -> String?)? = null
 ) {
     private val ordersList = CopyOnWriteArrayList<Order>()
     private val ordersFlow = MutableStateFlow<List<Order>>(emptyList())
 
     private fun activeBackendToken(): String? {
+        if (tokenProvider != null) {
+            return tokenProvider.invoke()?.takeIf {
+                it.isNotBlank() && !it.startsWith("local_session_")
+            }
+        }
         if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return null
         return MobileSession.token(appContext)?.takeIf {
             it.isNotBlank() && !it.startsWith("local_session_")
@@ -35,12 +43,14 @@ internal class RepositorioPedidos(
     suspend fun refreshOrders(): List<Order> = withContext(Dispatchers.IO) {
         val token = activeBackendToken() ?: return@withContext ordersList.toList()
         try {
-            val response = ApiAutenticacionMovil.service.getOrders("Bearer $token")
+            val response = apiProvider().getOrders("Bearer $token")
             val remoteOrders = extractOrdersJson(response, optionalUserId(appContext).orEmpty())
             ordersList.clear()
             ordersList.addAll(remoteOrders)
             ordersFlow.value = ordersList.toList()
             remoteOrders
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             Log.w("EleganOrders", "No se pudieron obtener las órdenes desde el backend.", e)
             ordersList.toList()
@@ -62,8 +72,22 @@ internal class RepositorioPedidos(
         itemsSummary: String,
         cartItems: List<CartItem>
     ): PayPalOrderSession = withContext(Dispatchers.IO) {
-        val token = MobileSession.token(appContext)?.takeIf { it.isNotBlank() }
+        val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para realizar un pago con PayPal.")
+
+        val effectiveItems = if (carritoRepo.hasBackendSession()) {
+            val syncedCart = carritoRepo.refreshCart()
+            if (syncedCart.isEmpty()) {
+                throw IllegalStateException("Tu carrito está vacío en el servidor. Agrega productos antes de pagar con PayPal.")
+            }
+            syncedCart
+        } else {
+            cartItems
+        }
+
+        val effectiveItemCount = effectiveItems.sumOf { it.quantity }.coerceAtLeast(1L)
+        val effectiveSummary = effectiveItems.joinToString(", ") { "${it.quantity}x ${it.name}" }
+            .ifBlank { itemsSummary }
 
         val payload = mapOf(
             "customerName" to customerName.trim(),
@@ -75,13 +99,13 @@ internal class RepositorioPedidos(
             "total" to total,
             "amount" to total,
             "currency" to "USD",
-            "itemCount" to itemCount.coerceAtLeast(1L),
-            "itemsSummary" to itemsSummary,
+            "itemCount" to if (carritoRepo.hasBackendSession()) effectiveItemCount else itemCount.coerceAtLeast(1L),
+            "itemsSummary" to effectiveSummary,
             "returnUrl" to "elegan://paypal/return",
             "return_url" to "elegan://paypal/return",
             "cancelUrl" to "elegan://paypal/cancel",
             "cancel_url" to "elegan://paypal/cancel",
-            "items" to cartItems.map { item ->
+            "items" to effectiveItems.map { item ->
                 mapOf(
                     "productId" to item.productId,
                     "product_id" to item.productId,
@@ -94,10 +118,37 @@ internal class RepositorioPedidos(
             }
         )
 
-        val response = ApiAutenticacionMovil.service.createPayPalOrder(
-            authorization = "Bearer $token",
-            request = payload
-        )
+        val response = try {
+            apiProvider().createPayPalOrder(
+                authorization = "Bearer $token",
+                request = payload
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            if (errorBody.contains("CART_EMPTY", ignoreCase = true)) {
+                runCatching { carritoRepo.refreshCart() }
+                throw IllegalStateException(
+                    "Tu carrito en el servidor está vacío (CART_EMPTY). Verifica tus artículos e inténtalo de nuevo.",
+                    e
+                )
+            }
+            throw e
+        }
+        if (response["success"] == false) {
+            val code = (response["code"] as? String) ?: (response["error"] as? String) ?: ""
+            if (code.equals("CART_EMPTY", ignoreCase = true)) {
+                runCatching { carritoRepo.refreshCart() }
+                throw IllegalStateException(
+                    "Tu carrito en el servidor está vacío (CART_EMPTY). Verifica tus artículos e inténtalo de nuevo."
+                )
+            }
+            throw IllegalStateException(
+                (response["message"] as? String)?.takeIf { it.isNotBlank() }
+                    ?: "El servidor rechazó la creación de la orden de PayPal."
+            )
+        }
         extractPayPalSessionJson(response)
             ?: throw IllegalStateException("El servidor no devolvió los datos de aprobación de PayPal.")
     }
@@ -117,7 +168,7 @@ internal class RepositorioPedidos(
         itemsSummary: String
     ): String = withContext(Dispatchers.IO) {
         require(paypalOrderId.isNotBlank())
-        val token = MobileSession.token(appContext)?.takeIf { it.isNotBlank() }
+        val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para confirmar el pago con PayPal.")
 
         val payload = mapOf(
@@ -131,11 +182,14 @@ internal class RepositorioPedidos(
             "itemsSummary" to itemsSummary
         )
 
-        val response = ApiAutenticacionMovil.service.capturePayPalOrder(
+        val response = apiProvider().capturePayPalOrder(
             authorization = "Bearer $token",
             paypalOrderId = paypalOrderId,
             request = payload
         )
+        if (response["success"] == false) {
+            throw IllegalStateException("El servidor no confirmó la captura del pago en PayPal.")
+        }
         val createdOrderId = extractCapturedOrderIdJson(response) ?: paypalOrderId
 
         val capturedOrder = extractSingleOrderJson(response, optionalUserId(appContext).orEmpty())
@@ -158,45 +212,16 @@ internal class RepositorioPedidos(
         ordersList.removeAll { it.id == capturedOrder.id }
         ordersList.add(0, capturedOrder)
         ordersFlow.value = ordersList.toList()
-        carritoRepo.clearCart(syncRemote = true)
+        try {
+            carritoRepo.clearCart(syncRemote = true)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.w("EleganOrders", "Orden confirmada, pero falló limpiar el carrito en el backend.", e)
+            runCatching { carritoRepo.refreshCart() }
+        }
         refreshOrders()
         capturedOrder.id
-    }
-
-    suspend fun createOrder(
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        paymentMethod: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        paymentProofUri: String = ""
-    ): String {
-        val orderId = "order_" + UUID.randomUUID().toString().take(8)
-        val initialOrder = Order(
-            id = orderId,
-            userId = optionalUserId(appContext).orEmpty(),
-            customerName = customerName,
-            email = email,
-            phone = phone,
-            address = address,
-            city = city,
-            paymentMethod = paymentMethod,
-            paymentProofUrl = paymentProofUri,
-            total = total,
-            itemCount = itemCount.coerceAtLeast(1L),
-            status = "confirmado",
-            itemsSummary = itemsSummary,
-            createdAt = nowIsoUtc()
-        )
-
-        ordersList.add(0, initialOrder)
-        ordersFlow.value = ordersList.toList()
-        carritoRepo.clearCart()
-        return orderId
     }
 
     fun clearUserData() {
