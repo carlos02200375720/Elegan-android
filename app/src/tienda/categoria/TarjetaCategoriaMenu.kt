@@ -32,6 +32,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -69,12 +70,20 @@ internal fun TarjetaCategoriaMenu(
                     .background(if (catItem.id == "todo") EleganBurgundy else Color(0xFFF6EFE9)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = catItem.icon,
-                    contentDescription = catItem.title,
-                    tint = if (catItem.id == "todo") Color.White else EleganBurgundy,
-                    modifier = Modifier.size(if (isCompact) 21.dp else 24.dp)
-                )
+                if (!catItem.imageUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = catItem.imageUrl,
+                        contentDescription = catItem.title,
+                        modifier = Modifier.size(if (isCompact) 42.dp else 48.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = catItem.icon,
+                        contentDescription = catItem.title,
+                        tint = if (catItem.id == "todo") Color.White else EleganBurgundy,
+                        modifier = Modifier.size(if (isCompact) 21.dp else 24.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(if (isCompact) 12.dp else 16.dp))
