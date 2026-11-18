@@ -1,15 +1,7 @@
 package com.example.ui
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Accessibility
-import androidx.compose.material.icons.filled.Checkroom
-import androidx.compose.material.icons.filled.DryCleaning
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.IceSkating
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.data.model.ProductJson
 import com.example.data.remote.ApiAutenticacionMovil
@@ -20,9 +12,8 @@ data class CategoriaItem(
     val id: String,
     val title: String,
     val subtitle: String,
-    val icon: ImageVector,
-    val imageUrl: String? = null,
-    val icon: ImageVector = Icons.Default.GridView
+    val icon: ImageVector = Icons.Default.GridView,
+    val imageUrl: String? = null
 )
 
 suspend fun cargarCategoriasPublicadas(): List<CategoriaItem> {
@@ -32,7 +23,6 @@ suspend fun cargarCategoriasPublicadas(): List<CategoriaItem> {
         val id = item["id"]?.toString()?.trim().orEmpty()
         val name = item["name"]?.toString()?.trim().orEmpty()
         if (id.isBlank() || name.isBlank()) return@mapNotNull null
-        val known = storeCategoriesList.firstOrNull { it.id.equals(id, true) }
         CategoriaItem(
             id = id,
             title = name,
