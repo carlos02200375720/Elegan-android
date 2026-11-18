@@ -121,6 +121,12 @@ class EleganRepository(context: Context) {
     suspend fun recordPublicationShare(productId: String): Long =
         guardadosYLikesRepo.recordPublicationShare(productId)
 
+    suspend fun flushPendingVisitorShares(): Int =
+        guardadosYLikesRepo.flushPendingVisitorShares()
+
+    fun startPendingShareSync(scope: CoroutineScope) =
+        guardadosYLikesRepo.startPendingShareSync(scope)
+
     fun observeOrders(): Flow<List<Order>> = pedidosRepo.observeOrders()
 
     suspend fun refreshOrders(): List<Order> = pedidosRepo.refreshOrders()

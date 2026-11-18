@@ -2,6 +2,8 @@ package com.example
 
 import android.content.Intent
 import android.media.MediaPlayer
+import androidx.room.Room
+import com.example.data.local.EleganDatabase
 import com.example.data.model.ProductJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
@@ -41,6 +43,8 @@ import com.example.ui.components.EstadoReproductorVideo
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import java.io.IOException
+import java.util.UUID
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -615,6 +619,143 @@ class PruebasCatalogoYPublicacionesTest {
         val event = deferred.await()
         assertEquals("prod_shared_target", event.productId)
         assertEquals("req_123", event.requestId)
+    }
+
+    @Test
+    fun `test visitor pending share persists in Room across repository restart and retries without token reusing exact eventId`(): Unit = runBlocking {
+        val context = obtenerContextoPrueba()
+        val dbName = "elegan_test_shares_${UUID.randomUUID()}.db"
+        var isOffline = true
+        val requestsSent = mutableListOf<Triple<String?, String, Map<String, Any?>>>()
+
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun recordShare(
+                authorization: String?,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                requestsSent.add(Triple(authorization, productId, request))
+                if (isOffline) throw IOException("Sin conexión")
+                return mapOf("sharesCount" to 7)
+            }
+        }
+
+        val db1 = Room.databaseBuilder(context, EleganDatabase::class.java, dbName).build()
+        val repo1 = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = RepositorioEstadisticasPublicaciones(),
+            apiProvider = { fakeApi },
+            tokenProvider = { null },
+            pendingShareDaoProvider = { db1.pendingVisitorShareDao() }
+        )
+
+        val countWhileOffline = repo1.recordPublicationShare("prod_offline_1")
+        assertEquals(0L, countWhileOffline)
+
+        val persistedAfterFailure = db1.pendingVisitorShareDao().getPendingShares()
+        assertEquals(1, persistedAfterFailure.size)
+        val storedEvent = persistedAfterFailure.single()
+        assertEquals("prod_offline_1", storedEvent.productId)
+        assertFalse(storedEvent.eventId.isBlank())
+        assertFalse(storedEvent.visitorId.isBlank())
+        assertEquals(null, requestsSent.single().first)
+        assertEquals(storedEvent.eventId, requestsSent.single().third["eventId"])
+        db1.close()
+
+        // Simula reinicio de la app reabriendo la misma base Room y enviando al volver la conexión sin token
+        isOffline = false
+        val db2 = Room.databaseBuilder(context, EleganDatabase::class.java, dbName).build()
+        val repo2 = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = RepositorioEstadisticasPublicaciones(),
+            apiProvider = { fakeApi },
+            tokenProvider = { null },
+            pendingShareDaoProvider = { db2.pendingVisitorShareDao() }
+        )
+
+        val flushed = repo2.flushPendingVisitorShares()
+        assertEquals(1, flushed)
+        assertTrue(db2.pendingVisitorShareDao().getPendingShares().isEmpty())
+        assertEquals(7L, repo2.observePublicationStats().first()["prod_offline_1"]?.sharesCount)
+
+        val retryCall = requestsSent.last()
+        assertEquals(null, retryCall.first)
+        assertEquals("prod_offline_1", retryCall.second)
+        assertEquals(storedEvent.eventId, retryCall.third["eventId"])
+        assertEquals(storedEvent.visitorId, retryCall.third["visitorId"])
+        assertEquals(true, retryCall.third["isGuest"])
+
+        db2.close()
+        context.deleteDatabase(dbName)
+    }
+
+    @Test
+    fun `test persistent Room queue deletes only backend confirmed eventId and preserves failed events for idempotent retry`(): Unit = runBlocking {
+        val context = obtenerContextoPrueba()
+        val db = Room.inMemoryDatabaseBuilder(context, EleganDatabase::class.java).build()
+        var failProdA = true
+        var failProdB = true
+        val sentEventIds = mutableListOf<Pair<String, String>>()
+
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun recordShare(
+                authorization: String?,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                val eventId = request["eventId"] as String
+                sentEventIds.add(productId to eventId)
+                return when (productId) {
+                    "prod_a" -> {
+                        if (failProdA) throw IOException("Sin conexión")
+                        mapOf("success" to true, "sharesCount" to 3)
+                    }
+                    "prod_b" -> {
+                        if (failProdB) mapOf("success" to false)
+                        else mapOf("success" to true, "sharesCount" to 5)
+                    }
+                    else -> emptyMap()
+                }
+            }
+        }
+
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = RepositorioEstadisticasPublicaciones(),
+            apiProvider = { fakeApi },
+            tokenProvider = { null },
+            pendingShareDaoProvider = { db.pendingVisitorShareDao() }
+        )
+
+        repo.recordPublicationShare("prod_a")
+        repo.recordPublicationShare("prod_b")
+
+        val queued = db.pendingVisitorShareDao().getPendingShares()
+        assertEquals(2, queued.size)
+        val eventA = queued.first { it.productId == "prod_a" }
+        val eventB = queued.first { it.productId == "prod_b" }
+        assertTrue(eventA.eventId != eventB.eventId)
+
+        // Vuelve conexión pero backend solo confirma prod_a y rechaza (success=false) prod_b
+        failProdA = false
+        failProdB = true
+        val partialFlushed = repo.flushPendingVisitorShares()
+        assertEquals(1, partialFlushed)
+
+        val remainingAfterPartial = db.pendingVisitorShareDao().getPendingShares()
+        assertEquals(listOf(eventB.eventId), remainingAfterPartial.map { it.eventId })
+        assertEquals(3L, repo.observePublicationStats().first()["prod_a"]?.sharesCount)
+
+        // Segundo reintento: solo envía eventB con exactamente el mismo eventId y luego limpia la cola
+        sentEventIds.clear()
+        failProdB = false
+        val finalFlushed = repo.flushPendingVisitorShares()
+        assertEquals(1, finalFlushed)
+        assertEquals(listOf("prod_b" to eventB.eventId), sentEventIds)
+        assertTrue(db.pendingVisitorShareDao().getPendingShares().isEmpty())
+        assertEquals(5L, repo.observePublicationStats().first()["prod_b"]?.sharesCount)
+
+        db.close()
     }
 }
 

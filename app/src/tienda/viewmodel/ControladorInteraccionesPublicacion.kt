@@ -74,6 +74,7 @@ internal class ControladorInteraccionesPublicacion(
     private val currentProductIds = MutableStateFlow<List<String>>(emptyList())
 
     init {
+        repository.startPendingShareSync(scope)
         // El flujo de productos cambia al cargar/actualizar el catálogo, no al desplazar el feed.
         scope.launch {
             products
