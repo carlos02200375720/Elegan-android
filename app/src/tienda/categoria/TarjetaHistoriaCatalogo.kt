@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -42,7 +41,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun CatalogoCategoryStoryCard(
-    category: StoreCategory,
+    category: CategoriaItem,
     cardWidth: Dp,
     isSelected: Boolean,
     imageUrl: String? = null,
@@ -82,7 +81,7 @@ fun CatalogoCategoryStoryCard(
                 )
         ) {
             Icon(
-                imageVector = getCategoryStoryIcon(category),
+                imageVector = category.icon,
                 contentDescription = null,
                 tint = EleganGold.copy(alpha = 0.72f),
                 modifier = Modifier
