@@ -127,3 +127,4 @@ fun getCategoryStoryIcon(category: StoreCategory): ImageVector = when (category)
     StoreCategory.INTERIORE -> Icons.Default.Layers
     StoreCategory.PERFUME -> Icons.Default.Spa
 }
+fun getCategoryStoryIcon(category: CategoriaItem): ImageVector = category.icon
