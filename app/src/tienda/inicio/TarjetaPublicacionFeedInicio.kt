@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
 import com.example.data.model.productId
+import com.example.data.model.productCommentCount
 import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.ui.components.LocalEleganNotifier
@@ -32,7 +33,10 @@ internal fun ElementoPublicacionFeedInicio(
     val notifier = LocalEleganNotifier.current
 
     val currentLikes = stats?.likesCount?.toInt() ?: 0
-    val currentCommentCount = stats?.commentsCount?.toInt() ?: 0
+    val currentCommentCount = maxOf(
+        stats?.commentsCount ?: 0L,
+        product.productCommentCount()
+    ).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     val currentShareCount = stats?.sharesCount?.toInt() ?: 0
     val currentSaveCount = stats?.savesCount?.toInt() ?: 0
 
