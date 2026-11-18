@@ -12,6 +12,8 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.data.model.ProductJson
+import com.example.data.model.StoreCategory
+import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.model.productCategory
 import com.example.data.model.productImageUrl
 import androidx.compose.material.icons.filled.GridView
