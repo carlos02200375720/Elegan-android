@@ -20,7 +20,8 @@ data class CategoriaItem(
     val id: String,
     val title: String,
     val subtitle: String,
-    val icon: ImageVector
+    val icon: ImageVector,
+    val imageUrl: String? = null
 )
 
 val storeCategoriesList = listOf(
