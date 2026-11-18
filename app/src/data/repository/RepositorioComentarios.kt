@@ -1,12 +1,10 @@
 package com.example.data.repository
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import com.example.data.model.PublicationComment
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
-import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -23,7 +21,6 @@ internal class RepositorioComentarios(
     private val commentsUpdated = MutableSharedFlow<String>(extraBufferCapacity = 32)
 
     private fun activeBackendToken(): String? {
-        if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return null
         return MobileSession.token(appContext)?.takeIf {
             it.isNotBlank() && !it.startsWith("local_session_")
         }
@@ -68,21 +65,6 @@ internal class RepositorioComentarios(
         withContext(Dispatchers.IO) {
             val clean = text.trim()
             require(productId.isNotBlank() && clean.isNotEmpty() && clean.length <= 1000)
-
-            // Robolectric conserva un modo local para las pruebas automatizadas sin servidor.
-            if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
-                val local = PublicationComment(
-                    id = "comment_${UUID.randomUUID()}",
-                    productId = productId,
-                    userId = optionalUserId(appContext).orEmpty(),
-                    displayName = displayName.trim().ifBlank { "Cliente" }.take(80),
-                    text = clean,
-                    createdAt = nowIsoUtc()
-                )
-                appendComment(local)
-                statsRepo.incrementComments(productId)
-                return@withContext
-            }
 
             val token = activeBackendToken()
                 ?: throw IllegalStateException("Debes iniciar sesión para comentar.")
