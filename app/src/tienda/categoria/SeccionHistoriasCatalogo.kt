@@ -26,6 +26,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.ProductJson
-import com.example.data.model.StoreCategory
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -47,6 +51,15 @@ fun CatalogoCategoryStoriesSection(
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
+    var categories by remember { mutableStateOf(storeCategoriesList) }
+    LaunchedEffect(Unit) {
+        runCatching { cargarCategoriasPublicadas() }
+            .onSuccess { categories = it }
+    }
+    LaunchedEffect(selectedCategory, categories) {
+        val index = categories.indexOfFirst { it.id.equals(selectedCategory, ignoreCase = true) }
+        if (index >= 0) categoryListState.animateScrollToItem(index)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -128,7 +141,7 @@ fun CatalogoCategoryStoriesSection(
                 horizontalArrangement = Arrangement.spacedBy(spacing),
                 contentPadding = PaddingValues(vertical = 2.dp)
             ) {
-                items(StoreCategory.entries, key = { it.id }) { cat ->
+                items(categories, key = { it.id }) { cat ->
                     val isSelected = selectedCategory.equals(cat.id, ignoreCase = true)
                     CatalogoCategoryStoryCard(
                         category = cat,
