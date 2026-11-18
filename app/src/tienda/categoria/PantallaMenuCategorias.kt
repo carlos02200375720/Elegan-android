@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -46,14 +44,7 @@ fun CategoriaScreen(
 
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
-    var categoryItems by remember { mutableStateOf(listOf(
-        CategoriaItem(
-            id = "todo",
-            title = "Todo el Catálogo",
-            subtitle = "Explora todas las piezas y colecciones",
-            icon = Icons.Default.GridView
-        )
-    )) }
+    var categoryItems by remember { mutableStateOf(emptyList<CategoriaItem>()) }
 
     LaunchedEffect(Unit) {
         runCatching { cargarCategoriasPublicadas() }
