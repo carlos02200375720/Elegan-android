@@ -8,6 +8,7 @@ import com.example.data.model.PublicationStats
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
+import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -31,9 +32,66 @@ internal class RepositorioGuardadosYLikes(
     private val likeMutexes = ConcurrentHashMap<String, Mutex>()
     private val saveMutexes = ConcurrentHashMap<String, Mutex>()
     private val shareMutexes = ConcurrentHashMap<String, Mutex>()
+    private val pendingVisitorShares = ConcurrentHashMap<String, Int>()
+    private val pendingSharesMutex = Mutex()
+    private val visitorPrefs by lazy {
+        appContext.applicationContext.getSharedPreferences("elegan_visitor_shares", Context.MODE_PRIVATE)
+    }
 
     @Volatile
     private var likesLoadedToken: String? = null
+
+    private fun getOrCreateVisitorId(): String {
+        val existing = visitorPrefs.getString("visitor_id", null)?.takeIf { it.isNotBlank() }
+        if (existing != null) return existing
+        val created = UUID.randomUUID().toString()
+        visitorPrefs.edit().putString("visitor_id", created).apply()
+        return created
+    }
+
+    private suspend fun enqueuePendingVisitorShare(productId: String) {
+        pendingSharesMutex.withLock {
+            pendingVisitorShares[productId] = (pendingVisitorShares[productId] ?: 0) + 1
+        }
+    }
+
+    private suspend fun flushPendingVisitorShares(token: String) {
+        val snapshot = pendingSharesMutex.withLock {
+            if (pendingVisitorShares.isEmpty()) return
+            pendingVisitorShares.toMap()
+        }
+        val visitorId = getOrCreateVisitorId()
+        for ((productId, count) in snapshot) {
+            repeat(count) {
+                try {
+                    val response = apiProvider().recordShare(
+                        authorization = "Bearer $token",
+                        productId = productId,
+                        request = mapOf(
+                            "productId" to productId,
+                            "visitorId" to visitorId,
+                            "fromGuestSession" to true
+                        )
+                    )
+                    if (response["success"] == false) return
+                    val remoteCount = extractNumericCount(response, "sharesCount", "shares_count", "count")
+                    if (remoteCount != null) {
+                        statsRepo.updateSharesCount(productId, remoteCount)
+                    }
+                    pendingSharesMutex.withLock {
+                        val remaining = (pendingVisitorShares[productId] ?: 0) - 1
+                        if (remaining > 0) pendingVisitorShares[productId] = remaining
+                        else pendingVisitorShares.remove(productId)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Log.w("EleganShares", "No se pudo sincronizar compartido pendiente de visitante ($productId).", e)
+                    return
+                }
+            }
+        }
+    }
 
     private fun activeBackendToken(): String? {
         if (tokenProvider != null) {
@@ -62,6 +120,7 @@ internal class RepositorioGuardadosYLikes(
 
     suspend fun refreshSavedProducts(): Set<String> = withContext(Dispatchers.IO) {
         val token = activeBackendToken() ?: return@withContext savedProductIds.toSet()
+        flushPendingVisitorShares(token)
         try {
             val response = apiProvider().getSaved("Bearer $token")
             val remoteIds = extractSavedProductIdsJson(response)
@@ -187,14 +246,15 @@ internal class RepositorioGuardadosYLikes(
     }
 
     suspend fun refreshPublicationLikeCounts(productIds: Collection<String>) = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: return@withContext
+        if (isRobolectricLocalMode()) return@withContext
+        val authHeader = activeBackendToken()?.let { "Bearer $it" }
         val ids = normalizeProductIds(productIds)
         if (ids.isEmpty()) return@withContext
 
         try {
             // El backend limita la consulta a 100 IDs por petición.
             ids.chunked(100).forEach batchLoop@{ batch ->
-                val response = apiProvider().getLikeCounts("Bearer $token", batch)
+                val response = apiProvider().getLikeCounts(authHeader, batch)
                 val counts = response["counts"] as? Map<*, *>
                 if (counts != null) {
                     counts.forEach countLoop@{ (rawId, rawValue) ->
@@ -231,13 +291,14 @@ internal class RepositorioGuardadosYLikes(
     }
 
     suspend fun refreshPublicationSaveCounts(productIds: Collection<String>) = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: return@withContext
+        if (isRobolectricLocalMode()) return@withContext
+        val authHeader = activeBackendToken()?.let { "Bearer $it" }
         val ids = normalizeProductIds(productIds)
         if (ids.isEmpty()) return@withContext
 
         try {
             ids.chunked(100).forEach batchLoop@{ batch ->
-                val response = apiProvider().getSavedCounts("Bearer $token", batch)
+                val response = apiProvider().getSavedCounts(authHeader, batch)
                 val counts = (response["counts"] as? Map<*, *>)
                     ?: (response["savesCounts"] as? Map<*, *>)
                     ?: return@batchLoop
@@ -253,13 +314,14 @@ internal class RepositorioGuardadosYLikes(
     }
 
     suspend fun refreshPublicationShareCounts(productIds: Collection<String>) = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: return@withContext
+        if (isRobolectricLocalMode()) return@withContext
+        val authHeader = activeBackendToken()?.let { "Bearer $it" }
         val ids = normalizeProductIds(productIds)
         if (ids.isEmpty()) return@withContext
 
         try {
             ids.chunked(100).forEach batchLoop@{ batch ->
-                val response = apiProvider().getShareCounts("Bearer $token", batch)
+                val response = apiProvider().getShareCounts(authHeader, batch)
                 val counts = (response["counts"] as? Map<*, *>)
                     ?: (response["sharesCounts"] as? Map<*, *>)
                     ?: return@batchLoop
@@ -338,26 +400,36 @@ internal class RepositorioGuardadosYLikes(
     suspend fun recordPublicationShare(productId: String): Long = withContext(Dispatchers.IO) {
         require(productId.isNotBlank())
         val token = activeBackendToken()
-        if (token == null) {
-            if (isRobolectricLocalMode()) {
-                statsRepo.recordShare(productId)
-                return@withContext statsRepo.statsFlow.value[productId]?.sharesCount ?: 1L
-            }
-            // Compartir contenido no debe depender de que exista una sesión iniciada.
-            return@withContext statsRepo.statsFlow.value[productId]?.sharesCount ?: 0L
+        if (token == null && isRobolectricLocalMode()) {
+            statsRepo.recordShare(productId)
+            return@withContext statsRepo.statsFlow.value[productId]?.sharesCount ?: 1L
         }
 
         shareMutexes.getOrPut(productId) { Mutex() }.withLock {
             // Nunca incrementamos localmente antes de recibir confirmación del backend.
-            // Si la ruta opcional todavía no está desplegada o falla la red, el contador
-            // permanece intacto y la acción de compartir puede continuar.
+            // Si es visitante, intentamos registrar con visitorId; si el backend exige sesión (401)
+            // o falla la red, conservamos el conteo confirmado y encolamos para sincronizar al iniciar sesión.
             val previousSharesCount = statsRepo.statsFlow.value[productId]?.sharesCount ?: 0L
+            val authHeader = token?.let { "Bearer $it" }
+            val requestBody = if (token != null) {
+                mapOf("productId" to productId)
+            } else {
+                mapOf(
+                    "productId" to productId,
+                    "visitorId" to getOrCreateVisitorId(),
+                    "isGuest" to true
+                )
+            }
             try {
                 val response = apiProvider().recordShare(
-                    authorization = "Bearer $token",
+                    authorization = authHeader,
                     productId = productId,
-                    request = mapOf("productId" to productId)
+                    request = requestBody
                 )
+                if (response["success"] == false) {
+                    if (token == null) enqueuePendingVisitorShare(productId)
+                    return@withLock previousSharesCount
+                }
                 val remoteCount = extractNumericCount(response, "sharesCount", "shares_count", "count")
                 if (remoteCount != null) {
                     statsRepo.updateSharesCount(productId, remoteCount)
@@ -368,6 +440,9 @@ internal class RepositorioGuardadosYLikes(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                if (token == null) {
+                    enqueuePendingVisitorShare(productId)
+                }
                 Log.w("EleganShares", "No se pudo registrar el compartido de $productId; se conserva el conteo confirmado.", e)
                 previousSharesCount
             }
@@ -383,6 +458,7 @@ internal class RepositorioGuardadosYLikes(
         likeMutexes.clear()
         saveMutexes.clear()
         shareMutexes.clear()
+        pendingVisitorShares.clear()
         statsRepo.clearUserData()
     }
 

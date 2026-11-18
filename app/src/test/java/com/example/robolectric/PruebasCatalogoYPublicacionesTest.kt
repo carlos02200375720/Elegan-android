@@ -425,14 +425,14 @@ class PruebasCatalogoYPublicacionesTest {
     }
 
     @Test
-    fun `test recordPublicationShare calls backend syncs global count and reverts on error`() = runBlocking {
+    fun `test recordPublicationShare calls backend syncs global count and preserves confirmed count on error`() = runBlocking {
         val context = obtenerContextoPrueba()
         val statsRepo = RepositorioEstadisticasPublicaciones()
         var shareCalls = 0
         var shouldFailShare = true
         val fakeApi = object : StubEleganAuthApi() {
             override suspend fun recordShare(
-                authorization: String,
+                authorization: String?,
                 productId: String,
                 request: Map<String, Any?>
             ): Map<String, Any?> {
@@ -448,13 +448,8 @@ class PruebasCatalogoYPublicacionesTest {
             tokenProvider = { "valid_backend_token" }
         )
 
-        var shareFailed = false
-        try {
-            repo.recordPublicationShare("prod_share_1")
-        } catch (_: RuntimeException) {
-            shareFailed = true
-        }
-        assertTrue(shareFailed)
+        val fallbackCount = repo.recordPublicationShare("prod_share_1")
+        assertEquals(0L, fallbackCount)
         assertEquals(1, shareCalls)
         assertEquals(0L, repo.observePublicationStats().first()["prod_share_1"]?.sharesCount ?: 0L)
 
@@ -466,17 +461,74 @@ class PruebasCatalogoYPublicacionesTest {
     }
 
     @Test
+    fun `test visitor share sends visitorId without auth fetches public counts and flushes after login when 401`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        var activeToken: String? = null
+        var requireAuthForShares = false
+        var globalShares = 4L
+        val recordedCalls = mutableListOf<Pair<String?, Map<String, Any?>>>()
+
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun getShareCounts(
+                authorization: String?,
+                productIds: List<String>
+            ): Map<String, Any?> = mapOf("counts" to mapOf("prod_visitor" to globalShares))
+
+            override suspend fun recordShare(
+                authorization: String?,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                recordedCalls.add(authorization to request)
+                if (requireAuthForShares && authorization.isNullOrBlank()) {
+                    throw IllegalStateException("HTTP 401 Unauthorized")
+                }
+                globalShares++
+                return mapOf("sharesCount" to globalShares)
+            }
+        }
+
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { activeToken }
+        )
+
+        // 1. Visitante consulta conteos públicos y comparte cuando el backend permite visitorId sin sesión.
+        repo.refreshPublicationShareCounts(listOf("prod_visitor"))
+        assertEquals(4L, repo.observePublicationStats().first()["prod_visitor"]?.sharesCount)
+
+        val visitorCount = repo.recordPublicationShare("prod_visitor")
+        assertEquals(5L, visitorCount)
+        assertEquals(null, recordedCalls.first().first)
+        assertEquals(true, recordedCalls.first().second["isGuest"])
+        assertFalse((recordedCalls.first().second["visitorId"] as? String).isNullOrBlank())
+
+        // 2. Si el backend exige autenticación (HTTP 401), compartir sigue sin error y se sincroniza al iniciar sesión.
+        requireAuthForShares = true
+        val keptCount = repo.recordPublicationShare("prod_visitor")
+        assertEquals(5L, keptCount)
+
+        activeToken = "logged_in_user_token"
+        repo.refreshSavedProducts()
+        assertEquals(6L, repo.observePublicationStats().first()["prod_visitor"]?.sharesCount)
+        assertEquals("Bearer logged_in_user_token", recordedCalls.last().first)
+    }
+
+    @Test
     fun `test refreshPublicationCounts and product json sync global likes saves shares and comments`() = runBlocking {
         val context = obtenerContextoPrueba()
         val statsRepo = RepositorioEstadisticasPublicaciones()
         val fakeApi = object : StubEleganAuthApi() {
-            override suspend fun getLikeCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+            override suspend fun getLikeCounts(authorization: String?, productIds: List<String>): Map<String, Any?> =
                 mapOf("counts" to mapOf("prod_global" to 15))
 
-            override suspend fun getSavedCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+            override suspend fun getSavedCounts(authorization: String?, productIds: List<String>): Map<String, Any?> =
                 mapOf("counts" to mapOf("prod_global" to 7))
 
-            override suspend fun getShareCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+            override suspend fun getShareCounts(authorization: String?, productIds: List<String>): Map<String, Any?> =
                 mapOf("counts" to mapOf("prod_global" to 4))
         }
         val repo = RepositorioGuardadosYLikes(
@@ -502,6 +554,43 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(7L, stats?.savesCount)
         assertEquals(4L, stats?.sharesCount)
         assertEquals(3L, stats?.commentsCount)
+    }
+
+    @Test
+    fun `test visitor without session fetches global likes saves and shares counts`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        val authHeadersSeen = mutableListOf<String?>()
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun getLikeCounts(authorization: String?, productIds: List<String>): Map<String, Any?> {
+                authHeadersSeen.add(authorization)
+                return mapOf("counts" to mapOf("prod_pub_1" to 22))
+            }
+
+            override suspend fun getSavedCounts(authorization: String?, productIds: List<String>): Map<String, Any?> {
+                authHeadersSeen.add(authorization)
+                return mapOf("counts" to mapOf("prod_pub_1" to 11))
+            }
+
+            override suspend fun getShareCounts(authorization: String?, productIds: List<String>): Map<String, Any?> {
+                authHeadersSeen.add(authorization)
+                return mapOf("counts" to mapOf("prod_pub_1" to 6))
+            }
+        }
+        val visitorRepo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { null }
+        )
+
+        visitorRepo.refreshPublicationCounts(listOf("prod_pub_1"))
+
+        val stats = visitorRepo.observePublicationStats().first()["prod_pub_1"]
+        assertEquals(listOf<String?>(null, null, null), authHeadersSeen)
+        assertEquals(22L, stats?.likesCount)
+        assertEquals(11L, stats?.savesCount)
+        assertEquals(6L, stats?.sharesCount)
     }
 
     @Test
@@ -546,12 +635,12 @@ private open class StubEleganAuthApi : EleganAuthApi {
     override suspend fun clearCart(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun getSaved(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun setSaved(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getSavedCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun getSavedCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
     override suspend fun getLikes(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun setLike(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getLikeCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun recordShare(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getShareCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun getLikeCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun recordShare(authorization: String?, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getShareCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
     override suspend fun getPublicationComments(authorization: String, productId: String): Map<String, Any?> = emptyMap()
     override suspend fun addPublicationComment(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun profile(authorization: String): PerfilRespuesta = throw UnsupportedOperationException()
