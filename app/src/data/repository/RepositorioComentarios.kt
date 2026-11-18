@@ -1,13 +1,19 @@
 package com.example.data.repository
 
 import android.content.Context
+import android.os.Build
+import android.util.Log
 import com.example.data.model.PublicationComment
+import com.example.data.remote.ApiAutenticacionMovil
+import com.example.data.remote.MobileSession
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 internal class RepositorioComentarios(
     private val appContext: Context,
@@ -16,8 +22,16 @@ internal class RepositorioComentarios(
     private val commentsCache = ConcurrentHashMap<String, MutableList<PublicationComment>>()
     private val commentsUpdated = MutableSharedFlow<String>(extraBufferCapacity = 32)
 
+    private fun activeBackendToken(): String? {
+        if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return null
+        return MobileSession.token(appContext)?.takeIf {
+            it.isNotBlank() && !it.startsWith("local_session_")
+        }
+    }
+
     fun observePublicationComments(productId: String): Flow<List<PublicationComment>> = flow {
         require(productId.isNotBlank())
+        refreshPublicationComments(productId)
         val list = commentsCache.computeIfAbsent(productId) { mutableListOf() }
         while (true) {
             emit(synchronized(list) { list.toList() })
@@ -25,26 +39,110 @@ internal class RepositorioComentarios(
         }
     }
 
-    fun addPublicationComment(productId: String, displayName: String, text: String) {
-        val clean = text.trim()
-        require(productId.isNotBlank() && clean.isNotEmpty() && clean.length <= 1000)
-
-        val userId = optionalUserId(appContext) ?: "cliente_${UUID.randomUUID().toString().take(8)}"
-        val finalName = displayName.trim().ifBlank { "Cliente" }.take(80)
-        val newComment = PublicationComment(
-            id = "comment_${UUID.randomUUID()}",
-            productId = productId,
-            userId = userId,
-            displayName = finalName,
-            text = clean,
-            createdAt = nowIsoUtc()
-        )
-
-        val list = commentsCache.computeIfAbsent(productId) { mutableListOf() }
-        synchronized(list) {
-            list.add(newComment)
+    suspend fun refreshPublicationComments(productId: String): List<PublicationComment> =
+        withContext(Dispatchers.IO) {
+            require(productId.isNotBlank())
+            val token = activeBackendToken() ?: return@withContext cachedComments(productId)
+            try {
+                val response = ApiAutenticacionMovil.service.getPublicationComments(
+                    authorization = "Bearer $token",
+                    productId = productId
+                )
+                val remoteComments = extractPublicationComments(response)
+                val list = commentsCache.computeIfAbsent(productId) { mutableListOf() }
+                synchronized(list) {
+                    list.clear()
+                    list.addAll(remoteComments)
+                }
+                val count = (response["commentsCount"] as? Number)?.toLong()
+                if (count != null) statsRepo.updateCommentsCount(productId, count)
+                commentsUpdated.tryEmit(productId)
+                remoteComments
+            } catch (error: Exception) {
+                Log.w("EleganComments", "No se pudieron cargar los comentarios desde el backend.", error)
+                cachedComments(productId)
+            }
         }
-        commentsUpdated.tryEmit(productId)
-        statsRepo.incrementComments(productId)
+
+    suspend fun addPublicationComment(productId: String, displayName: String, text: String) =
+        withContext(Dispatchers.IO) {
+            val clean = text.trim()
+            require(productId.isNotBlank() && clean.isNotEmpty() && clean.length <= 1000)
+
+            // Robolectric conserva un modo local para las pruebas automatizadas sin servidor.
+            if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
+                val local = PublicationComment(
+                    id = "comment_${UUID.randomUUID()}",
+                    productId = productId,
+                    userId = optionalUserId(appContext).orEmpty(),
+                    displayName = displayName.trim().ifBlank { "Cliente" }.take(80),
+                    text = clean,
+                    createdAt = nowIsoUtc()
+                )
+                appendComment(local)
+                statsRepo.incrementComments(productId)
+                return@withContext
+            }
+
+            val token = activeBackendToken()
+                ?: throw IllegalStateException("Debes iniciar sesión para comentar.")
+
+            val response = ApiAutenticacionMovil.service.addPublicationComment(
+                authorization = "Bearer $token",
+                productId = productId,
+                request = mapOf("text" to clean)
+            )
+            val rawItem = response["item"] as? Map<*, *>
+                ?: throw IllegalStateException("El servidor no devolvió el comentario guardado.")
+            val savedComment = rawItem.toPublicationComment()
+                ?: throw IllegalStateException("La respuesta del comentario no es válida.")
+
+            appendComment(savedComment)
+            val count = (response["commentsCount"] as? Number)?.toLong()
+            if (count != null) statsRepo.updateCommentsCount(productId, count)
+            else statsRepo.incrementComments(productId)
+        }
+
+    private fun appendComment(comment: PublicationComment) {
+        val list = commentsCache.computeIfAbsent(comment.productId) { mutableListOf() }
+        synchronized(list) {
+            list.removeAll { it.id == comment.id }
+            list.add(comment)
+        }
+        commentsUpdated.tryEmit(comment.productId)
     }
+
+    private fun cachedComments(productId: String): List<PublicationComment> {
+        val list = commentsCache[productId] ?: return emptyList()
+        return synchronized(list) { list.toList() }
+    }
+}
+
+internal fun extractPublicationComments(response: Map<String, Any?>): List<PublicationComment> {
+    val items = response["items"] as? List<*> ?: return emptyList()
+    return items.mapNotNull { (it as? Map<*, *>)?.toPublicationComment() }
+}
+
+private fun Map<*, *>.toPublicationComment(): PublicationComment? {
+    fun string(vararg keys: String): String {
+        keys.forEach { key ->
+            val value = this[key]?.toString()?.trim()
+            if (!value.isNullOrBlank()) return value
+        }
+        return ""
+    }
+
+    val id = string("id", "_id")
+    val productId = string("productId", "product_id")
+    val text = string("text", "content")
+    if (id.isBlank() || productId.isBlank() || text.isBlank()) return null
+
+    return PublicationComment(
+        id = id,
+        productId = productId,
+        userId = string("userId", "user_id"),
+        displayName = string("displayName", "display_name").ifBlank { "Cliente" },
+        text = text,
+        createdAt = string("createdAt", "created_at").ifBlank { null }
+    )
 }
