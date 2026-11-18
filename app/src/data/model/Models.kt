@@ -39,6 +39,16 @@ fun ProductJson.productReviewCount(): Long {
     }
 }
 
+/** Conteo persistente de comentarios enviado por el catálogo móvil del backend. */
+fun ProductJson.productCommentCount(): Long {
+    val raw = this["commentsCount"] ?: this["comments_count"] ?: return 0L
+    return when (raw) {
+        is Number -> raw.toLong().coerceAtLeast(0L)
+        is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+        else -> 0L
+    }
+}
+
 fun ProductJson.productImages(): List<String> {
     val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
     val directUrl = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
