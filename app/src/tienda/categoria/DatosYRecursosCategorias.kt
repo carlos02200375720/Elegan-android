@@ -12,9 +12,9 @@ import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.data.model.ProductJson
-import com.example.data.model.StoreCategory
 import com.example.data.model.productCategory
 import com.example.data.model.productImageUrl
+import androidx.compose.material.icons.filled.GridView
 
 data class CategoriaItem(
     val id: String,
@@ -81,13 +81,36 @@ val storeCategoriesList = listOf(
     )
 )
 
-fun resolveCategoryCoverImage(category: StoreCategory, products: List<ProductJson>): String? {
-    val match = if (category == StoreCategory.TODO) {
+suspend fun cargarCategoriasPublicadas(): List<CategoriaItem> {
+    val response = ApiAutenticacionMovil.service.categories()
+    val remoteItems = (response["items"] as? List<*>)?.mapNotNull { raw ->
+        val item = raw as? Map<*, *> ?: return@mapNotNull null
+        val id = item["id"]?.toString()?.trim().orEmpty()
+        val name = item["name"]?.toString()?.trim().orEmpty()
+        if (id.isBlank() || name.isBlank()) return@mapNotNull null
+        val known = storeCategoriesList.firstOrNull { it.id.equals(id, true) }
+        CategoriaItem(
+            id = id,
+            title = name,
+            subtitle = item["description"]?.toString()?.ifBlank { "Explora esta categoría" } ?: "Explora esta categoría",
+            icon = known?.icon ?: Icons.Default.GridView,
+            imageUrl = item["imageUrl"]?.toString()?.takeIf { it.isNotBlank() }
+        )
+    }.orEmpty()
+    return listOf(CategoriaItem(
+        id = "todo",
+        title = "Todo el Catálogo",
+        subtitle = "Explora todas las piezas y colecciones",
+        icon = Icons.Default.GridView
+    )) + remoteItems.filterNot { it.id.equals("todo", true) }
+}
+
+fun resolveCategoryCoverImage(category: CategoriaItem, products: List<ProductJson>): String? {
+    category.imageUrl?.takeIf { it.isNotBlank() }?.let { return it }
+    val match = if (category.id.equals("todo", true)) {
         products.firstOrNull { it.productImageUrl().isNotBlank() }
     } else {
-        products.firstOrNull {
-            it.productCategory().equals(category.id, ignoreCase = true) && it.productImageUrl().isNotBlank()
-        }
+        products.firstOrNull { it.productCategory().equals(category.id, true) && it.productImageUrl().isNotBlank() }
     }
     return match?.productImageUrl()?.takeIf { it.isNotBlank() }
 }
