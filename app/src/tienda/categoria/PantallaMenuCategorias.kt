@@ -10,11 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.ProductJson
 import com.example.data.model.productCategory
+import com.example.data.remote.ApiAutenticacionMovil
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
 
@@ -42,6 +46,44 @@ fun CategoriaScreen(
 
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    var categoryItems by remember { mutableStateOf(listOf(
+        CategoriaItem(
+            id = "todo",
+            title = "Todo el Catálogo",
+            subtitle = "Explora todas las piezas y colecciones",
+            icon = Icons.Default.GridView
+        )
+    )) }
+
+    LaunchedEffect(Unit) {
+        try {
+            val response = ApiAutenticacionMovil.service.categories()
+            val remoteItems = (response["items"] as? List<*>)?.mapNotNull { raw ->
+                val item = raw as? Map<*, *> ?: return@mapNotNull null
+                val id = item["id"]?.toString()?.trim().orEmpty()
+                val name = item["name"]?.toString()?.trim().orEmpty()
+                if (id.isBlank() || name.isBlank()) return@mapNotNull null
+                val known = storeCategoriesList.firstOrNull { it.id.equals(id, true) }
+                CategoriaItem(
+                    id = id,
+                    title = name,
+                    subtitle = item["description"]?.toString()?.ifBlank { "Explora esta categoría" }
+                        ?: "Explora esta categoría",
+                    icon = known?.icon ?: Icons.Default.GridView
+                )
+            }.orEmpty()
+            categoryItems = listOf(
+                CategoriaItem(
+                    id = "todo",
+                    title = "Todo el Catálogo",
+                    subtitle = "Explora todas las piezas y colecciones",
+                    icon = Icons.Default.GridView
+                )
+            ) + remoteItems.filterNot { it.id == "todo" }
+        } catch (_: Exception) {
+            // Si la red no está disponible, se conserva el acceso a todo el catálogo.
+        }
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -81,7 +123,7 @@ fun CategoriaScreen(
                     )
                 }
 
-                items(storeCategoriesList, key = { it.id }) { catItem ->
+                items(categoryItems, key = { it.id }) { catItem ->
                     val count = if (catItem.id == "todo") {
                         products.size
                     } else {
