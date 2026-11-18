@@ -56,34 +56,8 @@ fun CategoriaScreen(
     )) }
 
     LaunchedEffect(Unit) {
-        try {
-            val response = ApiAutenticacionMovil.service.categories()
-            val remoteItems = (response["items"] as? List<*>)?.mapNotNull { raw ->
-                val item = raw as? Map<*, *> ?: return@mapNotNull null
-                val id = item["id"]?.toString()?.trim().orEmpty()
-                val name = item["name"]?.toString()?.trim().orEmpty()
-                if (id.isBlank() || name.isBlank()) return@mapNotNull null
-                val known = storeCategoriesList.firstOrNull { it.id.equals(id, true) }
-                CategoriaItem(
-                    id = id,
-                    title = name,
-                    subtitle = item["description"]?.toString()?.ifBlank { "Explora esta categoría" }
-                        ?: "Explora esta categoría",
-                    icon = known?.icon ?: Icons.Default.GridView,
-                    imageUrl = item["imageUrl"]?.toString()?.takeIf { it.isNotBlank() }
-                )
-            }.orEmpty()
-            categoryItems = listOf(
-                CategoriaItem(
-                    id = "todo",
-                    title = "Todo el Catálogo",
-                    subtitle = "Explora todas las piezas y colecciones",
-                    icon = Icons.Default.GridView
-                )
-            ) + remoteItems.filterNot { it.id == "todo" }
-        } catch (_: Exception) {
-            // Si la red no está disponible, se conserva el acceso a todo el catálogo.
-        }
+        runCatching { cargarCategoriasPublicadas() }
+            .onSuccess { categoryItems = it }
     }
 
     Scaffold(
