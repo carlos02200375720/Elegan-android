@@ -210,7 +210,8 @@ internal fun extractLikeIdsJson(response: Map<String, Any?>): Set<String> {
 }
 
 internal fun extractSavedProductIdsJson(response: Map<String, Any?>): Set<String> {
-    val directIds = (response["productIds"] as? List<*>)
+    val directIds = (response["ids"] as? List<*>)
+        ?: (response["productIds"] as? List<*>)
         ?: (response["product_ids"] as? List<*>)
         ?: (response["savedIds"] as? List<*>)
         ?: (response["saved_ids"] as? List<*>)
