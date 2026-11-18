@@ -1,8 +1,12 @@
 package com.example.ui
 
-import android.content.Intent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import com.example.data.model.ProductJson
@@ -43,6 +47,20 @@ internal fun ElementoPublicacionFeedInicio(
     val productId = product.productId()
     val productName = product.productName()
     val productPrice = product.productPrice()
+    var pendingShareRequestId by rememberSaveable(productId) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(productId, onRecordShare, notifier) {
+        DespachadorCompartidoPublicacion.confirmaciones.collect { evento ->
+            if (evento.productId == productId && evento.requestId == pendingShareRequestId) {
+                pendingShareRequestId = null
+                onRecordShare(productId) { result ->
+                    if (result.isFailure) {
+                        notifier?.show("No se pudo registrar el compartido")
+                    }
+                }
+            }
+        }
+    }
 
     val onLikeAction = remember(productId, onToggleLike, notifier) {
         {
@@ -73,7 +91,8 @@ internal fun ElementoPublicacionFeedInicio(
                 onToggleSaveProduct(productId) { result ->
                     notifier?.show(
                         if (result.isSuccess) {
-                            if (willSave) "Publicación guardada en tu perfil"
+                            val confirmedSaved = result.getOrNull() ?: willSave
+                            if (confirmedSaved) "Publicación guardada en tu perfil"
                             else "Publicación eliminada de guardados"
                         } else {
                             "No se pudo actualizar la publicación guardada"
@@ -89,24 +108,14 @@ internal fun ElementoPublicacionFeedInicio(
             }
         }
     }
-    val onShareAction = remember(product, onRecordShare, notifier) {
+    val onShareAction = remember(context, productId, productName, productPrice) {
         {
-            onRecordShare(productId) { result ->
-                if (result.isSuccess) {
-                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                        type = "text/plain"
-                        putExtra(
-                            Intent.EXTRA_TEXT,
-                            "ELEGAN: Descubre $productName por $${String.format("%.2f", productPrice)} USD. Pieza exclusiva de la boutique."
-                        )
-                    }
-                    context.startActivity(
-                        Intent.createChooser(sendIntent, "Compartir publicación")
-                    )
-                } else {
-                    notifier?.show("No se pudo registrar el compartido")
-                }
-            }
+            pendingShareRequestId = lanzarSelectorCompartirPublicacion(
+                context = context,
+                productId = productId,
+                productName = productName,
+                productPrice = productPrice
+            )
         }
     }
     val onProductAction = remember(product, onNavigateToProduct) {

@@ -90,7 +90,13 @@ class EleganRepository(context: Context) {
     suspend fun refreshPublicationLikeCounts(productIds: Collection<String>) =
         guardadosYLikesRepo.refreshPublicationLikeCounts(productIds)
 
-    suspend fun setProductSaved(productId: String, isSaved: Boolean) =
+    suspend fun refreshPublicationCounts(productIds: Collection<String>) =
+        guardadosYLikesRepo.refreshPublicationCounts(productIds)
+
+    fun syncPublicationCountsFromProducts(products: List<ProductJson>) =
+        guardadosYLikesRepo.syncCountsFromProducts(products)
+
+    suspend fun setProductSaved(productId: String, isSaved: Boolean): Boolean =
         guardadosYLikesRepo.setProductSaved(productId, isSaved)
 
     fun observePublicationStats(): Flow<Map<String, PublicationStats>> =
@@ -108,7 +114,7 @@ class EleganRepository(context: Context) {
     suspend fun addPublicationComment(productId: String, displayName: String, text: String) =
         comentariosRepo.addPublicationComment(productId, displayName, text)
 
-    suspend fun recordPublicationShare(productId: String) =
+    suspend fun recordPublicationShare(productId: String): Long =
         guardadosYLikesRepo.recordPublicationShare(productId)
 
     fun observeOrders(): Flow<List<Order>> = pedidosRepo.observeOrders()

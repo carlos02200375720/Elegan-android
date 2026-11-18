@@ -1,12 +1,13 @@
 package com.example
 
+import android.content.Intent
 import android.media.MediaPlayer
+import com.example.data.model.ProductJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
 import com.example.data.model.announcementId
 import com.example.data.model.announcementImageUrl
 import com.example.data.model.announcementMessage
-import com.example.data.model.ProductJson
 import com.example.data.model.announcementTitle
 import com.example.data.model.productCategory
 import com.example.data.model.productHasVideo
@@ -17,18 +18,34 @@ import com.example.data.model.productMediaFormat
 import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.productVideoUrl
+import com.example.data.remote.AuthResponse
+import com.example.data.remote.EleganAuthApi
+import com.example.data.remote.GoogleAuthRequest
+import com.example.data.remote.InicioSesionRequest
+import com.example.data.remote.PerfilActualizadoRespuesta
+import com.example.data.remote.PerfilActualizarRequest
+import com.example.data.remote.PerfilRespuesta
+import com.example.data.remote.RegistroRequest
+import com.example.data.remote.UsuarioRespuesta
 import com.example.data.repository.EleganRepository
 import com.example.data.repository.RepositorioCategorias
+import com.example.data.repository.RepositorioEstadisticasPublicaciones
+import com.example.data.repository.RepositorioGuardadosYLikes
 import com.example.data.repository.extractAnnouncementsJson
 import com.example.data.repository.extractCategoriesJson
 import com.example.data.repository.extractJsonItems
 import com.example.data.repository.extractSavedProductIdsJson
+import com.example.ui.DespachadorCompartidoPublicacion
+import com.example.ui.ReceptorCompartidoPublicacion
 import com.example.ui.components.EstadoReproductorVideo
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import okhttp3.MultipartBody
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -367,4 +384,182 @@ class PruebasCatalogoYPublicacionesTest {
         val productWithoutCategory: ProductJson = mapOf("id" to "p_no_cat", "name" to "Traje")
         assertEquals("", productWithoutCategory.productCategory())
     }
+
+    @Test
+    fun `test setProductSaved reverts state and throws when backend request fails and syncs global count on success`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        var shouldFailSave = true
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun setSaved(
+                authorization: String,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                if (shouldFailSave) throw RuntimeException("HTTP 500")
+                return mapOf("saved" to true, "savesCount" to 12)
+            }
+        }
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { "valid_backend_token" }
+        )
+
+        var failureThrown = false
+        try {
+            repo.setProductSaved("prod_1", true)
+        } catch (_: RuntimeException) {
+            failureThrown = true
+        }
+        assertTrue("El error del servidor debe propagarse al controlador", failureThrown)
+        assertFalse("Si falla el backend, no debe quedar guardado localmente", "prod_1" in repo.observeSavedProductIds().first())
+        assertEquals(0L, repo.observePublicationStats().first()["prod_1"]?.savesCount ?: 0L)
+
+        shouldFailSave = false
+        val confirmed = repo.setProductSaved("prod_1", true)
+        assertTrue(confirmed)
+        assertTrue("prod_1" in repo.observeSavedProductIds().first())
+        assertEquals(12L, repo.observePublicationStats().first()["prod_1"]?.savesCount)
+    }
+
+    @Test
+    fun `test recordPublicationShare calls backend syncs global count and reverts on error`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        var shareCalls = 0
+        var shouldFailShare = true
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun recordShare(
+                authorization: String,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                shareCalls++
+                if (shouldFailShare) throw RuntimeException("HTTP 503")
+                return mapOf("sharesCount" to 9)
+            }
+        }
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { "valid_backend_token" }
+        )
+
+        var shareFailed = false
+        try {
+            repo.recordPublicationShare("prod_share_1")
+        } catch (_: RuntimeException) {
+            shareFailed = true
+        }
+        assertTrue(shareFailed)
+        assertEquals(1, shareCalls)
+        assertEquals(0L, repo.observePublicationStats().first()["prod_share_1"]?.sharesCount ?: 0L)
+
+        shouldFailShare = false
+        val updatedCount = repo.recordPublicationShare("prod_share_1")
+        assertEquals(2, shareCalls)
+        assertEquals(9L, updatedCount)
+        assertEquals(9L, repo.observePublicationStats().first()["prod_share_1"]?.sharesCount)
+    }
+
+    @Test
+    fun `test refreshPublicationCounts and product json sync global likes saves shares and comments`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun getLikeCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+                mapOf("counts" to mapOf("prod_global" to 15))
+
+            override suspend fun getSavedCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+                mapOf("counts" to mapOf("prod_global" to 7))
+
+            override suspend fun getShareCounts(authorization: String, productIds: List<String>): Map<String, Any?> =
+                mapOf("counts" to mapOf("prod_global" to 4))
+        }
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { "valid_backend_token" }
+        )
+
+        repo.syncCountsFromProducts(
+            listOf(
+                mapOf(
+                    "id" to "prod_global",
+                    "name" to "Abrigo Cachemira",
+                    "commentsCount" to 3
+                )
+            )
+        )
+        repo.refreshPublicationCounts(listOf("prod_global"))
+
+        val stats = repo.observePublicationStats().first()["prod_global"]
+        assertEquals(15L, stats?.likesCount)
+        assertEquals(7L, stats?.savesCount)
+        assertEquals(4L, stats?.sharesCount)
+        assertEquals(3L, stats?.commentsCount)
+    }
+
+    @Test
+    fun `test share confirmation broadcast dispatches event only when chooser target is selected`() = runBlocking {
+        val context = obtenerContextoPrueba()
+        val receiver = ReceptorCompartidoPublicacion()
+        val deferred = async {
+            withTimeout(2000L) {
+                DespachadorCompartidoPublicacion.confirmaciones.first()
+            }
+        }
+        kotlinx.coroutines.yield()
+
+        receiver.onReceive(
+            context,
+            Intent(context, ReceptorCompartidoPublicacion::class.java).apply {
+                putExtra(ReceptorCompartidoPublicacion.EXTRA_PRODUCT_ID, "prod_shared_target")
+                putExtra(ReceptorCompartidoPublicacion.EXTRA_SHARE_REQUEST_ID, "req_123")
+            }
+        )
+
+        val event = deferred.await()
+        assertEquals("prod_shared_target", event.productId)
+        assertEquals("req_123", event.requestId)
+    }
+}
+
+private open class StubEleganAuthApi : EleganAuthApi {
+    override suspend fun register(request: RegistroRequest): AuthResponse = throw UnsupportedOperationException()
+    override suspend fun login(request: InicioSesionRequest): AuthResponse = throw UnsupportedOperationException()
+    override suspend fun loginGoogle(request: GoogleAuthRequest): AuthResponse = throw UnsupportedOperationException()
+    override suspend fun me(authorization: String): UsuarioRespuesta = throw UnsupportedOperationException()
+    override suspend fun logout(authorization: String) = Unit
+    override suspend fun products(): Map<String, Any?> = emptyMap()
+    override suspend fun productById(productId: String): Map<String, Any?> = emptyMap()
+    override suspend fun categories(): Map<String, Any?> = emptyMap()
+    override suspend fun announcements(): Map<String, Any?> = emptyMap()
+    override suspend fun getCart(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun addToCart(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun updateCartItem(authorization: String, itemId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun removeCartItem(authorization: String, itemId: String): Map<String, Any?> = emptyMap()
+    override suspend fun clearCart(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun getSaved(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun setSaved(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getSavedCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun getLikes(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun setLike(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getLikeCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun recordShare(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getShareCounts(authorization: String, productIds: List<String>): Map<String, Any?> = emptyMap()
+    override suspend fun getPublicationComments(authorization: String, productId: String): Map<String, Any?> = emptyMap()
+    override suspend fun addPublicationComment(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun profile(authorization: String): PerfilRespuesta = throw UnsupportedOperationException()
+    override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
+    override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun createPayPalOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun capturePayPalOrder(authorization: String, paypalOrderId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getMessages(authorization: String): Map<String, Any?> = emptyMap()
+    override suspend fun sendMessage(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun uploadMedia(authorization: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
 }

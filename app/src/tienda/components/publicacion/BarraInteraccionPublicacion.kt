@@ -114,7 +114,7 @@ private fun BotonMetricaInteraccion(
         IconButton(
             onClick = onClick,
             modifier = Modifier
-                .size(40.dp)
+                .size(48.dp)
                 .testTag(tag)
         ) {
             Icon(

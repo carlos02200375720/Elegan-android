@@ -71,14 +71,23 @@ internal class ControladorInteraccionesPublicacion(
         emit(emptyMap())
     }.stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyMap())
 
+    private val currentProductIds = MutableStateFlow<List<String>>(emptyList())
+
     init {
         // El flujo de productos cambia al cargar/actualizar el catálogo, no al desplazar el feed.
+        scope.launch {
+            products
+                .collect { list ->
+                    repository.syncPublicationCountsFromProducts(list)
+                }
+        }
         scope.launch {
             products
                 .map { list -> list.map { it.productId() }.filter { it.isNotBlank() }.distinct() }
                 .distinctUntilChanged()
                 .collect { ids ->
-                    if (ids.isNotEmpty()) repository.refreshPublicationLikeCounts(ids)
+                    currentProductIds.value = ids
+                    if (ids.isNotEmpty()) repository.refreshPublicationCounts(ids)
                 }
         }
     }
@@ -102,6 +111,10 @@ internal class ControladorInteraccionesPublicacion(
             try {
                 repository.refreshSavedProducts()
                 repository.refreshPublicationLikes()
+                val ids = currentProductIds.value
+                if (ids.isNotEmpty()) {
+                    repository.refreshPublicationCounts(ids)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -118,11 +131,11 @@ internal class ControladorInteraccionesPublicacion(
         if (productIds.isEmpty()) return
         scope.launch {
             try {
-                repository.refreshPublicationLikeCounts(productIds)
+                repository.refreshPublicationCounts(productIds)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("EleganViewModel", "No se pudieron sincronizar los conteos de likes.", e)
+                Log.w("EleganViewModel", "No se pudieron sincronizar los conteos de interacciones.", e)
             }
         }
     }
@@ -131,8 +144,8 @@ internal class ControladorInteraccionesPublicacion(
         val shouldSave = productId !in savedProductIds.value
         scope.launch {
             try {
-                repository.setProductSaved(productId, shouldSave)
-                onResult(Result.success(shouldSave))
+                val confirmedSaved = repository.setProductSaved(productId, shouldSave)
+                onResult(Result.success(confirmedSaved))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

@@ -39,15 +39,33 @@ fun ProductJson.productReviewCount(): Long {
     }
 }
 
-/** Conteo persistente de comentarios enviado por el catálogo móvil del backend. */
-fun ProductJson.productCommentCount(): Long {
-    val raw = this["commentsCount"] ?: this["comments_count"] ?: return 0L
-    return when (raw) {
-        is Number -> raw.toLong().coerceAtLeast(0L)
-        is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
-        else -> 0L
+private fun ProductJson.readLongMetric(vararg keys: String): Long {
+    for (key in keys) {
+        val raw = this[key] ?: continue
+        return when (raw) {
+            is Number -> raw.toLong().coerceAtLeast(0L)
+            is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+            else -> 0L
+        }
     }
+    return 0L
 }
+
+/** Conteo persistente de comentarios enviado por el catálogo móvil del backend. */
+fun ProductJson.productCommentCount(): Long =
+    readLongMetric("commentsCount", "comments_count")
+
+/** Conteo global de likes enviado por el catálogo móvil del backend. */
+fun ProductJson.productLikesCount(): Long =
+    readLongMetric("likesCount", "likes_count")
+
+/** Conteo global de guardados enviado por el catálogo móvil del backend. */
+fun ProductJson.productSavesCount(): Long =
+    readLongMetric("savesCount", "saves_count")
+
+/** Conteo global de compartidos enviado por el catálogo móvil del backend. */
+fun ProductJson.productSharesCount(): Long =
+    readLongMetric("sharesCount", "shares_count")
 
 fun ProductJson.productImages(): List<String> {
     val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()

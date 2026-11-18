@@ -129,6 +129,12 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
+    @GET("api/movil/saved/counts")
+    suspend fun getSavedCounts(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Query("productIds") productIds: List<String>
+    ): Map<String, Any?>
+
     @GET("api/movil/likes")
     suspend fun getLikes(@Header("Authorization") authorization: String): Map<String, Any?>
 
@@ -141,6 +147,19 @@ internal interface EleganAuthApi {
 
     @GET("api/movil/likes/counts")
     suspend fun getLikeCounts(
+        @Header("Authorization") authorization: String,
+        @retrofit2.http.Query("productIds") productIds: List<String>
+    ): Map<String, Any?>
+
+    @POST("api/movil/shares/{product_id}")
+    suspend fun recordShare(
+        @Header("Authorization") authorization: String,
+        @Path("product_id") productId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
+    ): Map<String, Any?>
+
+    @GET("api/movil/shares/counts")
+    suspend fun getShareCounts(
         @Header("Authorization") authorization: String,
         @retrofit2.http.Query("productIds") productIds: List<String>
     ): Map<String, Any?>
