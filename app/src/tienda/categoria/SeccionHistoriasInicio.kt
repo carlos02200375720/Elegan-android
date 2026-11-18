@@ -44,9 +44,9 @@ fun CategoryStoriesSection(
     products: List<ProductJson> = emptyList(),
     modifier: Modifier = Modifier
 ) {
-    var categories by remember { mutableStateOf(storeCategoriesList.filterNot { it.id == "todo" }) }
+    var categories by remember { mutableStateOf(storeCategoriesList) }
     LaunchedEffect(Unit) {
-        runCatching { cargarCategoriasPublicadas().filterNot { it.id == "todo" } }
+        runCatching { cargarCategoriasPublicadas() }
             .onSuccess { categories = it }
     }
     BoxWithConstraints(
