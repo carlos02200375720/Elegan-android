@@ -71,6 +71,11 @@ internal class RepositorioPerfilYCuenta(
         }
     }
 
+    suspend fun refreshUserProfile() {
+        loadedToken = null
+        ensureProfileLoaded()
+    }
+
     fun observeUserProfile(): Flow<UserProfile?> = flow {
         ensureProfileLoaded()
         profileFlow.collect { emit(it) }
