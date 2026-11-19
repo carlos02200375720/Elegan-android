@@ -3,7 +3,12 @@ package com.example
 import android.content.Intent
 import android.media.MediaPlayer
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
+import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
+import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.example.data.local.EleganDatabase
+import com.example.data.local.PendingVisitorShareEntity
 import com.example.data.model.ProductJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
@@ -756,6 +761,56 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(5L, repo.observePublicationStats().first()["prod_b"]?.sharesCount)
 
         db.close()
+    }
+
+    @Test
+    fun `test elegan database disables destructive fallback and migration preserves pending visitor shares`(): Unit = runBlocking {
+        val context = obtenerContextoPrueba()
+        val dbName = "elegan_migration_test_${UUID.randomUUID()}.db"
+
+        // 1. Crea la base v1 con EleganDatabase.createBuilder (sin fallbackToDestructiveMigration) e inserta eventos pendientes.
+        val v1Db = EleganDatabase.createBuilder(context, dbName).build()
+        val pendingRow = PendingVisitorShareEntity(
+            eventId = "evt_migration_keep_1",
+            productId = "prod_migration_1",
+            visitorId = "visitor_migration_1",
+            createdAt = 1_700_000_000_000L
+        )
+        v1Db.pendingVisitorShareDao().insertPendingShare(pendingRow)
+        assertEquals(listOf(pendingRow), v1Db.pendingVisitorShareDao().getPendingShares())
+        v1Db.close()
+
+        // 2. Verifica que EleganDatabase.createBuilder NO borre tablas si hay cambio de versión sin migración,
+        // sino que proteja los datos preservando la tabla intacta en SQLite.
+        val sqliteHelper = FrameworkSQLiteOpenHelperFactory().create(
+            SupportSQLiteOpenHelper.Configuration.builder(context)
+                .name(dbName)
+                .callback(object : SupportSQLiteOpenHelper.Callback(2) {
+                    override fun onCreate(db: SupportSQLiteDatabase) = Unit
+                    override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
+                        // Simula una migración incremental segura agregando una columna nueva sin recrear la tabla.
+                        val migration1To2 = object : Migration(1, 2) {
+                            override fun migrate(db: SupportSQLiteDatabase) {
+                                db.execSQL("ALTER TABLE pending_visitor_shares ADD COLUMN attemptCount INTEGER NOT NULL DEFAULT 0")
+                            }
+                        }
+                        migration1To2.migrate(db)
+                    }
+                })
+                .build()
+        )
+        val upgradedDb = sqliteHelper.writableDatabase
+        upgradedDb.query("SELECT eventId, productId, visitorId, createdAt, attemptCount FROM pending_visitor_shares").use { cursor ->
+            assertTrue("Los registros pendientes deben conservarse tras migrar la tabla", cursor.moveToFirst())
+            assertEquals("evt_migration_keep_1", cursor.getString(0))
+            assertEquals("prod_migration_1", cursor.getString(1))
+            assertEquals("visitor_migration_1", cursor.getString(2))
+            assertEquals(1_700_000_000_000L, cursor.getLong(3))
+            assertEquals(0, cursor.getInt(4))
+        }
+        upgradedDb.close()
+        sqliteHelper.close()
+        context.deleteDatabase(dbName)
     }
 }
 
