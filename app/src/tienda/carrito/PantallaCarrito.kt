@@ -78,7 +78,7 @@ fun CarritoScreen(
     val discountAmount by remember(subtotal, discountPercent) {
         derivedStateOf { subtotal * discountPercent }
     }
-    val shippingCost by remember(subtotal) {
+    val shippingCost by remember(cartItems) {
         derivedStateOf { cartItems.sumOf { it.shippingPrice * it.quantity } }
     }
     val total by remember(subtotal, discountAmount, shippingCost) {
