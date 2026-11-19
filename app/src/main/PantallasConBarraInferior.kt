@@ -14,6 +14,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.announcementDestinationId
+import com.example.data.model.announcementDestinationType
+import com.example.data.model.announcementCategory
+import com.example.data.model.productId
 import com.example.data.model.productColors
 import com.example.data.model.productInStock
 import com.example.data.model.productSizes
@@ -116,6 +120,23 @@ internal fun PantallasConBarraInferior(
                         onNavigateToCatalogo = { cat ->
                             viewModel.setCategory(cat)
                             onNavigateTo(Screen.CATALOGO)
+                        },
+                        onAnnouncementClick = { announcement ->
+                            val destinationId = announcement.announcementDestinationId()
+                            when (announcement.announcementDestinationType()) {
+                                "product" -> products.firstOrNull { it.productId() == destinationId }?.let { product ->
+                                    viewModel.selectProduct(product)
+                                    onNavigateTo(Screen.PRODUCTO)
+                                }
+                                "category" -> {
+                                    viewModel.setCategory(destinationId)
+                                    onNavigateTo(Screen.CATALOGO)
+                                }
+                                else -> {
+                                    viewModel.setCategory(announcement.announcementCategory().ifBlank { null })
+                                    onNavigateTo(Screen.CATALOGO)
+                                }
+                            }
                         },
                         onNavigateToProduct = { prod ->
                             viewModel.selectProduct(prod)
