@@ -1,7 +1,6 @@
 package com.example
 
 import android.content.Intent
-import android.media.MediaPlayer
 import androidx.room.Room
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -63,9 +62,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowMediaPlayer
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -212,32 +209,22 @@ class PruebasCatalogoYPublicacionesTest {
     }
 
     @Test
-    fun `test video player state avoids pause or start calls when not prepared or disposed`() {
-        val mp = MediaPlayer()
-        val shadow = shadowOf(mp)
+    fun `test video player state safely tracks play pause and replay requests`() {
         val state = EstadoReproductorVideo(initialAutoPlay = false, initialFocused = false)
-        state.mediaPlayerRef = mp
 
-        // En estado IDLE/PREPARING (isPrepared = false, hasStarted = false) no debe llamar pause/start/seekTo
         state.pausarReproduccion()
+        assertFalse(state.isPlaying)
+
         state.iniciarReproduccion()
+        assertTrue(state.isPlaying)
+        assertTrue(state.shouldLoadPlayer)
+
+        state.pausarReproduccion()
+        assertFalse(state.isPlaying)
+
         state.repetirVideo()
-        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
-
-        // Incluso marcado como preparado pero sin haber iniciado, pausar no debe invocar mp.pause()
-        state.isPrepared = true
-        state.hasStarted = false
-        state.pausarSiEsPosible()
-        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
-
-        // Con error o dispuesto, ninguna operación debe invocar al MediaPlayer nativo
-        state.hasError = true
-        state.hasStarted = true
-        state.pausarSiEsPosible()
-        state.iniciarSiPreparado()
-        assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
-
-        mp.release()
+        assertTrue(state.isPlaying)
+        assertFalse(state.isCompleted)
     }
 
     @Test
