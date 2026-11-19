@@ -410,4 +410,65 @@ class PruebasInteraccionInvitadoRegistroTest {
 
         composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").assertDoesNotExist()
     }
+
+    @Test
+    fun `inicio announcement cards navigate to matching category and product destinations`() {
+        val categoryUuid = "c8d8cbe6-afab-4cff-a036-9a404c461e25"
+        val productUuid = "37eef6ac-148d-4024-b5ec-92a39ebdcd66"
+        var navigatedCategory: String? = null
+        var navigatedProductId: String? = null
+
+        val announcements = listOf(
+            mapOf(
+                "id" to "ann-1",
+                "title" to "Promo Camizas",
+                "message" to "Ver colección",
+                "badge" to "DESCUENTO",
+                "destinationType" to "category",
+                "destinationId" to categoryUuid
+            ),
+            mapOf(
+                "id" to "ann-2",
+                "title" to "oferta",
+                "message" to "Ir directo al producto",
+                "badge" to "CUPON",
+                "destinationType" to "product",
+                "destinationId" to productUuid
+            )
+        )
+
+        composeTestRule.setContent {
+            EleganTheme {
+                InicioScreen(
+                    featuredProducts = listOf(crearProductoEjemplo(productUuid)),
+                    categories = listOf(CategoryItem(id = categoryUuid, title = "Camiza")),
+                    announcements = announcements,
+                    publicationStats = emptyMap(),
+                    likedPublicationIds = emptySet(),
+                    publicationComments = emptyList(),
+                    onToggleLike = { _, _ -> },
+                    onOpenComments = {},
+                    onSubmitComment = { _, _, _, _ -> },
+                    onRecordShare = { _, _ -> },
+                    onNavigateToCatalogo = { navigatedCategory = it },
+                    onNavigateToProduct = {},
+                    onNavigateToProductById = { navigatedProductId = it },
+                    onNavigateToMenu = {},
+                    onNavigateToChats = {}
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("inicio_screen").performScrollToKey("announcements_section")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("announcement_card_0").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(categoryUuid, navigatedCategory)
+
+        composeTestRule.onNodeWithTag("announcement_card_1").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        assertEquals(productUuid, navigatedProductId)
+    }
 }

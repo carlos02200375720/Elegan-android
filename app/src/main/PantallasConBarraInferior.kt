@@ -142,6 +142,16 @@ internal fun PantallasConBarraInferior(
                             viewModel.selectProduct(prod)
                             onNavigateTo(Screen.PRODUCTO)
                         },
+                        onNavigateToProductById = { productId ->
+                            viewModel.selectProductById(
+                                productId = productId,
+                                onFound = { onNavigateTo(Screen.PRODUCTO) },
+                                onNotFound = {
+                                    viewModel.setCategory(null)
+                                    onNavigateTo(Screen.CATALOGO)
+                                }
+                            )
+                        },
                         onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onNavigateToChats = { onNavigateTo(Screen.CHATS) },

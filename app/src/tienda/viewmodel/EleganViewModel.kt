@@ -107,6 +107,16 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun selectProduct(product: ProductJson) = catalogoCtrl.selectProduct(product)
 
+    fun selectProductById(
+        productId: String,
+        onFound: () -> Unit,
+        onNotFound: () -> Unit = {}
+    ) = catalogoCtrl.selectProductById(
+        productId = productId,
+        onFound = onFound,
+        onNotFound = onNotFound
+    )
+
     fun toggleSaveProduct(productId: String, onResult: (Result<Boolean>) -> Unit = {}) =
         interaccionesCtrl.toggleSaveProduct(productId, onResult)
 

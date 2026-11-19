@@ -112,6 +112,40 @@ internal class ControladorCatalogoYAnuncios(
         }
     }
 
+    fun selectProductById(
+        productId: String,
+        onFound: () -> Unit,
+        onNotFound: () -> Unit = {}
+    ) {
+        val cleanId = productId.trim()
+        if (cleanId.isBlank()) {
+            onNotFound()
+            return
+        }
+        val localProduct = products.value.firstOrNull { it.productId() == cleanId }
+            ?: products.value.firstOrNull { it.productId().equals(cleanId, ignoreCase = true) }
+        if (localProduct != null) {
+            selectProduct(localProduct)
+            onFound()
+            return
+        }
+        scope.launch {
+            try {
+                val remoteProduct = repository.getProductById(cleanId)
+                if (remoteProduct != null) {
+                    _selectedProduct.value = remoteProduct
+                    onFound()
+                } else {
+                    onNotFound()
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                onNotFound()
+            }
+        }
+    }
+
     fun clearSelection() {
         _selectedProduct.value = null
     }

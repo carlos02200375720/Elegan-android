@@ -19,7 +19,7 @@ fun ProductJson.productDescription(): String =
     firstNonBlankString("description")
 
 fun ProductJson.productCategory(): String =
-    firstNonBlankString("category")
+    firstNonBlankString("category", "categoryId", "category_id")
 
 private val uuidCategoryPattern =
     Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
@@ -219,8 +219,48 @@ fun AnnouncementJson.announcementImageUrl(): String =
     firstNonBlankString("imageUrl", "image_url", "image", "bannerUrl", "banner_url")
         .let(::resolveBackendMediaUrl)
 
+sealed interface AnnouncementDestination {
+    data class Category(val categoryId: String) : AnnouncementDestination
+    data class Product(val productId: String) : AnnouncementDestination
+    data object None : AnnouncementDestination
+}
+
+fun AnnouncementJson.announcementDestinationType(): String =
+    firstNonBlankString("destinationType", "destination_type").lowercase()
+
+fun AnnouncementJson.announcementDestinationId(): String =
+    firstNonBlankString("destinationId", "destination_id")
+
+fun AnnouncementJson.announcementDestination(): AnnouncementDestination {
+    val type = announcementDestinationType()
+    val id = announcementDestinationId()
+    if (id.isNotBlank()) {
+        when (type) {
+            "category", "categoria" -> return AnnouncementDestination.Category(id)
+            "product", "producto" -> return AnnouncementDestination.Product(id)
+        }
+    }
+    val legacyProductId = firstNonBlankString(
+        "productId",
+        "product_id",
+        "targetProductId",
+        "target_product_id"
+    )
+    if (legacyProductId.isNotBlank()) {
+        return AnnouncementDestination.Product(legacyProductId)
+    }
+    val legacyCategory = firstNonBlankString("category", "targetCategory", "target_category")
+    if (legacyCategory.isNotBlank()) {
+        return AnnouncementDestination.Category(legacyCategory)
+    }
+    return AnnouncementDestination.None
+}
+
 fun AnnouncementJson.announcementCategory(): String =
-    firstNonBlankString("category", "targetCategory", "target_category")
+    when (val destination = announcementDestination()) {
+        is AnnouncementDestination.Category -> destination.categoryId
+        else -> firstNonBlankString("category", "targetCategory", "target_category")
+    }
 
 fun AnnouncementJson.announcementDestinationType(): String =
     firstNonBlankString("destinationType", "destination_type")

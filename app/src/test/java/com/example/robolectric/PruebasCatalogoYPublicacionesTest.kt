@@ -8,10 +8,14 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareEntity
+import com.example.data.model.AnnouncementDestination
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
+import com.example.data.model.announcementDestination
+import com.example.data.model.announcementDestinationId
+import com.example.data.model.announcementDestinationType
 import com.example.data.model.announcementId
 import com.example.data.model.announcementImageUrl
 import com.example.data.model.announcementMessage
@@ -840,6 +844,51 @@ class PruebasCatalogoYPublicacionesTest {
             "categoryName" to "Sastrería"
         )
         assertEquals("Sastrería", explicitNameProduct.productCategoryDisplayName(emptyList()))
+    }
+
+    @Test
+    fun `test announcements parse camelCase destinationType and destinationId for category and product`() {
+        val payload = mapOf(
+            "items" to listOf(
+                mapOf(
+                    "id" to "ann_cat_1",
+                    "title" to "Anuncio categoría",
+                    "message" to "Explora la colección",
+                    "destinationType" to "category",
+                    "destinationId" to "c8d8cbe6-afab-4cff-a036-9a404c461e25",
+                    "active" to true
+                ),
+                mapOf(
+                    "id" to "ann_prod_1",
+                    "title" to "oferta",
+                    "message" to "Producto destacado",
+                    "destinationType" to "product",
+                    "destinationId" to "37eef6ac-148d-4024-b5ec-92a39ebdcd66",
+                    "active" to true
+                )
+            )
+        )
+
+        val parsed = extractAnnouncementsJson(payload)
+        assertEquals(2, parsed.size)
+
+        val categoryAnnouncement = parsed[0]
+        assertEquals("category", categoryAnnouncement.announcementDestinationType())
+        assertEquals("c8d8cbe6-afab-4cff-a036-9a404c461e25", categoryAnnouncement.announcementDestinationId())
+        assertEquals(
+            AnnouncementDestination.Category("c8d8cbe6-afab-4cff-a036-9a404c461e25"),
+            categoryAnnouncement.announcementDestination()
+        )
+        assertEquals("c8d8cbe6-afab-4cff-a036-9a404c461e25", categoryAnnouncement.announcementCategory())
+
+        val productAnnouncement = parsed[1]
+        assertEquals("product", productAnnouncement.announcementDestinationType())
+        assertEquals("37eef6ac-148d-4024-b5ec-92a39ebdcd66", productAnnouncement.announcementDestinationId())
+        assertEquals(
+            AnnouncementDestination.Product("37eef6ac-148d-4024-b5ec-92a39ebdcd66"),
+            productAnnouncement.announcementDestination()
+        )
+        assertEquals("", productAnnouncement.announcementCategory())
     }
 }
 
