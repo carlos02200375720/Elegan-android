@@ -136,6 +136,12 @@ fun CartItemRow(
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                             )
                         }
+                        if (item.shippingOrigin.isNotBlank()) {
+                            Text(
+                                text = "Origen: ${item.shippingOrigin}",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
