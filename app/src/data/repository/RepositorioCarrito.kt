@@ -146,6 +146,9 @@ internal class RepositorioCarrito(
                                 imageUrl = product.productImageUrl(),
                                 selectedSize = selectedSize,
                                 selectedColor = selectedColor,
+                                shippingMethodId = (product["selectedShippingId"] as? String).orEmpty(),
+                                shippingMethodName = (product["shippingMethods"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.firstOrNull { it["id"] == product["selectedShippingId"] }?.get("name")?.toString().orEmpty(),
+                                shippingPrice = ((product["shippingMethods"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.firstOrNull { it["id"] == product["selectedShippingId"] }?.get("price") as? Number)?.toDouble() ?: 0.0,
                                 quantity = quantity
                             )
                         )
@@ -169,6 +172,7 @@ internal class RepositorioCarrito(
                 "size" to selectedSize,
                 "selectedColor" to selectedColor,
                 "color" to selectedColor,
+                "selectedShippingId" to (product["selectedShippingId"] as? String).orEmpty(),
                 "quantity" to quantity
             )
 
@@ -362,6 +366,12 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
             imageUrl = firstString(map, "imageUrl", "image_url", "image").let(::resolveBackendMediaUrl),
             selectedSize = firstString(map, "selectedSize", "selected_size", "size"),
             selectedColor = firstString(map, "selectedColor", "selected_color", "color"),
+            shippingMethodId = firstString(map, "shippingMethodId", "selectedShippingId"),
+            shippingMethodName = firstString(map, "shippingMethodName"),
+            shippingPrice = ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? Number)?.toDouble()
+                ?: ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? String)?.toDoubleOrNull() ?: 0.0,
+            shippingDeliveryTime = firstString(map, "shippingDeliveryTime"),
+            shippingOrigin = firstString(map, "shippingOrigin"),
             quantity = quantity,
             createdAt = firstString(map, "createdAt", "created_at").ifBlank { null },
             updatedAt = firstString(map, "updatedAt", "updated_at").ifBlank { null }
