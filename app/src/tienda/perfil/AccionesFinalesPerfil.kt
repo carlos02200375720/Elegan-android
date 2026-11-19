@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganGold
 
 @Composable
@@ -77,27 +79,35 @@ internal fun TarjetaSoporteVipPerfil(
 @Composable
 internal fun BotonCerrarSesionPerfil(
     horizontalPad: Dp,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: () -> Unit = {},
     onSignOut: () -> Unit
 ) {
     Spacer(modifier = Modifier.height(10.dp))
     TextButton(
-        onClick = onSignOut,
+        onClick = if (isAuthenticated) onSignOut else onRequireAuth,
         modifier = Modifier
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .padding(horizontal = horizontalPad)
             .height(48.dp)
-            .testTag("sign_out_button"),
-        colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFFB00020))
+            .testTag(if (isAuthenticated) "sign_out_button" else "guest_register_button"),
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = if (isAuthenticated) Color(0xFFB00020) else EleganBurgundy
+        )
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+            imageVector = if (isAuthenticated) {
+                Icons.AutoMirrored.Filled.ExitToApp
+            } else {
+                Icons.Default.PersonAdd
+            },
             contentDescription = null,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Cerrar Sesión",
+            text = if (isAuthenticated) "Cerrar Sesión" else "Crear Cuenta o Iniciar Sesión",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp
         )

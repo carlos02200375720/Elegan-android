@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ui.auth.VentanaEmergenteRegistro
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
 import com.example.ui.components.LocalEleganNotifier
@@ -27,10 +28,12 @@ import com.example.ui.viewmodel.EleganViewModel
 @Composable
 fun AppContent(
     viewModel: EleganViewModel = viewModel(),
+    isAuthenticated: Boolean = true,
+    onAuthenticated: () -> Unit = {},
     onSignOut: () -> Unit,
     onAccountDeleted: () -> Unit = onSignOut
 ) {
-    LaunchedEffect(Unit) {
+    LaunchedEffect(isAuthenticated) {
         viewModel.syncAccountData()
     }
 
@@ -42,6 +45,24 @@ fun AppContent(
     var checkoutDiscount by remember { mutableDoubleStateOf(0.0) }
     var checkoutShipping by remember { mutableDoubleStateOf(0.0) }
     var checkoutTotal by remember { mutableDoubleStateOf(0.0) }
+
+    var showRegisterPopup by remember { mutableStateOf(false) }
+    var registerPromptReason by remember { mutableStateOf<String?>(null) }
+    var pendingAuthenticatedAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var hasCompletedInlineAuth by remember(isAuthenticated) { mutableStateOf(false) }
+
+    fun requireRegisteredUser(
+        reason: String? = null,
+        onAllowed: () -> Unit
+    ) {
+        if (isAuthenticated || hasCompletedInlineAuth) {
+            onAllowed()
+        } else {
+            registerPromptReason = reason
+            pendingAuthenticatedAction = onAllowed
+            showRegisterPopup = true
+        }
+    }
 
     fun navigateTo(screen: Screen) {
         if (screen == Screen.CHATS && currentScreen != Screen.CARRITO && currentScreen != Screen.CHATS) {
@@ -73,6 +94,8 @@ fun AppContent(
                     PantallasConBarraInferior(
                         screen = screen,
                         viewModel = viewModel,
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = ::requireRegisteredUser,
                         onNavigateTo = ::navigateTo,
                         onSignOut = onSignOut
                     )
@@ -86,6 +109,8 @@ fun AppContent(
                         checkoutShipping = checkoutShipping,
                         checkoutTotal = checkoutTotal,
                         viewModel = viewModel,
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = ::requireRegisteredUser,
                         onNavigateTo = ::navigateTo,
                         onUpdateCheckoutTotals = { sub, disc, ship, tot ->
                             checkoutSubtotal = sub
@@ -111,5 +136,26 @@ fun AppContent(
                     .padding(bottom = if (hasBottomBarOverlay) 72.dp else 24.dp)
             )
         }
+    }
+
+    if (showRegisterPopup) {
+        VentanaEmergenteRegistro(
+            promptMessage = registerPromptReason,
+            onDismiss = {
+                showRegisterPopup = false
+                registerPromptReason = null
+                pendingAuthenticatedAction = null
+            },
+            onAuthSuccess = {
+                hasCompletedInlineAuth = true
+                showRegisterPopup = false
+                registerPromptReason = null
+                onAuthenticated()
+                viewModel.syncAccountData()
+                val action = pendingAuthenticatedAction
+                pendingAuthenticatedAction = null
+                action?.invoke()
+            }
+        )
     }
 }

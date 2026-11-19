@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.ProductJson
-import com.example.data.model.productCategory
+import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.ui.components.EleganVideoPlayer
@@ -43,11 +43,11 @@ import com.example.ui.theme.EleganGold
 fun VisorGaleriaProducto(
     product: ProductJson,
     mediaItems: List<GalleryMediaItem>,
-    pagerState: PagerState
+    pagerState: PagerState,
+    categoryLabel: String = product.productCategoryDisplayName()
 ) {
     val productId = product.productId()
     val productName = product.productName()
-    val productCategory = product.productCategory()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -78,7 +78,7 @@ fun VisorGaleriaProducto(
                             videoUrl = item.videoUrl,
                             posterUrl = item.posterUrl,
                             aspectRatio = 1f,
-                            autoPlay = isVideoFocused,
+                            autoPlay = false,
                             isFocused = isVideoFocused,
                             showControls = true,
                             testTagPrefix = "gallery_video_$productId",
@@ -100,7 +100,7 @@ fun VisorGaleriaProducto(
             }
         }
 
-        if (productCategory.isNotBlank()) {
+        if (categoryLabel.isNotBlank()) {
             Surface(
                 shape = RoundedCornerShape(8.dp),
                 color = EleganBurgundyDark.copy(alpha = 0.9f),
@@ -109,7 +109,7 @@ fun VisorGaleriaProducto(
                     .padding(start = 12.dp, bottom = 12.dp)
             ) {
                 Text(
-                    text = productCategory.uppercase(),
+                    text = categoryLabel.uppercase(),
                     color = Color.White,
                     fontSize = 9.sp,
                     fontWeight = FontWeight.Bold,

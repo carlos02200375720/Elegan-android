@@ -29,7 +29,7 @@ internal fun ElementoMultimediaPublicacion(
             videoUrl = item.videoUrl,
             posterUrl = item.posterUrl,
             aspectRatio = ratio,
-            autoPlay = isVideoFocused,
+            autoPlay = false,
             isFocused = isVideoFocused,
             showControls = true,
             testTagPrefix = "inicio_video_${product.productId()}_$page",

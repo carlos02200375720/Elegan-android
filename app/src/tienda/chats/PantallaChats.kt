@@ -43,6 +43,8 @@ val supportQuestionsSuggestions = listOf(
 fun ChatsScreen(
     messages: List<SupportMessage>,
     cartItemCount: Long = 0L,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateToCart: () -> Unit = {},
     onSendMessage: (text: String, mediaUri: String, mediaType: String) -> Unit,
     onBack: () -> Unit = {}
@@ -90,9 +92,18 @@ fun ChatsScreen(
                 pendingMediaType = pendingMediaType,
                 isKeyboardOpen = isKeyboardOpen,
                 onOpenMediaPicker = {
-                    mediaPickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-                    )
+                    val launchPicker = {
+                        mediaPickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+                        )
+                    }
+                    if (!isAuthenticated) {
+                        onRequireAuth("Regístrate para adjuntar fotos o videos en el chat.") {
+                            launchPicker()
+                        }
+                    } else {
+                        launchPicker()
+                    }
                 },
                 onRemoveAttachment = {
                     pendingMediaUri = null
@@ -101,10 +112,21 @@ fun ChatsScreen(
                 onSend = {
                     val media = pendingMediaUri?.toString().orEmpty()
                     if (inputText.isNotBlank() || media.isNotBlank()) {
-                        onSendMessage(inputText, media, pendingMediaType)
-                        inputText = ""
-                        pendingMediaUri = null
-                        pendingMediaType = ""
+                        val textToSend = inputText
+                        val mediaTypeToSend = pendingMediaType
+                        val dispatchMessage = {
+                            onSendMessage(textToSend, media, mediaTypeToSend)
+                            inputText = ""
+                            pendingMediaUri = null
+                            pendingMediaType = ""
+                        }
+                        if (!isAuthenticated) {
+                            onRequireAuth("Regístrate para chatear con Elegan Concierge.") {
+                                dispatchMessage()
+                            }
+                        } else {
+                            dispatchMessage()
+                        }
                     }
                 }
             )

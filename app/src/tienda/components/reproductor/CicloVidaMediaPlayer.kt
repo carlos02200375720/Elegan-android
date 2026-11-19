@@ -14,7 +14,6 @@ import kotlinx.coroutines.withContext
 @Composable
 internal fun CicloVidaMediaPlayer(
     videoUrl: String,
-    isFocused: Boolean,
     state: EstadoReproductorVideo
 ) {
     val context = LocalContext.current
@@ -57,8 +56,7 @@ internal fun CicloVidaMediaPlayer(
                     } else {
                         player.setVolume(1f, 1f)
                     }
-                    if (state.isPlaying || isFocused) {
-                        state.isPlaying = true
+                    if (state.isPlaying) {
                         state.iniciarSiPreparado()
                     }
                 }

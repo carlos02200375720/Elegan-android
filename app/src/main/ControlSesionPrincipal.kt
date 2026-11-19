@@ -91,6 +91,11 @@ fun MainApp() {
         }
         else -> {
             AppContent(
+                isAuthenticated = currentUser != null,
+                onAuthenticated = {
+                    isGuest = false
+                    currentUser = MobileSession.user(context)
+                },
                 onSignOut = {
                     if (isGuest) {
                         isGuest = false

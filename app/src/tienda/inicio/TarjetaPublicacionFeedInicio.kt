@@ -9,6 +9,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
 import com.example.data.model.productId
@@ -31,7 +32,8 @@ internal fun ElementoPublicacionFeedInicio(
     onOpenComments: (ProductJson) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    categories: List<CategoryItem> = emptyList()
 ) {
     val context = LocalContext.current
     val notifier = LocalEleganNotifier.current
@@ -137,6 +139,7 @@ internal fun ElementoPublicacionFeedInicio(
         onSaveClick = onSaveAction,
         onShareClick = onShareAction,
         onProductClick = onProductAction,
-        modifier = modifier
+        modifier = modifier,
+        categories = categories
     )
 }

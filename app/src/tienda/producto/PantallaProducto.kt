@@ -21,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
+import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productColors
 import com.example.data.model.productId
 import com.example.data.model.productSizes
@@ -37,7 +39,8 @@ fun ProductoScreen(
     onAddToCart: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
     onBuyNow: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCart: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    categories: List<CategoryItem> = emptyList()
 ) {
     BackHandler { onBack() }
 
@@ -108,7 +111,8 @@ fun ProductoScreen(
                     VisorGaleriaProducto(
                         product = product,
                         mediaItems = mediaItems,
-                        pagerState = pagerState
+                        pagerState = pagerState,
+                        categoryLabel = product.productCategoryDisplayName(categories)
                     )
                 }
 

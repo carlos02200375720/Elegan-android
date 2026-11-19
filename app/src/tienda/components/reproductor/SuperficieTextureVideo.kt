@@ -11,8 +11,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 
 @Composable
 internal fun SuperficieTextureVideo(
-    state: EstadoReproductorVideo,
-    isFocused: Boolean
+    state: EstadoReproductorVideo
 ) {
     AndroidView(
         factory = { ctx ->
@@ -32,7 +31,7 @@ internal fun SuperficieTextureVideo(
                             val mp = state.mediaPlayerRef
                             if (mp != null && !state.isDisposed && !state.hasError) {
                                 mp.setSurface(s)
-                                if ((state.isPlaying || isFocused) && state.isPrepared) {
+                                if (state.isPlaying && state.isPrepared) {
                                     state.iniciarSiPreparado()
                                 }
                             }

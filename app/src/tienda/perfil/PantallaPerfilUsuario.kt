@@ -47,6 +47,8 @@ fun PerfilScreen(
     orders: List<Order>,
     savedProducts: List<ProductJson> = emptyList(),
     cartItemCount: Long = 0L,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateToCart: () -> Unit = {},
     onProductClick: (ProductJson) -> Unit = {},
     onExploreClick: () -> Unit = {},
@@ -56,10 +58,14 @@ fun PerfilScreen(
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
-    val user = remember { MobileSession.user(context) }
+    val user = remember(userProfile, isAuthenticated) { MobileSession.user(context) }
 
-    var name by remember(userProfile) { mutableStateOf(userProfile?.displayName ?: user?.name.orEmpty()) }
-    var email by remember(userProfile) { mutableStateOf(userProfile?.email ?: user?.email.orEmpty()) }
+    var name by remember(userProfile, isAuthenticated) {
+        mutableStateOf(userProfile?.displayName ?: user?.name.orEmpty())
+    }
+    var email by remember(userProfile, isAuthenticated) {
+        mutableStateOf(userProfile?.email ?: user?.email.orEmpty())
+    }
     var phone by remember(userProfile) { mutableStateOf(userProfile?.phone ?: "") }
     var address by remember(userProfile) { mutableStateOf(userProfile?.address ?: "") }
     var city by remember(userProfile) { mutableStateOf(userProfile?.city ?: "") }
@@ -101,8 +107,14 @@ fun PerfilScreen(
             ) {
                 item {
                     TarjetaIdentidadPerfil(
-                        displayName = (userProfile?.displayName ?: user?.name ?: "Caballero Elegan").trim(),
-                        email = userProfile?.email ?: user?.email ?: "",
+                        displayName = (
+                            userProfile?.displayName
+                                ?: user?.name
+                                ?: if (isAuthenticated) "Caballero Elegan" else "Visitante Elegan"
+                            ).trim(),
+                        email = userProfile?.email
+                            ?: user?.email
+                            ?: if (isAuthenticated) "" else "Explora libremente · Crea tu cuenta al interactuar",
                         isCompact = isCompact
                     )
                 }
@@ -146,33 +158,41 @@ fun PerfilScreen(
                                         isEditingDelivery = isEditingDelivery,
                                         onStartEdit = { isEditingDelivery = true },
                                         onSaveClick = {
-                                            val cleanPhone = phone.trim()
-                                            val cleanAddress = address.trim()
-                                            val cleanCity = city.trim()
-                                            val cleanName = name.trim()
-                                            val cleanEmail = email.trim()
-                                            if (cleanName.isBlank() || cleanEmail.isBlank()) {
-                                                val msg = "El nombre y el correo son obligatorios."
-                                                if (notifier != null) notifier.show(msg)
-                                                else scope.launch { snackbarHostState.showSnackbar(msg) }
-                                            } else {
-                                                name = cleanName
-                                                email = cleanEmail
-                                                phone = cleanPhone
-                                                address = cleanAddress
-                                                city = cleanCity
-                                                onSaveProfile(cleanName, cleanEmail, cleanPhone, cleanAddress, cleanCity) { result ->
-                                                    result.onSuccess {
-                                                        isEditingDelivery = false
-                                                        if (notifier != null) notifier.show("Datos guardados correctamente en tu cuenta")
-                                                        else scope.launch { snackbarHostState.showSnackbar("Datos guardados correctamente en tu cuenta") }
-                                                    }.onFailure { error ->
-                                                        val msg = error.message?.takeIf { it.isNotBlank() }
-                                                            ?: "No se pudieron guardar los datos en el servidor."
-                                                        if (notifier != null) notifier.show(msg)
-                                                        else scope.launch { snackbarHostState.showSnackbar(msg) }
+                                            val executeSave: () -> Unit = {
+                                                val registeredUser = MobileSession.user(context)
+                                                val cleanPhone = phone.trim()
+                                                val cleanAddress = address.trim()
+                                                val cleanCity = city.trim()
+                                                val cleanName = name.trim().ifBlank { registeredUser?.name.orEmpty().trim() }
+                                                val cleanEmail = email.trim().ifBlank { registeredUser?.email.orEmpty().trim() }
+                                                if (cleanName.isBlank() || cleanEmail.isBlank()) {
+                                                    val msg = "El nombre y el correo son obligatorios."
+                                                    if (notifier != null) notifier.show(msg)
+                                                    else scope.launch { snackbarHostState.showSnackbar(msg) }
+                                                } else {
+                                                    name = cleanName
+                                                    email = cleanEmail
+                                                    phone = cleanPhone
+                                                    address = cleanAddress
+                                                    city = cleanCity
+                                                    onSaveProfile(cleanName, cleanEmail, cleanPhone, cleanAddress, cleanCity) { result ->
+                                                        result.onSuccess {
+                                                            isEditingDelivery = false
+                                                            if (notifier != null) notifier.show("Datos guardados correctamente en tu cuenta")
+                                                            else scope.launch { snackbarHostState.showSnackbar("Datos guardados correctamente en tu cuenta") }
+                                                        }.onFailure { error ->
+                                                            val msg = error.message?.takeIf { it.isNotBlank() }
+                                                                ?: "No se pudieron guardar los datos en el servidor."
+                                                            if (notifier != null) notifier.show(msg)
+                                                            else scope.launch { snackbarHostState.showSnackbar(msg) }
+                                                        }
                                                     }
                                                 }
+                                            }
+                                            if (!isAuthenticated) {
+                                                onRequireAuth("Regístrate para guardar tus datos de entrega.", executeSave)
+                                            } else {
+                                                executeSave()
                                             }
                                         }
                                     )
@@ -192,7 +212,14 @@ fun PerfilScreen(
                 }
 
                 item {
-                    BotonCerrarSesionPerfil(horizontalPad = horizontalPad, onSignOut = onSignOut)
+                    BotonCerrarSesionPerfil(
+                        horizontalPad = horizontalPad,
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = {
+                            onRequireAuth("Crea tu cuenta para guardar favoritos, pedidos y datos de envío.") {}
+                        },
+                        onSignOut = onSignOut
+                    )
                 }
             }
 

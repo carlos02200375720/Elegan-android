@@ -1,7 +1,6 @@
 package com.example.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
@@ -9,8 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -69,8 +69,7 @@ fun CategoriaScreen(
                     .fillMaxSize()
                     .widthIn(max = 680.dp)
                     .testTag("menu_screen"),
-                contentPadding = PaddingValues(horizontal = horizontalPad, vertical = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(if (isCompact) 10.dp else 12.dp)
+                contentPadding = PaddingValues(horizontal = horizontalPad, vertical = 4.dp)
             ) {
                 item {
                     Text(
@@ -79,7 +78,7 @@ fun CategoriaScreen(
                             color = Color.Gray,
                             fontSize = if (isCompact) 13.sp else 14.sp
                         ),
-                        modifier = Modifier.padding(vertical = 6.dp)
+                        modifier = Modifier.padding(top = 6.dp, bottom = 10.dp)
                     )
                 }
 
@@ -95,7 +94,7 @@ fun CategoriaScreen(
                         )
                     }
                 } else {
-                    items(categories, key = { it.id }) { catItem ->
+                    itemsIndexed(categories, key = { _, item -> item.id }) { index, catItem ->
                         val count = products.count { it.productCategory() == catItem.id }
                         TarjetaCategoriaMenu(
                             catItem = catItem,
@@ -103,6 +102,9 @@ fun CategoriaScreen(
                             isCompact = isCompact,
                             onClick = { onCategorySelected(catItem.id) }
                         )
+                        if (index < categories.lastIndex) {
+                            HorizontalDivider(color = Color(0xFFEDE6DF))
+                        }
                     }
                 }
 

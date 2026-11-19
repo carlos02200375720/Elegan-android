@@ -48,13 +48,13 @@ fun EleganVideoPlayer(
     EfectoFocoYControlesVideo(
         state = state,
         isFocused = isFocused,
+        autoPlay = autoPlay,
         videoUrl = videoUrl,
         posterUrl = posterUrl
     )
 
     CicloVidaMediaPlayer(
         videoUrl = videoUrl,
-        isFocused = isFocused,
         state = state
     )
 
@@ -77,8 +77,7 @@ fun EleganVideoPlayer(
     ) {
         if (state.shouldLoadPlayer && videoUrl.isNotBlank() && !state.hasError) {
             SuperficieTextureVideo(
-                state = state,
-                isFocused = isFocused
+                state = state
             )
         }
 
@@ -106,18 +105,18 @@ fun EleganVideoPlayer(
             }
         }
 
-        BotonesControlVideo(
-            isPlaying = state.isPlaying,
-            showOverlayControls = state.showOverlayControls,
-            isCompleted = state.isCompleted,
-            testTagPrefix = testTagPrefix,
-            onReplay = { state.repetirVideo() },
-            onPlay = { state.iniciarReproduccion() },
-            onPause = { state.pausarReproduccion() },
-            modifier = Modifier.align(Alignment.Center)
-        )
-
-        if (state.hasError) {
+        if (!state.hasError) {
+            BotonesControlVideo(
+                isPlaying = state.isPlaying,
+                showOverlayControls = state.showOverlayControls,
+                isCompleted = state.isCompleted,
+                testTagPrefix = testTagPrefix,
+                onReplay = { state.repetirVideo() },
+                onPlay = { state.iniciarReproduccion() },
+                onPause = { state.pausarReproduccion() },
+                modifier = Modifier.align(Alignment.Center)
+            )
+        } else {
             VistaErrorVideo()
         }
     }

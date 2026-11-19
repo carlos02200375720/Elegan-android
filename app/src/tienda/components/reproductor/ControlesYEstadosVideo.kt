@@ -3,23 +3,20 @@ package com.example.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,7 +26,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganGold
 
 @Composable
@@ -50,61 +46,46 @@ internal fun BotonesControlVideo(
         modifier = modifier
     ) {
         if (isCompleted) {
-            Surface(
+            IconButton(
                 onClick = onReplay,
-                shape = CircleShape,
-                color = EleganBurgundy.copy(alpha = 0.9f),
-                border = BorderStroke(2.dp, EleganGold),
                 modifier = Modifier
                     .size(56.dp)
                     .testTag("${testTagPrefix}_replay_btn")
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Repetir video",
-                        tint = Color.White,
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Repetir video",
+                    tint = Color.White,
+                    modifier = Modifier.size(42.dp)
+                )
             }
         } else if (!isPlaying) {
-            Surface(
+            IconButton(
                 onClick = onPlay,
-                shape = CircleShape,
-                color = EleganBurgundy.copy(alpha = 0.92f),
-                border = BorderStroke(2.dp, EleganGold),
                 modifier = Modifier
                     .size(56.dp)
                     .testTag("${testTagPrefix}_play_btn")
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = "Reproducir video",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Reproducir video",
+                    tint = Color.White,
+                    modifier = Modifier.size(48.dp)
+                )
             }
         } else if (showOverlayControls) {
-            Surface(
+            IconButton(
                 onClick = onPause,
-                shape = CircleShape,
-                color = Color.Black.copy(alpha = 0.7f),
-                border = BorderStroke(1.5.dp, Color.White.copy(alpha = 0.7f)),
                 modifier = Modifier
-                    .size(52.dp)
+                    .size(56.dp)
                     .testTag("${testTagPrefix}_pause_btn")
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Default.Pause,
-                        contentDescription = "Pausar video",
-                        tint = Color.White,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Default.Pause,
+                    contentDescription = "Pausar video",
+                    tint = Color.White,
+                    modifier = Modifier.size(40.dp)
+                )
             }
         }
     }

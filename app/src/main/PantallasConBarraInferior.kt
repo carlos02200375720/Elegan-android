@@ -26,6 +26,8 @@ import com.example.ui.viewmodel.EleganViewModel
 internal fun PantallasConBarraInferior(
     screen: Screen,
     viewModel: EleganViewModel,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateTo: (Screen) -> Unit,
     onSignOut: () -> Unit
 ) {
@@ -90,15 +92,27 @@ internal fun PantallasConBarraInferior(
                         publicationStats = publicationStats,
                         likedPublicationIds = likedPublicationIds,
                         publicationComments = publicationComments,
-                        onToggleLike = { id, onResult -> viewModel.togglePublicationLike(id, onResult) },
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = onRequireAuth,
+                        onToggleLike = { id, onResult ->
+                            onRequireAuth("Regístrate para dar me gusta a tus publicaciones favoritas.") {
+                                viewModel.togglePublicationLike(id, onResult)
+                            }
+                        },
                         onOpenComments = viewModel::openPublicationComments,
                         onSubmitComment = { productId, displayName, text, onResult ->
-                            viewModel.addPublicationComment(productId, displayName, text, onResult)
+                            onRequireAuth("Regístrate para comentar en las publicaciones.") {
+                                viewModel.addPublicationComment(productId, displayName, text, onResult)
+                            }
                         },
                         onRecordShare = { productId, onResult ->
                             viewModel.recordPublicationShare(productId, onResult)
                         },
-                        onToggleSaveProduct = { id, onResult -> viewModel.toggleSaveProduct(id, onResult) },
+                        onToggleSaveProduct = { id, onResult ->
+                            onRequireAuth("Regístrate para guardar publicaciones en tu perfil.") {
+                                viewModel.toggleSaveProduct(id, onResult)
+                            }
+                        },
                         onNavigateToCatalogo = { cat ->
                             viewModel.setCategory(cat)
                             onNavigateTo(Screen.CATALOGO)
@@ -133,14 +147,22 @@ internal fun PantallasConBarraInferior(
                             onNavigateTo(Screen.PRODUCTO)
                         },
                         onQuickAddToCart = { prod ->
-                            val defaultSize = prod.productSizes().firstOrNull() ?: "Estándar"
-                            val defaultColor = prod.productColors().firstOrNull().orEmpty()
-                            viewModel.addToCart(prod, defaultSize, 1L, defaultColor)
+                            onRequireAuth("Regístrate para agregar productos a tu carrito.") {
+                                val defaultSize = prod.productSizes().firstOrNull() ?: "Estándar"
+                                val defaultColor = prod.productColors().firstOrNull().orEmpty()
+                                viewModel.addToCart(prod, defaultSize, 1L, defaultColor)
+                            }
                         },
                         cartItemCount = cartItems.sumOf { it.quantity },
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         savedProductIds = savedProductIds,
-                        onToggleSaveProduct = { id -> viewModel.toggleSaveProduct(id) },
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = onRequireAuth,
+                        onToggleSaveProduct = { id ->
+                            onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                                viewModel.toggleSaveProduct(id)
+                            }
+                        },
                         isLoadingProducts = isLoadingProducts,
                         productsError = productsError,
                         onRefreshProducts = {
@@ -157,13 +179,19 @@ internal fun PantallasConBarraInferior(
                         orders = orders,
                         savedProducts = savedProducts,
                         cartItemCount = cartItems.sumOf { it.quantity },
+                        isAuthenticated = isAuthenticated,
+                        onRequireAuth = onRequireAuth,
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         onProductClick = { prod ->
                             viewModel.selectProduct(prod)
                             onNavigateTo(Screen.PRODUCTO)
                         },
                         onExploreClick = { onNavigateTo(Screen.INICIO) },
-                        onSaveProfile = { nm, em, ph, ad, ct, onResult -> viewModel.saveProfile(nm, em, ph, ad, ct, onResult) },
+                        onSaveProfile = { nm, em, ph, ad, ct, onResult ->
+                            onRequireAuth("Regístrate para guardar tus datos de entrega.") {
+                                viewModel.saveProfile(nm, em, ph, ad, ct, onResult)
+                            }
+                        },
                         onNavigateToChats = { onNavigateTo(Screen.CHATS) },
                         onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onSignOut = onSignOut

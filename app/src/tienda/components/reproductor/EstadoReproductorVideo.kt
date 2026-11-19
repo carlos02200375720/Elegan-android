@@ -19,9 +19,9 @@ import kotlinx.coroutines.withContext
 @Stable
 internal class EstadoReproductorVideo(
     initialAutoPlay: Boolean,
-    initialFocused: Boolean
+    @Suppress("UNUSED_PARAMETER") initialFocused: Boolean = false
 ) {
-    var isPlaying by mutableStateOf(initialAutoPlay || initialFocused)
+    var isPlaying by mutableStateOf(initialAutoPlay)
     var isPrepared by mutableStateOf(false)
     var hasStarted by mutableStateOf(false)
     var isCompleted by mutableStateOf(false)
@@ -123,29 +123,35 @@ internal fun rememberEstadoReproductorVideo(
 internal fun EfectoFocoYControlesVideo(
     state: EstadoReproductorVideo,
     isFocused: Boolean,
+    autoPlay: Boolean,
     videoUrl: String,
     posterUrl: String?
 ) {
     val context = LocalContext.current
+    var wasFocused by remember(videoUrl) { mutableStateOf(false) }
 
-    LaunchedEffect(isFocused) {
+    LaunchedEffect(isFocused, autoPlay) {
         if (isFocused) {
-            state.shouldLoadPlayer = true
-            state.isPlaying = true
-            state.showOverlayControls = false
-            if (state.isPrepared && !state.hasError) {
-                if (state.isCompleted) {
-                    state.isCompleted = false
-                    state.reiniciarYReproducirSiPreparado()
-                } else {
-                    state.iniciarSiPreparado()
+            if (autoPlay) {
+                state.shouldLoadPlayer = true
+                state.isPlaying = true
+                state.showOverlayControls = false
+                if (state.isPrepared && !state.hasError) {
+                    if (state.isCompleted) {
+                        state.isCompleted = false
+                        state.reiniciarYReproducirSiPreparado()
+                    } else {
+                        state.iniciarSiPreparado()
+                    }
                 }
             }
-        } else {
+        } else if (wasFocused || autoPlay) {
             state.isPlaying = false
+            state.showOverlayControls = true
             state.pausarSiEsPosible()
             state.shouldLoadPlayer = false
         }
+        wasFocused = isFocused
     }
 
     LaunchedEffect(videoUrl, posterUrl, state.shouldLoadPlayer) {

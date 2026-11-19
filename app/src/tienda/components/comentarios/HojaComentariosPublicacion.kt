@@ -24,11 +24,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.productId
 import com.example.data.model.productName
+import com.example.data.remote.MobileSession
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
 
@@ -38,27 +40,44 @@ fun PublicationCommentsBottomSheet(
     product: ProductJson,
     displayName: String,
     comments: List<PublicationComment>,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onDismiss: () -> Unit,
     onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit
 ) {
+    val context = LocalContext.current
     val commentsNotifier = remember { EleganNotificationState() }
     var newCommentText by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     // skipPartiallyExpanded = true garantiza que abra completamente y no a medias
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
+    fun dispatchComment(trimmed: String, authorName: String) {
+        isSubmitting = true
+        newCommentText = ""
+        onSubmitComment(product.productId(), authorName, trimmed) { result ->
+            isSubmitting = false
+            if (result.isSuccess) {
+                commentsNotifier.show("Comentario publicado")
+            } else {
+                commentsNotifier.show("No se pudo publicar el comentario")
+            }
+        }
+    }
+
     val submitCurrentComment = {
         val trimmed = newCommentText.trim()
         if (trimmed.isNotEmpty() && !isSubmitting) {
-            isSubmitting = true
-            newCommentText = ""
-            onSubmitComment(product.productId(), displayName, trimmed) { result ->
-                isSubmitting = false
-                if (result.isSuccess) {
-                    commentsNotifier.show("Comentario publicado")
-                } else {
-                    commentsNotifier.show("No se pudo publicar el comentario")
+            if (!isAuthenticated) {
+                onRequireAuth("Regístrate para comentar en las publicaciones.") {
+                    val registeredAuthor = MobileSession.user(context)?.name
+                        ?.trim()
+                        ?.takeIf { it.isNotBlank() }
+                        ?: displayName
+                    dispatchComment(trimmed, registeredAuthor)
                 }
+            } else {
+                dispatchComment(trimmed, displayName)
             }
         }
     }

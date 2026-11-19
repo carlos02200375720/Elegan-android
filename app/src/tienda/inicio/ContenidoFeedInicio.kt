@@ -181,7 +181,8 @@ internal fun ContenidoFeedInicio(
                     onOpenComments = onOpenCommentsForProduct,
                     onRecordShare = onRecordShare,
                     onNavigateToProduct = onNavigateToProduct,
-                    modifier = feedItemModifier
+                    modifier = feedItemModifier,
+                    categories = categories
                 )
             }
 

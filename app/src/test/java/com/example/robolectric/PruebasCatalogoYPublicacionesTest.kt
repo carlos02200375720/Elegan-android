@@ -9,6 +9,7 @@ import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareEntity
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
@@ -17,6 +18,7 @@ import com.example.data.model.announcementImageUrl
 import com.example.data.model.announcementMessage
 import com.example.data.model.announcementTitle
 import com.example.data.model.productCategory
+import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
 import com.example.data.model.productImageUrl
@@ -236,6 +238,17 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(ShadowMediaPlayer.State.IDLE, shadow.state)
 
         mp.release()
+    }
+
+    @Test
+    fun `test video player state does not autoplay when initialFocused is true and autoPlay is false`() {
+        val state = EstadoReproductorVideo(initialAutoPlay = false, initialFocused = true)
+        assertFalse(state.isPlaying)
+        assertFalse(state.shouldLoadPlayer)
+
+        state.iniciarReproduccion()
+        assertTrue(state.isPlaying)
+        assertTrue(state.shouldLoadPlayer)
     }
 
     @Test
@@ -811,6 +824,35 @@ class PruebasCatalogoYPublicacionesTest {
         upgradedDb.close()
         sqliteHelper.close()
         context.deleteDatabase(dbName)
+    }
+
+    @Test
+    fun `test productCategoryDisplayName resolves category title from categories list and hides raw UUID`() {
+        val categories = listOf(
+            CategoryItem(id = "c8d8cbe6-afab-4cff-a036-9a404c461e25", title = "Camiza"),
+            CategoryItem(id = "Camisa", title = "Camisas Mayúscula"),
+            CategoryItem(id = "camisa", title = "Camisas Minúscula")
+        )
+        val uuidProduct: ProductJson = mapOf(
+            "id" to "p1",
+            "name" to "Camisa Oxford",
+            "category" to "c8d8cbe6-afab-4cff-a036-9a404c461e25"
+        )
+        assertEquals("Camiza", uuidProduct.productCategoryDisplayName(categories))
+        assertEquals("", uuidProduct.productCategoryDisplayName(emptyList()))
+        assertEquals("c8d8cbe6-afab-4cff-a036-9a404c461e25", uuidProduct.productCategory())
+
+        val upperCaseProduct: ProductJson = mapOf("id" to "p2", "category" to "Camisa")
+        val lowerCaseProduct: ProductJson = mapOf("id" to "p3", "category" to "camisa")
+        assertEquals("Camisas Mayúscula", upperCaseProduct.productCategoryDisplayName(categories))
+        assertEquals("Camisas Minúscula", lowerCaseProduct.productCategoryDisplayName(categories))
+
+        val explicitNameProduct: ProductJson = mapOf(
+            "id" to "p4",
+            "category" to "c8d8cbe6-afab-4cff-a036-9a404c461e25",
+            "categoryName" to "Sastrería"
+        )
+        assertEquals("Sastrería", explicitNameProduct.productCategoryDisplayName(emptyList()))
     }
 }
 

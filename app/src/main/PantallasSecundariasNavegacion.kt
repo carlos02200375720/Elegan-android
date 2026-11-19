@@ -30,6 +30,8 @@ internal fun PantallasSecundariasNavegacion(
     checkoutShipping: Double,
     checkoutTotal: Double,
     viewModel: EleganViewModel,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateTo: (Screen) -> Unit,
     onUpdateCheckoutTotals: (Double, Double, Double, Double) -> Unit,
     onAccountDeleted: () -> Unit
@@ -73,7 +75,13 @@ internal fun PantallasSecundariasNavegacion(
                         viewModel.setCategory(cat)
                         onNavigateTo(Screen.CATALOGO)
                     },
-                    onDeleteAccount = { viewModel.deleteAccount { onAccountDeleted() } },
+                    onDeleteAccount = {
+                        if (isAuthenticated) {
+                            viewModel.deleteAccount { onAccountDeleted() }
+                        } else {
+                            onRequireAuth("Regístrate o inicia sesión para gestionar tu cuenta.") {}
+                        }
+                    },
                     onBack = { onNavigateTo(previousScreen) }
                 )
             }
@@ -88,20 +96,29 @@ internal fun PantallasSecundariasNavegacion(
                         product = prod,
                         cartItemCount = cartItems.sumOf { it.quantity },
                         isSaved = savedProductIds.contains(prodId),
-                        onToggleSave = { onResult -> viewModel.toggleSaveProduct(prodId, onResult) },
+                        onToggleSave = { onResult ->
+                            onRequireAuth("Regístrate para guardar esta prenda en tu perfil.") {
+                                viewModel.toggleSaveProduct(prodId, onResult)
+                            }
+                        },
                         onAddToCart = { p, s, color, q, onResult ->
-                            viewModel.addToCart(p, s, q, color, onResult)
+                            onRequireAuth("Regístrate para añadir prendas a tu carrito.") {
+                                viewModel.addToCart(p, s, q, color, onResult)
+                            }
                         },
                         onBuyNow = { p, s, color, q, onResult ->
-                            viewModel.addToCart(p, s, q, color) { result ->
-                                onResult(result)
-                                if (result.isSuccess) {
-                                    onNavigateTo(Screen.CARRITO)
+                            onRequireAuth("Regístrate para comprar tus prendas favoritas.") {
+                                viewModel.addToCart(p, s, q, color) { result ->
+                                    onResult(result)
+                                    if (result.isSuccess) {
+                                        onNavigateTo(Screen.CARRITO)
+                                    }
                                 }
                             }
                         },
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
-                        onBack = { onNavigateTo(Screen.CATALOGO) }
+                        onBack = { onNavigateTo(Screen.CATALOGO) },
+                        categories = categories
                     )
                 } else {
                     LaunchedEffect(Unit) { onNavigateTo(Screen.CATALOGO) }
@@ -113,11 +130,21 @@ internal fun PantallasSecundariasNavegacion(
                     cartItems = cartItems,
                     cartError = cartError,
                     onRetrySync = { viewModel.refreshCart() },
-                    onUpdateQuantity = { id, qty -> viewModel.updateCartQuantity(id, qty) },
-                    onRemoveItem = { id -> viewModel.removeFromCart(id) },
+                    onUpdateQuantity = { id, qty ->
+                        onRequireAuth("Regístrate para modificar los artículos de tu carrito.") {
+                            viewModel.updateCartQuantity(id, qty)
+                        }
+                    },
+                    onRemoveItem = { id ->
+                        onRequireAuth("Regístrate para modificar los artículos de tu carrito.") {
+                            viewModel.removeFromCart(id)
+                        }
+                    },
                     onNavigateToVerificasion = { sub, disc, ship, tot ->
-                        onUpdateCheckoutTotals(sub, disc, ship, tot)
-                        onNavigateTo(Screen.VERIFICASION)
+                        onRequireAuth("Regístrate para continuar con tu compra.") {
+                            onUpdateCheckoutTotals(sub, disc, ship, tot)
+                            onNavigateTo(Screen.VERIFICASION)
+                        }
                     },
                     onExploreCatalog = {
                         viewModel.setCategory(null)
@@ -141,31 +168,35 @@ internal fun PantallasSecundariasNavegacion(
                     isProcessingPayPal = isProcessingPayPal,
                     payPalError = payPalError,
                     onCreatePayPalOrder = { name, email, phone, addr, city, onSessionReady ->
-                        viewModel.startPayPalOrder(
-                            customerName = name,
-                            email = email,
-                            phone = phone,
-                            address = addr,
-                            city = city,
-                            total = checkoutTotal,
-                            itemCount = totalItemCount,
-                            itemsSummary = itemsSummary,
-                            onSessionReady = onSessionReady
-                        )
+                        onRequireAuth("Regístrate para realizar pagos con PayPal.") {
+                            viewModel.startPayPalOrder(
+                                customerName = name,
+                                email = email,
+                                phone = phone,
+                                address = addr,
+                                city = city,
+                                total = checkoutTotal,
+                                itemCount = totalItemCount,
+                                itemsSummary = itemsSummary,
+                                onSessionReady = onSessionReady
+                            )
+                        }
                     },
                     onCapturePayPalOrder = { paypalOrderId, name, email, phone, addr, city ->
-                        viewModel.capturePayPalOrder(
-                            paypalOrderId = paypalOrderId,
-                            customerName = name,
-                            email = email,
-                            phone = phone,
-                            address = addr,
-                            city = city,
-                            total = checkoutTotal,
-                            itemCount = totalItemCount,
-                            itemsSummary = itemsSummary,
-                            onSuccess = { onNavigateTo(Screen.GRACIA) }
-                        )
+                        onRequireAuth("Regístrate para confirmar tu pedido.") {
+                            viewModel.capturePayPalOrder(
+                                paypalOrderId = paypalOrderId,
+                                customerName = name,
+                                email = email,
+                                phone = phone,
+                                address = addr,
+                                city = city,
+                                total = checkoutTotal,
+                                itemCount = totalItemCount,
+                                itemsSummary = itemsSummary,
+                                onSuccess = { onNavigateTo(Screen.GRACIA) }
+                            )
+                        }
                     },
                     onClearPayPalState = { viewModel.clearPayPalState() },
                     onBack = { onNavigateTo(Screen.CARRITO) }
@@ -187,6 +218,8 @@ internal fun PantallasSecundariasNavegacion(
                 ChatsScreen(
                     messages = messages,
                     cartItemCount = cartItems.sumOf { it.quantity },
+                    isAuthenticated = isAuthenticated,
+                    onRequireAuth = onRequireAuth,
                     onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                     onSendMessage = { text, mediaUri, mediaType ->
                         viewModel.sendSupportMessage(text, mediaUri, mediaType)

@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productCategory
+import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productDescription
 import com.example.data.model.productId
 import com.example.data.model.productName
@@ -57,6 +58,8 @@ fun CatalogoScreen(
     cartItemCount: Long = 0L,
     onNavigateToCart: () -> Unit = {},
     savedProductIds: Set<String> = emptySet(),
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onToggleSaveProduct: (String) -> Unit = {},
     isLoadingProducts: Boolean = false,
     productsError: String? = null,
@@ -68,14 +71,15 @@ fun CatalogoScreen(
     val notifier = LocalEleganNotifier.current
     val categoryListState = rememberLazyListState()
 
-    val filteredProducts = remember(products, selectedCategory, searchQuery) {
+    val filteredProducts = remember(products, categories, selectedCategory, searchQuery) {
         products.filter { prod ->
-            val category = prod.productCategory()
-            val matchesCat = selectedCategory == null || category == selectedCategory
+            val categoryId = prod.productCategory()
+            val categoryTitle = prod.productCategoryDisplayName(categories)
+            val matchesCat = selectedCategory == null || categoryId == selectedCategory
             val matchesQuery = searchQuery.isBlank() ||
                 prod.productName().contains(searchQuery, ignoreCase = true) ||
                 prod.productDescription().contains(searchQuery, ignoreCase = true) ||
-                category.contains(searchQuery, ignoreCase = true)
+                categoryTitle.contains(searchQuery, ignoreCase = true)
             matchesCat && matchesQuery
         }
     }
@@ -183,18 +187,30 @@ fun CatalogoScreen(
                 items(filteredProducts, key = { it.productId() }) { product ->
                     val prodId = product.productId()
                     val isSaved = savedProductIds.contains(prodId)
+                    val categoryLabel = product.productCategoryDisplayName(categories)
                     ProductGridCard(
                         product = product,
                         isSaved = isSaved,
                         onClick = { onProductClick(product) },
+                        categoryLabel = categoryLabel,
                         onToggleSave = {
                             val willSave = !isSaved
-                            onToggleSaveProduct(prodId)
-                            val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
-                            if (notifier != null) {
-                                notifier.show(msg)
+                            val notifySaved = {
+                                val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
+                                if (notifier != null) {
+                                    notifier.show(msg)
+                                } else {
+                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                                }
+                            }
+                            if (!isAuthenticated) {
+                                onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                                    onToggleSaveProduct(prodId)
+                                    notifySaved()
+                                }
                             } else {
-                                scope.launch { snackbarHostState.showSnackbar(msg) }
+                                onToggleSaveProduct(prodId)
+                                notifySaved()
                             }
                         }
                     )

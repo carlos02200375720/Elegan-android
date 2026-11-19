@@ -12,8 +12,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
-import com.example.data.model.productCategory
+import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productDescription
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
@@ -41,7 +42,8 @@ fun ProductPublicationPost(
     onSaveClick: () -> Unit,
     onShareClick: () -> Unit,
     onProductClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    categories: List<CategoryItem> = emptyList()
 ) {
     val productId = product.productId()
     val mediaFormat = product.productMediaFormat()
@@ -50,7 +52,9 @@ fun ProductPublicationPost(
     val productVideoUrl = product.productVideoUrl()
     val productHasVideo = product.productHasVideo()
     val productPrice = product.productPrice()
-    val productCategory = product.productCategory()
+    val productCategoryName = remember(product, categories) {
+        product.productCategoryDisplayName(categories)
+    }
     val productName = product.productName()
     val productDescription = product.productDescription()
 
@@ -79,8 +83,12 @@ fun ProductPublicationPost(
     val priceText = remember(productPrice) {
         "$${String.format("%.2f", productPrice)}"
     }
-    val categoryLabel = remember(productCategory) {
-        "Boutique Oficial • ${productCategory.replaceFirstChar { it.uppercase() }}"
+    val categoryLabel = remember(productCategoryName) {
+        if (productCategoryName.isNotBlank()) {
+            "Boutique Oficial • ${productCategoryName.replaceFirstChar { it.uppercase() }}"
+        } else {
+            "Boutique Oficial"
+        }
     }
     val pagerState = rememberPagerState(pageCount = { mediaItems.size })
 

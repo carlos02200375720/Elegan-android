@@ -37,6 +37,8 @@ fun InicioScreen(
     publicationStats: Map<String, PublicationStats>,
     likedPublicationIds: Set<String>,
     publicationComments: List<PublicationComment>,
+    isAuthenticated: Boolean = true,
+    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
     onOpenComments: (String?) -> Unit,
     onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
@@ -129,6 +131,8 @@ fun InicioScreen(
             product = prod,
             displayName = displayName,
             comments = publicationComments,
+            isAuthenticated = isAuthenticated,
+            onRequireAuth = onRequireAuth,
             onDismiss = {
                 activeCommentProduct = null
                 onOpenComments(null)

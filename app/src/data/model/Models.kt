@@ -21,6 +21,30 @@ fun ProductJson.productDescription(): String =
 fun ProductJson.productCategory(): String =
     firstNonBlankString("category")
 
+private val uuidCategoryPattern =
+    Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+private val objectIdCategoryPattern = Regex("^[0-9a-fA-F]{24}$")
+
+private fun looksLikeOpaqueCategoryId(value: String): Boolean =
+    uuidCategoryPattern.matches(value) || objectIdCategoryPattern.matches(value)
+
+fun ProductJson.productCategoryDisplayName(categories: List<CategoryItem> = emptyList()): String {
+    val explicitName = firstNonBlankString(
+        "categoryName",
+        "category_name",
+        "categoryTitle",
+        "category_title",
+        "categoryLabel",
+        "category_label"
+    )
+    if (explicitName.isNotBlank()) return explicitName
+    val rawCategory = productCategory()
+    if (rawCategory.isBlank()) return ""
+    val matchedTitle = categories.firstOrNull { it.id == rawCategory }?.title?.trim()
+    if (!matchedTitle.isNullOrBlank()) return matchedTitle
+    return if (looksLikeOpaqueCategoryId(rawCategory)) "" else rawCategory
+}
+
 fun ProductJson.productPrice(): Double {
     val raw = this["price"] ?: return 0.0
     return when (raw) {
