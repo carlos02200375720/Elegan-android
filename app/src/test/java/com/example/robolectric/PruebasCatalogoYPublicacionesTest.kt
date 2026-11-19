@@ -507,7 +507,7 @@ class PruebasCatalogoYPublicacionesTest {
         val visitorCount = repo.recordPublicationShare("prod_visitor")
         assertEquals(5L, visitorCount)
         assertEquals(null, recordedCalls.first().first)
-        assertEquals(true, recordedCalls.first().second["isGuest"])
+        assertEquals(true, recordedCalls.first().second["fromGuestSession"])
         assertFalse((recordedCalls.first().second["visitorId"] as? String).isNullOrBlank())
 
         // 2. Si el backend exige autenticación (HTTP 401), compartir sigue sin error y se sincroniza al iniciar sesión.
@@ -683,7 +683,7 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals("prod_offline_1", retryCall.second)
         assertEquals(storedEvent.eventId, retryCall.third["eventId"])
         assertEquals(storedEvent.visitorId, retryCall.third["visitorId"])
-        assertEquals(true, retryCall.third["isGuest"])
+        assertEquals(true, retryCall.third["fromGuestSession"])
 
         db2.close()
         context.deleteDatabase(dbName)

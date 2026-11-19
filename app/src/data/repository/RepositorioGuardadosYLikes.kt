@@ -82,7 +82,7 @@ internal class RepositorioGuardadosYLikes(
                             "eventId" to entry.eventId,
                             "productId" to entry.productId,
                             "visitorId" to entry.visitorId,
-                            "isGuest" to true
+                            "fromGuestSession" to true
                         )
                     )
                     if (response["success"] == false) {
