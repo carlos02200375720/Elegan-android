@@ -54,6 +54,7 @@ internal fun ContenidoFeedInicio(
     onOpenCommentsForProduct: (ProductJson) -> Unit,
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCatalogo: (String?) -> Unit,
+    onAnnouncementClick: (AnnouncementJson) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToChats: () -> Unit,
@@ -103,7 +104,7 @@ internal fun ContenidoFeedInicio(
                 item(key = "announcements_section") {
                     SeccionAnunciosInicio(
                         announcements = announcements,
-                        onAnnouncementClick = onNavigateToCatalogo,
+                        onAnnouncementClick = onAnnouncementClick,
                         modifier = categoriesModifier
                     )
                 }
