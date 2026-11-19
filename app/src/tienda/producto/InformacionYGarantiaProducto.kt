@@ -152,7 +152,7 @@ fun BloqueDetalleProducto(
                         )
                         .clickable { onSelectShipping(method.id) }
                         .padding(12.dp)
-                        .testTag("shipping_method_\${method.id}")
+                        .testTag("shipping_method_${method.id}")
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
@@ -162,18 +162,18 @@ fun BloqueDetalleProducto(
                             color = EleganCharcoal
                         )
                         Text(
-                            text = if (method.price == 0.0) "GRATIS" else "$\${String.format("%.2f", method.price)}",
+                            text = if (method.price == 0.0) "GRATIS" else "$${String.format("%.2f", method.price)}",
                             fontWeight = FontWeight.Bold,
                             color = EleganBurgundy
                         )
                     }
                     Text(
-                        text = "Entrega: \${method.deliveryTime}",
+                        text = "Entrega: ${method.deliveryTime}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF666666)
                     )
                     Text(
-                        text = "Origen: \${method.origin}",
+                        text = "Origen: ${method.origin}",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF666666)
                     )
