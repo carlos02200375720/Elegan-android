@@ -28,6 +28,18 @@ internal class ControladorPerfilYSoporte(
         .catch { emit(null) }
         .stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = null)
 
+    fun refreshUserProfile() {
+        scope.launch {
+            try {
+                repository.refreshUserProfile()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e("EleganViewModel", "Error al sincronizar el perfil del usuario: ${e.message}", e)
+            }
+        }
+    }
+
     fun refreshMessages() {
         scope.launch {
             try {
