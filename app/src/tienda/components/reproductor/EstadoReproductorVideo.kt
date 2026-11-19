@@ -1,8 +1,5 @@
 package com.example.ui.components
 
-import android.media.MediaPlayer
-import android.view.Surface
-import android.view.TextureView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -12,6 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import android.view.TextureView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -36,8 +36,7 @@ internal class EstadoReproductorVideo(
     var videoHeight by mutableIntStateOf(0)
 
     var textureViewRef by mutableStateOf<TextureView?>(null)
-    var surfaceRef by mutableStateOf<Surface?>(null)
-    var mediaPlayerRef by mutableStateOf<MediaPlayer?>(null)
+    var playerRef by mutableStateOf<ExoPlayer?>(null)
     var extractedPosterUrl by mutableStateOf<String?>(null)
 
     fun alPulsarContenedor() {
@@ -51,35 +50,32 @@ internal class EstadoReproductorVideo(
     }
 
     fun iniciarSiPreparado() {
-        val mp = mediaPlayerRef ?: return
+        val player = playerRef ?: return
         if (!isPrepared || hasError || isDisposed) return
         try {
-            if (!mp.isPlaying) {
-                mp.start()
-            }
+            player.play()
             hasStarted = true
         } catch (_: Exception) {}
     }
 
     fun reiniciarYReproducirSiPreparado() {
-        val mp = mediaPlayerRef ?: return
+        val player = playerRef ?: return
         if (!isPrepared || hasError || isDisposed) return
         try {
-            mp.seekTo(0)
-            if (!mp.isPlaying) {
-                mp.start()
-            }
+            player.seekTo(0L)
+            player.play()
             hasStarted = true
         } catch (_: Exception) {}
     }
 
     fun pausarSiEsPosible() {
-        val mp = mediaPlayerRef ?: return
-        if (!isPrepared || hasError || !hasStarted || isDisposed) return
+        val player = playerRef ?: return
+        if (hasError || isDisposed) return
         try {
-            if (mp.isPlaying) {
-                mp.pause()
+            if (player.isPlaying || player.playWhenReady) {
+                player.pause()
             }
+            hasStarted = false
         } catch (_: Exception) {}
     }
 
