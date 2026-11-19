@@ -71,6 +71,19 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
         perfilCtrl.refreshMessages()
     }
 
+    fun clearUserSessionData(onComplete: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                repository.clearUserSessionData()
+                pedidosCtrl.clearOrderState()
+                onComplete()
+            } catch (error: Exception) {
+                android.util.Log.e("EleganViewModel", "No se pudieron limpiar los datos de la sesión.", error)
+                onComplete()
+            }
+        }
+    }
+
     fun refreshProducts() = catalogoCtrl.refreshProducts()
 
     fun refreshAnnouncements() = catalogoCtrl.refreshAnnouncements()
