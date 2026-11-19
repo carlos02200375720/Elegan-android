@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
+import com.example.data.model.productShippingMethods
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productColors
 import com.example.data.model.productId
@@ -46,6 +47,13 @@ fun ProductoScreen(
 
     val productId = product.productId()
     val defaultSize = product.productSizes().firstOrNull() ?: "Estándar"
+    val shippingMethods = remember(product) { product.productShippingMethods() }
+    var selectedShippingId by remember(productId) {
+        mutableStateOf(shippingMethods.firstOrNull()?.id.orEmpty())
+    }
+    val productForCart = remember(product, selectedShippingId) {
+        product + ("selectedShippingId" to selectedShippingId)
+    }
     var selectedSize by remember(productId) { mutableStateOf(defaultSize) }
     var selectedColor by remember(productId) { mutableStateOf(product.productColors().firstOrNull().orEmpty()) }
     var quantity by remember { mutableLongStateOf(1L) }
@@ -72,7 +80,7 @@ fun ProductoScreen(
         bottomBar = {
             BarraInferiorCompraProducto(
                 onAddToCart = {
-                    onAddToCart(product, selectedSize, selectedColor, quantity) { result ->
+                    onAddToCart(productForCart, selectedSize, selectedColor, quantity) { result ->
                         if (result.isSuccess) {
                             notifyMessage("¡Añadido al carrito con éxito!")
                         } else {
@@ -84,7 +92,7 @@ fun ProductoScreen(
                     }
                 },
                 onBuyNow = {
-                    onBuyNow(product, selectedSize, selectedColor, quantity) { result ->
+                    onBuyNow(productForCart, selectedSize, selectedColor, quantity) { result ->
                         if (result.isFailure) {
                             notifyMessage(
                                 result.exceptionOrNull()?.localizedMessage?.takeIf { it.isNotBlank() }
@@ -125,7 +133,10 @@ fun ProductoScreen(
                         onSelectColor = { selectedColor = it },
                         quantity = quantity,
                         onDecreaseQuantity = { if (quantity > 1) quantity-- },
-                        onIncreaseQuantity = { quantity++ }
+                        onIncreaseQuantity = { quantity++ },
+                        shippingMethods = shippingMethods,
+                        selectedShippingId = selectedShippingId,
+                        onSelectShipping = { selectedShippingId = it }
                     )
                 }
             }
