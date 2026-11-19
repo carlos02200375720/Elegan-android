@@ -114,6 +114,17 @@ internal class RepositorioPerfilYCuenta(
         }
     }
 
+    suspend fun clearUserSessionData() {
+        withContext(Dispatchers.IO) {
+            carritoRepo.clearCart(syncRemote = false)
+            guardadosYLikesRepo.clearPrivateUserData()
+            pedidosRepo.clearUserData()
+            mensajesRepo.clearUserData()
+            profileFlow.value = null
+            loadedToken = null
+        }
+    }
+
     suspend fun deleteUserAccountData() {
         withContext(Dispatchers.IO) {
             carritoRepo.clearCart(syncRemote = false)
