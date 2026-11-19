@@ -97,7 +97,13 @@ fun AppContent(
                         isAuthenticated = isAuthenticated,
                         onRequireAuth = ::requireRegisteredUser,
                         onNavigateTo = ::navigateTo,
-                        onSignOut = onSignOut
+                        onSignOut = {
+                            if (isAuthenticated) {
+                                viewModel.clearUserSessionData(onComplete = onSignOut)
+                            } else {
+                                onSignOut()
+                            }
+                        }
                     )
                 } else {
                     PantallasSecundariasNavegacion(
