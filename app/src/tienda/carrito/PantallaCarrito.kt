@@ -79,7 +79,7 @@ fun CarritoScreen(
         derivedStateOf { subtotal * discountPercent }
     }
     val shippingCost by remember(subtotal) {
-        derivedStateOf { if (subtotal >= 100.0 || subtotal == 0.0) 0.0 else 12.0 }
+        derivedStateOf { cartItems.sumOf { it.shippingPrice * it.quantity } }
     }
     val total by remember(subtotal, discountAmount, shippingCost) {
         derivedStateOf { (subtotal - discountAmount + shippingCost).coerceAtLeast(0.0) }
