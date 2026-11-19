@@ -222,6 +222,12 @@ fun AnnouncementJson.announcementImageUrl(): String =
 fun AnnouncementJson.announcementCategory(): String =
     firstNonBlankString("category", "targetCategory", "target_category")
 
+fun AnnouncementJson.announcementDestinationType(): String =
+    firstNonBlankString("destinationType", "destination_type")
+
+fun AnnouncementJson.announcementDestinationId(): String =
+    firstNonBlankString("destinationId", "destination_id")
+
 fun AnnouncementJson.announcementBadge(): String =
     firstNonBlankString("badge", "tag", "label")
 
