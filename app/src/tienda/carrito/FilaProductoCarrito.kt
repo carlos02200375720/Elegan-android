@@ -119,6 +119,25 @@ fun CartItemRow(
                         )
                     )
 
+                    if (item.shippingMethodName.isNotBlank()) {
+                        Text(
+                            text = "Envío: ${item.shippingMethodName}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            text = "Costo de envío: ${if (item.shippingPrice == 0.0) "GRATIS" else "$" + String.format("%.2f", item.shippingPrice)}",
+                            style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                        )
+                        if (item.shippingDeliveryTime.isNotBlank()) {
+                            Text(
+                                text = "Entrega: ${item.shippingDeliveryTime}",
+                                style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(6.dp))
 
                     Row(
