@@ -48,7 +48,7 @@ fun ProductoScreen(
     val productId = product.productId()
     val defaultSize = product.productSizes().firstOrNull() ?: "Estándar"
     val shippingMethods = remember(product) { product.productShippingMethods() }
-    var selectedShippingId by remember(productId) {
+    var selectedShippingId by remember(productId, shippingMethods) {
         mutableStateOf(shippingMethods.firstOrNull()?.id.orEmpty())
     }
     val productForCart = remember(product, selectedShippingId) {
