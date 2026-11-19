@@ -15,6 +15,7 @@ import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
 class EleganViewModel(application: Application) : AndroidViewModel(application) {
 
