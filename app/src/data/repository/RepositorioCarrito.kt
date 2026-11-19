@@ -9,6 +9,7 @@ import com.example.data.model.productId
 import com.example.data.model.productImageUrl
 import com.example.data.model.productName
 import com.example.data.model.productPrice
+import com.example.data.model.productShippingMethods
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
@@ -124,13 +125,15 @@ internal class RepositorioCarrito(
     ) = withContext(Dispatchers.IO) {
         val productId = product.productId()
         require(productId.isNotBlank() && quantity > 0)
+        val selectedShippingId = (product["selectedShippingId"] as? String).orEmpty()
+        val selectedShipping = product.productShippingMethods().firstOrNull { it.id == selectedShippingId }
 
         cartMutex.withLock {
             val token = activeBackendToken()
             if (token == null) {
                 if (isRobolectricLocalMode()) {
                     val existingIndex = cartItems.indexOfFirst {
-                        it.productId == productId && it.selectedSize == selectedSize && it.selectedColor == selectedColor
+                        it.productId == productId && it.selectedSize == selectedSize && it.selectedColor == selectedColor && it.shippingMethodId == selectedShippingId
                     }
                     if (existingIndex >= 0) {
                         val existing = cartItems[existingIndex]
@@ -146,9 +149,11 @@ internal class RepositorioCarrito(
                                 imageUrl = product.productImageUrl(),
                                 selectedSize = selectedSize,
                                 selectedColor = selectedColor,
-                                shippingMethodId = (product["selectedShippingId"] as? String).orEmpty(),
-                                shippingMethodName = (product["shippingMethods"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.firstOrNull { it["id"] == product["selectedShippingId"] }?.get("name")?.toString().orEmpty(),
-                                shippingPrice = ((product["shippingMethods"] as? List<*>)?.filterIsInstance<Map<*, *>>()?.firstOrNull { it["id"] == product["selectedShippingId"] }?.get("price") as? Number)?.toDouble() ?: 0.0,
+                                shippingMethodId = selectedShipping?.id.orEmpty(),
+                                shippingMethodName = selectedShipping?.name.orEmpty(),
+                                shippingPrice = selectedShipping?.price ?: 0.0,
+                                shippingDeliveryTime = selectedShipping?.deliveryTime.orEmpty(),
+                                shippingOrigin = selectedShipping?.origin.orEmpty(),
                                 quantity = quantity
                             )
                         )
@@ -172,7 +177,7 @@ internal class RepositorioCarrito(
                 "size" to selectedSize,
                 "selectedColor" to selectedColor,
                 "color" to selectedColor,
-                "selectedShippingId" to (product["selectedShippingId"] as? String).orEmpty(),
+                "selectedShippingId" to selectedShippingId,
                 "quantity" to quantity
             )
 
