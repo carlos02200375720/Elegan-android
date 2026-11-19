@@ -52,7 +52,7 @@ import com.example.ui.theme.EleganGold
 @Composable
 internal fun SeccionAnunciosInicio(
     announcements: List<AnnouncementJson>,
-    onAnnouncementClick: (String?) -> Unit,
+    onAnnouncementClick: (AnnouncementJson) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (announcements.isEmpty()) return
@@ -107,7 +107,7 @@ internal fun SeccionAnunciosInicio(
                 Card(
                     modifier = Modifier
                         .width(280.dp)
-                        .clickable { onAnnouncementClick(targetCat) }
+                        .clickable { onAnnouncementClick(item) }
                         .testTag("announcement_card_$idx"),
                     shape = RoundedCornerShape(14.dp),
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF6F1)),
