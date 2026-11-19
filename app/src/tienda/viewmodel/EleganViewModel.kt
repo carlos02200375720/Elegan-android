@@ -67,6 +67,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
         interaccionesCtrl.refreshSavedProducts()
         pedidosCtrl.refreshCart()
         pedidosCtrl.refreshOrders()
+        perfilCtrl.refreshUserProfile()
         perfilCtrl.refreshMessages()
     }
 
