@@ -522,7 +522,7 @@ internal class RepositorioGuardadosYLikes(
         }
     }
 
-    fun clearUserData() {
+    fun clearPrivateUserData() {
         savedProductIds.clear()
         savedFlow.value = emptySet()
         likedPublicationIds.clear()
@@ -531,6 +531,10 @@ internal class RepositorioGuardadosYLikes(
         likeMutexes.clear()
         saveMutexes.clear()
         shareMutexes.clear()
+    }
+
+    fun clearUserData() {
+        clearPrivateUserData()
         statsRepo.clearUserData()
     }
 
