@@ -1,15 +1,13 @@
 package com.example.ui.components
 
-import android.media.AudioAttributes
-import android.media.MediaPlayer
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalContext
-import java.util.concurrent.atomic.AtomicBoolean
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
+import androidx.media3.exoplayer.ExoPlayer
 
 @Composable
 internal fun CicloVidaMediaPlayer(
@@ -31,115 +29,84 @@ internal fun CicloVidaMediaPlayer(
             state.videoWidth = 0
             state.videoHeight = 0
 
-            val disposed = AtomicBoolean(false)
-            val mp = MediaPlayer().apply {
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
-                        .build()
+            val player = ExoPlayer.Builder(context.applicationContext)
+                .setMediaSourceFactory(
+                    crearMediaSourceConCacheVideo(context.applicationContext)
                 )
-                setOnPreparedListener { player ->
-                    if (disposed.get() || state.isDisposed) return@setOnPreparedListener
-                    state.isPrepared = true
-                    state.hasError = false
-                    runCatching { player.isLooping = true }
-                    val w = player.videoWidth
-                    val h = player.videoHeight
-                    if (w > 0 && h > 0) {
-                        state.videoWidth = w
-                        state.videoHeight = h
-                        ajustarTransformacionVideo(state.textureViewRef, w, h)
-                    }
-                    if (state.isMuted) {
-                        player.setVolume(0f, 0f)
-                    } else {
-                        player.setVolume(1f, 1f)
-                    }
-                    if (state.isPlaying) {
-                        state.iniciarSiPreparado()
-                    }
+                .build()
+                .apply {
+                    repeatMode = Player.REPEAT_MODE_ONE
+                    volume = if (state.isMuted) 0f else 1f
                 }
-                setOnVideoSizeChangedListener { _, w, h ->
-                    if (disposed.get()) return@setOnVideoSizeChangedListener
-                    if (w > 0 && h > 0) {
-                        state.videoWidth = w
-                        state.videoHeight = h
-                        ajustarTransformacionVideo(state.textureViewRef, w, h)
-                    }
-                }
-                setOnCompletionListener {
-                    if (disposed.get()) return@setOnCompletionListener
-                    state.hasStarted = false
-                    state.isCompleted = true
-                    state.isPlaying = false
-                    state.showOverlayControls = true
-                }
-                setOnErrorListener { _, _, _ ->
-                    if (!disposed.get()) {
-                        state.isPrepared = false
-                        state.hasStarted = false
-                        state.hasError = true
-                        state.isPlaying = false
-                    }
-                    true
-                }
-            }
-            state.mediaPlayerRef = mp
 
-            state.surfaceRef?.let { surf ->
-                try {
-                    mp.setSurface(surf)
-                } catch (_: Exception) {}
-            }
+            state.playerRef = player
+
+            player.addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (state.isDisposed || state.playerRef !== player) return
+                    state.isPrepared = playbackState == Player.STATE_READY
+                    if (playbackState == Player.STATE_ENDED) {
+                        state.hasStarted = false
+                        state.isCompleted = true
+                        state.isPlaying = false
+                        state.showOverlayControls = true
+                    } else if (playbackState == Player.STATE_READY && state.isPlaying) {
+                        player.play()
+                    }
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (state.isDisposed || state.playerRef !== player) return
+                    state.hasStarted = isPlaying
+                }
+
+                override fun onVideoSizeChanged(videoSize: VideoSize) {
+                    if (state.isDisposed || state.playerRef !== player) return
+                    if (videoSize.width > 0 && videoSize.height > 0) {
+                        state.videoWidth = videoSize.width
+                        state.videoHeight = videoSize.height
+                        ajustarTransformacionVideo(
+                            state.textureViewRef,
+                            videoSize.width,
+                            videoSize.height
+                        )
+                    }
+                }
+
+                override fun onRenderedFirstFrame() {
+                    if (!state.isDisposed && state.playerRef === player) {
+                        state.isFirstFrameRendered = true
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    if (state.isDisposed || state.playerRef !== player) return
+                    state.isPrepared = false
+                    state.hasStarted = false
+                    state.hasError = true
+                    state.isPlaying = false
+                }
+            })
 
             if (videoUrl.isNotBlank()) {
-                val appContext = context.applicationContext
-                videoReleaseScope.launch {
-                    var failed = false
-                    synchronized(mp) {
-                        if (disposed.get()) return@launch
-                        try {
-                            mp.setDataSource(appContext, Uri.parse(videoUrl))
-                            if (!disposed.get()) {
-                                mp.prepareAsync()
-                            }
-                        } catch (_: Exception) {
-                            failed = true
-                        }
-                    }
-                    if (failed && !disposed.get()) {
-                        withContext(Dispatchers.Main) {
-                            if (!disposed.get()) {
-                                state.isPrepared = false
-                                state.hasStarted = false
-                                state.hasError = true
-                                state.isPlaying = false
-                            }
-                        }
-                    }
-                }
+                player.setMediaItem(MediaItem.fromUri(videoUrl))
+                player.prepare()
+                if (state.isPlaying) player.play()
+            } else {
+                state.hasError = true
             }
 
             onDispose {
-                disposed.set(true)
                 state.isDisposed = true
                 state.isPrepared = false
                 state.hasStarted = false
-                if (state.mediaPlayerRef == mp) {
-                    state.mediaPlayerRef = null
-                }
-                videoReleaseScope.launch {
-                    synchronized(mp) {
-                        try {
-                            mp.setSurface(null)
-                        } catch (_: Exception) {}
-                        try {
-                            // release() basta para liberar el reproductor y su decodificador.
-                            mp.release()
-                        } catch (_: Exception) {}
+                if (state.playerRef === player) {
+                    state.textureViewRef?.let { textureView ->
+                        runCatching { player.clearVideoTextureView(textureView) }
                     }
+                    state.playerRef = null
                 }
+                player.release()
             }
         }
     }
