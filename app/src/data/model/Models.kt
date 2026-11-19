@@ -45,6 +45,33 @@ fun ProductJson.productCategoryDisplayName(categories: List<CategoryItem> = empt
     return if (looksLikeOpaqueCategoryId(rawCategory)) "" else rawCategory
 }
 
+@Immutable
+data class ProductShippingMethod(
+    val id: String,
+    val name: String,
+    val price: Double,
+    val deliveryTime: String,
+    val origin: String
+)
+
+fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
+    (this["shippingMethods"] as? List<*>)?.mapNotNull { entry ->
+        val method = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = method["id"]?.toString()?.trim().orEmpty()
+        val name = method["name"]?.toString()?.trim().orEmpty()
+        val price = (method["price"] as? Number)?.toDouble()
+            ?: method["price"]?.toString()?.toDoubleOrNull()
+            ?: 0.0
+        if (id.isBlank() || name.isBlank()) return@mapNotNull null
+        ProductShippingMethod(
+            id = id,
+            name = name,
+            price = price.coerceAtLeast(0.0),
+            deliveryTime = method["deliveryTime"]?.toString().orEmpty(),
+            origin = method["origin"]?.toString().orEmpty()
+        )
+    } ?: emptyList()
+
 fun ProductJson.productPrice(): Double {
     val raw = this["price"] ?: return 0.0
     return when (raw) {
@@ -238,6 +265,11 @@ data class CartItem(
     val imageUrl: String = "",
     val selectedSize: String = "",
     val selectedColor: String = "",
+    val shippingMethodId: String = "",
+    val shippingMethodName: String = "",
+    val shippingPrice: Double = 0.0,
+    val shippingDeliveryTime: String = "",
+    val shippingOrigin: String = "",
     val quantity: Long = 1L,
     val createdAt: String? = null,
     val updatedAt: String? = null
