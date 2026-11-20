@@ -1,3 +1,58 @@
 <resources>
     <string name="app_name">Elegan</string>
+
+    <!-- Navegación y barra superior -->
+    <string name="nav_inicio">Inicio</string>
+    <string name="nav_catalogo">Catálogo</string>
+    <string name="nav_carrito">Carrito</string>
+    <string name="nav_soporte">Soporte</string>
+    <string name="nav_perfil">Perfil</string>
+    <string name="cd_menu">Menú</string>
+    <string name="cd_volver">Volver</string>
+    <string name="cd_regresar">Regresar</string>
+
+    <!-- Ventana emergente de registro / inicio de sesión -->
+    <string name="auth_popup_logo_cd">Logo Elegan</string>
+    <string name="auth_popup_create_title">Crea tu cuenta Elegan</string>
+    <string name="auth_popup_login_title">Inicia sesión en Elegan</string>
+    <string name="auth_popup_default_subtitle">Regístrate en segundos para interactuar, guardar prendas y comprar.</string>
+    <string name="auth_popup_close_cd">Cerrar ventana de registro</string>
+    <string name="auth_popup_create_cta">Crear Mi Cuenta Elegan</string>
+    <string name="auth_popup_login_cta">Iniciar Sesión</string>
+    <string name="auth_popup_keep_browsing">Seguir explorando</string>
+
+    <!-- Carrito -->
+    <string name="cart_title">Mi Carrito</string>
+    <string name="cart_total_to_pay">Total a Pagar</string>
+    <string name="cart_continue">Continuar</string>
+
+    <!-- Verificación y Pago -->
+    <string name="checkout_title">Verificación y Pago</string>
+    <string name="checkout_confirm_and_pay">Confirmar y Pagar %1$s</string>
+
+    <!-- Transferencia bancaria -->
+    <string name="transfer_title">Transferencia</string>
+    <string name="transfer_amount_label">Monto a transferir</string>
+    <string name="transfer_confirm_payment">Confirmar Pago</string>
+    <string name="transfer_instructions">Transfiere el monto total a cualquiera de las siguientes cuentas bancarias y sube la imagen del comprobante para confirmar tu pago.</string>
+    <string name="transfer_accounts_unavailable_title">Cuentas bancarias no disponibles</string>
+    <string name="transfer_accounts_unavailable_desc">No pudimos cargar las cuentas bancarias en este momento. Reintenta para ver los datos de transferencia.</string>
+    <string name="transfer_retry_accounts">Reintentar cargar cuentas</string>
+    <string name="transfer_select_account">Seleccionar esta cuenta</string>
+    <string name="transfer_clip_account_label">Número de cuenta</string>
+    <string name="transfer_clip_holder_name_label">Titular de la cuenta</string>
+    <string name="transfer_clip_holder_document_label">Documento del titular</string>
+
+    <!-- Confirmación de pedido (Gracias) -->
+    <string name="gracia_order_id_pending">Pendiente de confirmación</string>
+    <string name="gracia_payment_bank_transfer">Transferencia Bancaria Inmediata</string>
+    <string name="gracia_payment_cash_on_delivery">Pago Contra Entrega</string>
+    <string name="gracia_payment_confirmed">Pago Confirmado</string>
+    <string name="gracia_order_code_label">Código de Pedido:</string>
+    <string name="gracia_payment_method_label">Método de Pago</string>
+    <string name="gracia_delivery_address_label">Dirección de Entrega</string>
+    <string name="gracia_estimated_delivery_label">Entrega Estimada</string>
+    <string name="gracia_estimated_delivery_value">2 a 3 días hábiles (Express)</string>
+    <string name="gracia_packaging_label">Embalaje Exclusivo</string>
+    <string name="gracia_packaging_value">Caja rígida protegida con sello de lacre</string>
 </resources>

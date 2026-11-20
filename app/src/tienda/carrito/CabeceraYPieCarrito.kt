@@ -30,11 +30,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
@@ -67,13 +69,13 @@ fun CabeceraCarrito(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Regresar",
+                        contentDescription = stringResource(R.string.cd_regresar),
                         tint = EleganCharcoal
                     )
                 }
 
                 Text(
-                    text = "Mi Carrito",
+                    text = stringResource(R.string.cart_title),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = EleganCharcoal,
@@ -144,7 +146,7 @@ fun BarraInferiorTotalCarrito(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Total a Pagar",
+                            text = stringResource(R.string.cart_total_to_pay),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = Color.Gray,
                                 fontSize = 11.sp
@@ -181,7 +183,7 @@ fun BarraInferiorTotalCarrito(
                             .testTag("checkout_continue_btn")
                     ) {
                         Text(
-                            text = "Continuar",
+                            text = stringResource(R.string.cart_continue),
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             maxLines = 1

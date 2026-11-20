@@ -21,9 +21,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.data.model.CartItem
 import com.example.ui.theme.EleganBurgundyDark
 
@@ -52,7 +54,7 @@ fun TarjetaReciboPedidoConfirmado(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Código de Pedido:",
+                    text = stringResource(R.string.gracia_order_code_label),
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
                     modifier = Modifier.weight(1f),
                     maxLines = 1,

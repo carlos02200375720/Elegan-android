@@ -31,11 +31,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -67,13 +69,13 @@ fun CabeceraTransferencia(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = stringResource(R.string.cd_volver),
                         tint = EleganCharcoal
                     )
                 }
 
                 Text(
-                    text = "Transferencia",
+                    text = stringResource(R.string.transfer_title),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = EleganCharcoal,
@@ -97,7 +99,7 @@ fun CabeceraTransferencia(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "Monto a transferir",
+                            text = stringResource(R.string.transfer_amount_label),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 color = Color(0xFF6B6560),
                                 fontSize = 9.sp,
@@ -179,7 +181,7 @@ fun BarraInferiorTransferencia(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "Confirmar Pago",
+                                text = stringResource(R.string.transfer_confirm_payment),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp,
                                 maxLines = 1

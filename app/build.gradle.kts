@@ -14,8 +14,21 @@ android {
     applicationId = "com.elegan"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val resolvedVersionCode = providers.gradleProperty("APP_VERSION_CODE")
+      .orElse(providers.environmentVariable("APP_VERSION_CODE"))
+      .orNull
+      ?.trim()
+      ?.toIntOrNull()
+      ?.takeIf { it > 0 }
+      ?: 1
+    val resolvedVersionName = providers.gradleProperty("APP_VERSION_NAME")
+      .orElse(providers.environmentVariable("APP_VERSION_NAME"))
+      .orNull
+      ?.trim()
+      ?.takeIf { it.isNotEmpty() }
+      ?: "1.0"
+    versionCode = resolvedVersionCode
+    versionName = resolvedVersionName
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("String", "ELEGAN_API_BASE_URL", "\"https://elegan-backend-587849039182.us-east1.run.app/\"")
     val sentryDsn = resolveConfigValue("SENTRY_DSN")
@@ -92,7 +105,6 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  // implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   ksp(libs.androidx.room.compiler)
@@ -103,7 +115,6 @@ dependencies {
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
   implementation(libs.retrofit)
-  // implementation(libs.androidx.security.crypto)
   implementation(libs.media3.exoplayer)
   implementation(libs.media3.datasource)
   implementation(libs.media3.database)

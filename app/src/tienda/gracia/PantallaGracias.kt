@@ -16,7 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.ui.viewmodel.OrderConfirmationDetails
 
 @Composable
@@ -33,16 +35,17 @@ fun GraciaScreen(
 
     val displayOrderId = orderDetails?.orderId?.takeIf { it.isNotBlank() }
         ?: orderId?.takeIf { it.isNotBlank() }
-        ?: "Pendiente de confirmación"
+        ?: stringResource(R.string.gracia_order_id_pending)
     val purchasedItems = orderDetails?.items.orEmpty()
-    val displayPaymentMethod = orderDetails?.paymentMethod.orEmpty()
-        .ifBlank {
-            when {
-                isBankTransfer -> "Transferencia Bancaria Inmediata"
-                isCashOnDelivery -> "Pago Contra Entrega"
-                else -> "Pago Confirmado"
-            }
+    val fallbackPaymentMethod = stringResource(
+        when {
+            isBankTransfer -> R.string.gracia_payment_bank_transfer
+            isCashOnDelivery -> R.string.gracia_payment_cash_on_delivery
+            else -> R.string.gracia_payment_confirmed
         }
+    )
+    val displayPaymentMethod = orderDetails?.paymentMethod.orEmpty()
+        .ifBlank { fallbackPaymentMethod }
     val displayAddress = listOfNotNull(
         orderDetails?.address?.takeIf { it.isNotBlank() },
         orderDetails?.city?.takeIf { it.isNotBlank() }

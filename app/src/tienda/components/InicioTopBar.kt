@@ -21,12 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -59,7 +61,7 @@ fun InicioTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
-                        contentDescription = "Menú",
+                        contentDescription = stringResource(R.string.cd_menu),
                         tint = EleganCharcoal
                     )
                 }
@@ -98,14 +100,14 @@ fun InicioTopBar(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = "Carrito",
+                                contentDescription = stringResource(R.string.nav_carrito),
                                 tint = EleganCharcoal
                             )
                         }
                     } else {
                         Icon(
                             imageVector = Icons.Default.ShoppingBag,
-                            contentDescription = "Carrito",
+                            contentDescription = stringResource(R.string.nav_carrito),
                             tint = EleganCharcoal
                         )
                     }

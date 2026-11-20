@@ -32,11 +32,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -65,13 +67,13 @@ internal fun CabeceraVerificacion(onBack: () -> Unit) {
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
+                        contentDescription = stringResource(R.string.cd_volver),
                         tint = EleganCharcoal
                     )
                 }
 
                 Text(
-                    text = "Verificación y Pago",
+                    text = stringResource(R.string.checkout_title),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = EleganCharcoal,
@@ -145,7 +147,7 @@ internal fun BarraInferiorConfirmarPago(
                                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Confirmar y Pagar ${formatearPrecioRd(total)}",
+                                    text = stringResource(R.string.checkout_confirm_and_pay, formatearPrecioRd(total)),
                                     fontWeight = FontWeight.Bold,
                                     fontSize = if (isCompactBar) 14.sp else 15.sp,
                                     maxLines = 1,

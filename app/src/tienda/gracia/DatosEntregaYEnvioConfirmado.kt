@@ -20,9 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
@@ -36,7 +38,7 @@ fun DatosEntregaYEnvioConfirmado(
     FilaDetalleConfirmacion(
         icon = Icons.Default.Payments,
         tint = EleganBurgundy,
-        label = "Método de Pago",
+        label = stringResource(R.string.gracia_payment_method_label),
         primaryValue = displayPaymentMethod,
         verticalAlignment = Alignment.Top,
         valueTestTag = "gracia_payment_method"
@@ -54,7 +56,7 @@ fun DatosEntregaYEnvioConfirmado(
             Spacer(modifier = Modifier.width(10.dp))
             Column {
                 Text(
-                    text = "Dirección de Entrega",
+                    text = stringResource(R.string.gracia_delivery_address_label),
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                 )
                 if (recipientLine.isNotBlank()) {
@@ -84,8 +86,8 @@ fun DatosEntregaYEnvioConfirmado(
     FilaDetalleConfirmacion(
         icon = Icons.Default.LocalShipping,
         tint = EleganBurgundy,
-        label = "Entrega Estimada",
-        primaryValue = "2 a 3 días hábiles (Express)",
+        label = stringResource(R.string.gracia_estimated_delivery_label),
+        primaryValue = stringResource(R.string.gracia_estimated_delivery_value),
         verticalAlignment = Alignment.CenterVertically
     )
 
@@ -94,8 +96,8 @@ fun DatosEntregaYEnvioConfirmado(
     FilaDetalleConfirmacion(
         icon = Icons.Default.Diamond,
         tint = EleganGold,
-        label = "Embalaje Exclusivo",
-        primaryValue = "Caja rígida protegida con sello de lacre",
+        label = stringResource(R.string.gracia_packaging_label),
+        primaryValue = stringResource(R.string.gracia_packaging_value),
         verticalAlignment = Alignment.CenterVertically
     )
 }

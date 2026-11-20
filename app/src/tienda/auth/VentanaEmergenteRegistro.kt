@@ -47,6 +47,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -144,7 +145,7 @@ fun VentanaEmergenteRegistro(
                             ) {
                                 Image(
                                     painter = painterResource(id = R.drawable.ic_launcher_fg),
-                                    contentDescription = "Logo Elegan",
+                                    contentDescription = stringResource(R.string.auth_popup_logo_cd),
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .size(40.dp)
@@ -155,7 +156,10 @@ fun VentanaEmergenteRegistro(
                             Spacer(modifier = Modifier.width(12.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    text = if (selectedTab == 1) "Crea tu cuenta Elegan" else "Inicia sesión en Elegan",
+                                    text = stringResource(
+                                        if (selectedTab == 1) R.string.auth_popup_create_title
+                                        else R.string.auth_popup_login_title
+                                    ),
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontFamily = FontFamily.Serif,
                                         fontWeight = FontWeight.Bold,
@@ -167,7 +171,7 @@ fun VentanaEmergenteRegistro(
                                 )
                                 Text(
                                     text = promptMessage?.takeIf { it.isNotBlank() }
-                                        ?: "Regístrate en segundos para interactuar, guardar prendas y comprar.",
+                                        ?: stringResource(R.string.auth_popup_default_subtitle),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = EleganCharcoal.copy(alpha = 0.72f),
                                         fontSize = 12.sp,
@@ -185,7 +189,7 @@ fun VentanaEmergenteRegistro(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Cerrar ventana de registro",
+                                contentDescription = stringResource(R.string.auth_popup_close_cd),
                                 tint = Color(0xFF6E655E)
                             )
                         }
@@ -261,7 +265,10 @@ fun VentanaEmergenteRegistro(
                             )
                         } else {
                             Text(
-                                text = if (isRegister) "Crear Mi Cuenta Elegan" else "Iniciar Sesión",
+                                text = stringResource(
+                                    if (isRegister) R.string.auth_popup_create_cta
+                                    else R.string.auth_popup_login_cta
+                                ),
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 15.sp,
                                 maxLines = 1,
@@ -281,7 +288,7 @@ fun VentanaEmergenteRegistro(
                         colors = ButtonDefaults.textButtonColors(contentColor = Color(0xFF6E655E))
                     ) {
                         Text(
-                            text = "Seguir explorando",
+                            text = stringResource(R.string.auth_popup_keep_browsing),
                             fontWeight = FontWeight.Medium,
                             fontSize = 14.sp
                         )

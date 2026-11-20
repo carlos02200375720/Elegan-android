@@ -2,6 +2,15 @@ name: Build Android (APK y AAB)
 
 on:
   workflow_dispatch:
+    inputs:
+      version_code:
+        description: "Código de versión entero para Google Play (opcional; por defecto usa github.run_number)"
+        required: false
+        type: string
+      version_name:
+        description: "Nombre de versión visible, ej. 1.2.0 (opcional; por defecto 1.0.<run_number>)"
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -33,6 +42,9 @@ jobs:
     name: Validar pruebas y compilar Android
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      APP_VERSION_CODE: ${{ inputs.version_code || github.run_number }}
+      APP_VERSION_NAME: ${{ inputs.version_name || format('1.0.{0}', github.run_number) }}
 
     steps:
       - name: Descargar repositorio
@@ -192,6 +204,7 @@ jobs:
         run: |
           {
             echo "## Validación y Compilación Android"
+            echo "- Versión compilada: **${APP_VERSION_NAME}** (versionCode **${APP_VERSION_CODE}**)."
             echo "- Pruebas unitarias (\`:app:testDebugUnitTest\`): **${{ steps.unit_tests.outcome }}**."
             if [ "${{ github.event_name }}" = "pull_request" ]; then
               echo "- Pull Request: validación de pruebas y compilación debug ejecutada (sin publicación de artefactos de distribución)."

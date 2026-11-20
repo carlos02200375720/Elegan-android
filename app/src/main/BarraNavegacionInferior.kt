@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.EleganBottomBarShadow
@@ -72,7 +73,7 @@ internal fun EleganBottomBar(
                         icon = {
                             Icon(
                                 Icons.Default.Home,
-                                contentDescription = "Inicio",
+                                contentDescription = stringResource(R.string.nav_inicio),
                                 modifier = Modifier.size(25.dp)
                             )
                         },
@@ -86,7 +87,7 @@ internal fun EleganBottomBar(
                         icon = {
                             Icon(
                                 Icons.Default.GridView,
-                                contentDescription = "Catálogo",
+                                contentDescription = stringResource(R.string.nav_catalogo),
                                 modifier = Modifier.size(25.dp)
                             )
                         },
@@ -111,14 +112,14 @@ internal fun EleganBottomBar(
                                 ) {
                                     Icon(
                                         Icons.Default.ShoppingBag,
-                                        contentDescription = "Carrito",
+                                        contentDescription = stringResource(R.string.nav_carrito),
                                         modifier = Modifier.size(25.dp)
                                     )
                                 }
                             } else {
                                 Icon(
                                     Icons.Default.ShoppingBag,
-                                    contentDescription = "Carrito",
+                                    contentDescription = stringResource(R.string.nav_carrito),
                                     modifier = Modifier.size(25.dp)
                                 )
                             }
@@ -133,7 +134,7 @@ internal fun EleganBottomBar(
                         icon = {
                             Icon(
                                 Icons.Default.ChatBubbleOutline,
-                                contentDescription = "Soporte",
+                                contentDescription = stringResource(R.string.nav_soporte),
                                 modifier = Modifier.size(25.dp)
                             )
                         },
@@ -147,7 +148,7 @@ internal fun EleganBottomBar(
                         icon = {
                             Icon(
                                 Icons.Default.PersonOutline,
-                                contentDescription = "Perfil",
+                                contentDescription = stringResource(R.string.nav_perfil),
                                 modifier = Modifier.size(25.dp)
                             )
                         },

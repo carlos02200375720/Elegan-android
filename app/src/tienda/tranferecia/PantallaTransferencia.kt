@@ -1,5 +1,8 @@
 package com.example.ui
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -42,11 +45,12 @@ import com.example.ui.theme.EleganCharcoal
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.data.model.BankAccountInfo
 
 @Composable
@@ -67,8 +71,20 @@ fun TranfereciaScreen(
     // Solo se puede salir confirmando el pago o haciendo clic en la flecha de regreso en la cabecera.
     BackHandler(enabled = true) { }
 
-    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
+    val clipboardManager = remember(context) {
+        context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+    }
     var copiedFieldKey by remember { mutableStateOf<String?>(null) }
+
+    val accountClipLabel = stringResource(R.string.transfer_clip_account_label)
+    val holderNameClipLabel = stringResource(R.string.transfer_clip_holder_name_label)
+    val holderDocumentClipLabel = stringResource(R.string.transfer_clip_holder_document_label)
+
+    fun copyToClipboard(label: String, value: String, fieldKey: String) {
+        clipboardManager?.setPrimaryClip(ClipData.newPlainText(label, value))
+        copiedFieldKey = fieldKey
+    }
 
     Scaffold(
         modifier = Modifier
@@ -113,7 +129,7 @@ fun TranfereciaScreen(
                     .padding(horizontal = horizontalPad, vertical = 16.dp)
             ) {
                 Text(
-                    text = "Transfiere el monto total a cualquiera de las siguientes cuentas bancarias y sube la imagen del comprobante para confirmar tu pago.",
+                    text = stringResource(R.string.transfer_instructions),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = Color(0xFF5F5F5F),
                         lineHeight = 18.sp
@@ -145,7 +161,7 @@ fun TranfereciaScreen(
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Cuentas bancarias no disponibles",
+                                        text = stringResource(R.string.transfer_accounts_unavailable_title),
                                         style = MaterialTheme.typography.titleSmall.copy(
                                             color = EleganCharcoal,
                                             fontWeight = FontWeight.Bold
@@ -153,7 +169,7 @@ fun TranfereciaScreen(
                                     )
                                 }
                                 Text(
-                                    text = "No pudimos cargar las cuentas bancarias en este momento. Reintenta para ver los datos de transferencia.",
+                                    text = stringResource(R.string.transfer_accounts_unavailable_desc),
                                     style = MaterialTheme.typography.bodySmall.copy(
                                         color = Color(0xFF5F5F5F),
                                         lineHeight = 18.sp
@@ -177,7 +193,7 @@ fun TranfereciaScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "Reintentar cargar cuentas",
+                                            text = stringResource(R.string.transfer_retry_accounts),
                                             fontWeight = FontWeight.SemiBold
                                         )
                                     }
@@ -192,24 +208,21 @@ fun TranfereciaScreen(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = selectedAccountId == account.id, onClick = { onSelectAccount(account.id) })
-                                Text("Seleccionar esta cuenta", style = MaterialTheme.typography.labelMedium)
+                                Text(stringResource(R.string.transfer_select_account), style = MaterialTheme.typography.labelMedium)
                             }
                             TarjetaCuentaBancaria(
                                 account = account,
                                 isCopied = copiedFieldKey == accountKey,
                                 onCopyAccount = {
-                                    clipboardManager.setText(AnnotatedString(account.accountNumber))
-                                    copiedFieldKey = accountKey
+                                    copyToClipboard(accountClipLabel, account.accountNumber, accountKey)
                                 },
                                 isHolderNameCopied = copiedFieldKey == holderNameKey,
                                 onCopyHolderName = {
-                                    clipboardManager.setText(AnnotatedString(account.holderName))
-                                    copiedFieldKey = holderNameKey
+                                    copyToClipboard(holderNameClipLabel, account.holderName, holderNameKey)
                                 },
                                 isHolderDocumentCopied = copiedFieldKey == holderDocKey,
                                 onCopyHolderDocument = {
-                                    clipboardManager.setText(AnnotatedString(account.holderDocument))
-                                    copiedFieldKey = holderDocKey
+                                    copyToClipboard(holderDocumentClipLabel, account.holderDocument, holderDocKey)
                                 }
                             )
                         }
