@@ -57,7 +57,6 @@ object MonitorErrores {
                 options.isAnrEnabled = true
                 options.isAttachStacktrace = true
                 options.isEnableAutoSessionTracking = true
-                options.isSendDefaultPii = false
                 options.isDebug = false
                 options.beforeSend = SentryOptions.BeforeSendCallback { event, _ ->
                     if (event.throwable is CancellationException) {
