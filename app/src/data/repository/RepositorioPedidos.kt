@@ -57,12 +57,12 @@ internal class RepositorioPedidos(
         }
     }
 
-    suspend fun validateCoupon(code: String, subtotalDOP: Double): Map<String, Any?> = withContext(Dispatchers.IO) {
+    suspend fun validateCoupon(code: String): Map<String, Any?> = withContext(Dispatchers.IO) {
         val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para validar un cupón.")
         apiProvider().validateCoupon(
             authorization = "Bearer $token",
-            request = mapOf("code" to code.trim().uppercase(), "subtotalDOP" to subtotalDOP)
+            request = mapOf("code" to code.trim().uppercase())
         )
     }
 
