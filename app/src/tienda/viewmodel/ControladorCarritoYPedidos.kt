@@ -21,44 +21,119 @@ internal class ControladorCarritoYPedidos(
     private val repository: EleganRepository,
     private val scope: CoroutineScope
 ) {
-    private var selectedCouponCode: String = ""
-
+    private var selectedCouponCode = ""
     private val _lastCreatedOrderId = MutableStateFlow<String?>(null)
     val lastCreatedOrderId: StateFlow<String?> = _lastCreatedOrderId.asStateFlow()
-
     private val _lastOrderPaymentMethod = MutableStateFlow("")
     val lastOrderPaymentMethod: StateFlow<String> = _lastOrderPaymentMethod.asStateFlow()
-
     private val _lastOrderDetails = MutableStateFlow<OrderConfirmationDetails?>(null)
     val lastOrderDetails: StateFlow<OrderConfirmationDetails?> = _lastOrderDetails.asStateFlow()
 
     val cartItems: StateFlow<List<CartItem>> = repository.observeCart()
-        .catch { emit(emptyList()) }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
-
+        .catch { emit(emptyList()) }.stateIn(scope, SharingStarted.Eagerly, emptyList())
     val cartError: StateFlow<String?> = repository.observeCartError()
-        .catch { emit(null) }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = null)
-
+        .catch { emit(null) }.stateIn(scope, SharingStarted.Eagerly, null)
     val orders: StateFlow<List<Order>> = repository.observeOrders()
-        .catch { emit(emptyList()) }
-        .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
+        .catch { emit(emptyList()) }.stateIn(scope, SharingStarted.Eagerly, emptyList())
 
     fun clearCartError() = repository.clearCartError()
-
-    fun setCouponCode(code: String) {
-        selectedCouponCode = code.trim().uppercase()
-    }
+    fun setCouponCode(code: String) { selectedCouponCode = code.trim().uppercase() }
 
     fun validateCoupon(code: String, onResult: (Result<Map<String, Any?>>) -> Unit) {
         scope.launch {
+            try { onResult(Result.success(repository.validateCoupon(code))) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { onResult(Result.failure(e)) }
+        }
+    }
+
+    fun refreshCart(onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            try { repository.refreshCart(); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al sincronizar el carrito.", e); onResult(Result.failure(e)) }
+        }
+    }
+
+    fun refreshOrders() {
+        scope.launch {
+            try { repository.refreshOrders() }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al sincronizar las órdenes.", e) }
+        }
+    }
+
+    fun addToCart(product: ProductJson, size: String, quantity: Long, color: String, onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            try { repository.addToCart(product, size, quantity, color); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al agregar al carrito.", e); onResult(Result.failure(e)) }
+        }
+    }
+
+    fun updateCartQuantity(cartItemId: String, quantity: Long, onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            try { repository.updateCartQuantity(cartItemId, quantity); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al actualizar cantidad.", e); onResult(Result.failure(e)) }
+        }
+    }
+
+    fun removeFromCart(cartItemId: String, onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            try { repository.removeFromCart(cartItemId); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al eliminar del carrito.", e); onResult(Result.failure(e)) }
+        }
+    }
+
+    fun clearCart(onResult: (Result<Unit>) -> Unit = {}) {
+        scope.launch {
+            try { repository.clearCart(); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { Log.e("EleganViewModel", "Error al vaciar el carrito.", e); onResult(Result.failure(e)) }
+        }
+    }
+
+    fun loadBankAccounts(onResult: (Result<List<BankAccountInfo>>) -> Unit) {
+        scope.launch {
+            try { onResult(Result.success(repository.getBankAccounts())) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { onResult(Result.failure(e)) }
+        }
+    }
+
+    fun createManualPaymentOrder(
+        paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
+        customerName: String, email: String, phone: String, address: String, city: String,
+        total: Double, onResult: (Result<String>) -> Unit
+    ) {
+        scope.launch {
             try {
-                onResult(Result.success(repository.validateCoupon(code)))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                onResult(Result.failure(e))
-            }
+                val snapshot = cartItems.value.toList()
+                val id = repository.createPaymentOrder(
+                    paymentMethod, bankAccountId, cashOnDeliveryAccepted,
+                    customerName, email, phone, address, city, selectedCouponCode
+                )
+                selectedCouponCode = ""
+                val label = if (paymentMethod == "bank_transfer") "Transferencia bancaria" else "Pago contra entrega"
+                _lastOrderDetails.value = OrderConfirmationDetails(
+                    orderId = id, items = snapshot, total = total, paymentMethod = label,
+                    customerName = customerName, phone = phone, address = address, city = city
+                )
+                _lastOrderPaymentMethod.value = label
+                _lastCreatedOrderId.value = id
+                onResult(Result.success(id))
+            } catch (e: CancellationException) { throw e }
+            catch (e: Exception) { onResult(Result.failure(e)) }
+        }
+    }
+
+    fun uploadPaymentProof(orderId: String, uri: Uri, onResult: (Result<Unit>) -> Unit) {
+        scope.launch {
+            try { repository.uploadPaymentProof(orderId, uri); refreshOrders(); onResult(Result.success(Unit)) }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) { onResult(Result.failure(e)) }
         }
     }
 
@@ -69,192 +144,7 @@ internal class ControladorCarritoYPedidos(
         _lastOrderDetails.value = null
     }
 
-    fun refreshCart(onResult: (Result<Unit>) -> Unit = {}) {
-        scope.launch {
-            try {
-                repository.refreshCart()
-                onResult(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al sincronizar el carrito: ${e.message}")
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun refreshOrders() {
-        scope.launch {
-            try {
-                repository.refreshOrders()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al sincronizar las órdenes: ${e.message}")
-            }
-        }
-    }
-
-    fun addToCart(
-        product: ProductJson,
-        size: String,
-        quantity: Long,
-        color: String,
-        onResult: (Result<Unit>) -> Unit = {}
-    ) {
-        scope.launch {
-            try {
-                repository.addToCart(product, size, quantity, color)
-                onResult(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al agregar al carrito: ${e.message}")
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun updateCartQuantity(
-        cartItemId: String,
-        quantity: Long,
-        onResult: (Result<Unit>) -> Unit = {}
-    ) {
-        scope.launch {
-            try {
-                repository.updateCartQuantity(cartItemId, quantity)
-                onResult(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al actualizar cantidad: ${e.message}")
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun removeFromCart(
-        cartItemId: String,
-        onResult: (Result<Unit>) -> Unit = {}
-    ) {
-        scope.launch {
-            try {
-                repository.removeFromCart(cartItemId)
-                onResult(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al eliminar del carrito: ${e.message}")
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun clearCart(onResult: (Result<Unit>) -> Unit = {}) {
-        scope.launch {
-            try {
-                repository.clearCart()
-                onResult(Result.success(Unit))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al vaciar el carrito: ${e.message}")
-                onResult(Result.failure(e))
-            }
-        }
-    }
-
-    fun startPayPalOrder(
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        onSessionReady: (PayPalOrderSession) -> Unit = {}
-    ) {
-        scope.launch {
-            _isProcessingPayPal.value = true
-            _payPalError.value = null
-            try {
-                val session = repository.createPayPalOrder(
-                    customerName = customerName,
-                    email = email,
-                    phone = phone,
-                    address = address,
-                    city = city,
-                    total = total,
-                    itemCount = itemCount,
-                    itemsSummary = itemsSummary,
-                    cartItems = cartItems.value.toList(),
-                    couponCode = selectedCouponCode
-                )
-                _payPalOrderSession.value = session
-                onSessionReady(session)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al iniciar orden PayPal.", e)
-                _payPalError.value = e.localizedMessage ?: "No se pudo iniciar el pago con PayPal."
-            } finally {
-                _isProcessingPayPal.value = false
-            }
-        }
-    }
-
-    fun capturePayPalOrder(
-        paypalOrderId: String,
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        onSuccess: (String) -> Unit
-    ) {
-        scope.launch {
-            _isProcessingPayPal.value = true
-            _payPalError.value = null
-            try {
-                val purchasedItemsSnapshot = cartItems.value.toList()
-                val orderId = repository.capturePayPalOrder(
-                    paypalOrderId = paypalOrderId,
-                    customerName = customerName,
-                    email = email,
-                    phone = phone,
-                    address = address,
-                    city = city,
-                    total = total,
-                    itemCount = itemCount,
-                    itemsSummary = itemsSummary
-                )
-                selectedCouponCode = ""
-                _lastOrderDetails.value = OrderConfirmationDetails(
-                    orderId = orderId,
-                    items = purchasedItemsSnapshot,
-                    total = total,
-                    paymentMethod = "PayPal",
-                    customerName = customerName,
-                    phone = phone,
-                    address = address,
-                    city = city
-                )
-                _lastOrderPaymentMethod.value = "PayPal"
-                _lastCreatedOrderId.value = orderId
-                _payPalOrderSession.value = null
-                onSuccess(orderId)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al capturar pago PayPal.", e)
-                _payPalError.value = e.localizedMessage ?: "No se pudo confirmar el pago en PayPal."
-            } finally {
-                _isProcessingPayPal.value = false
-            }
-        }
+    fun clearUserData() {
+        clearOrderState()
     }
 }
