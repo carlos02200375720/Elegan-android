@@ -212,6 +212,19 @@ internal interface EleganAuthApi {
         @Part file: MultipartBody.Part
     ): Map<String, Any?>
 
+    @POST("api/movil/payments/paypal/orders")
+    suspend fun createPayPalOrder(
+        @Header("Authorization") authorization: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Map<String, Any?>
+
+    @POST("api/movil/payments/paypal/orders/{paypal_order_id}/capture")
+    suspend fun capturePayPalOrder(
+        @Header("Authorization") authorization: String,
+        @Path("paypal_order_id") paypalOrderId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?> = emptyMap()
+    ): Map<String, Any?>
+
     @GET("api/movil/messages")
     suspend fun getMessages(@Header("Authorization") authorization: String): Map<String, Any?>
 
