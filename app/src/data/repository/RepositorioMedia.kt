@@ -69,7 +69,21 @@ internal class RepositorioMedia(
         val name = resolveFileName(mediaUri)?.replace("\"", "_") ?: "comprobante.jpg"
         val body = StreamingUriRequestBody(resolver, mediaUri, mimeType.toMediaTypeOrNull(), resolveContentLength(resolver, mediaUri))
         val part = MultipartBody.Part.createFormData("file", name, body)
-        val response = apiProvider().uploadPaymentProof("Bearer $token", orderId, part)
+        val response = try {
+            apiProvider().uploadPaymentProof("Bearer $token", orderId, part)
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            val message = when {
+                errorBody.contains("PRIVATE_PROOF_STORAGE_NOT_CONFIGURED", ignoreCase = true) ->
+                    "El servidor todavía no tiene configurado el almacenamiento privado de comprobantes."
+                errorBody.contains("PROOF_TOO_LARGE", ignoreCase = true) ->
+                    "La imagen del comprobante no puede superar 10 MB."
+                errorBody.contains("PROOF_EXPIRED", ignoreCase = true) ->
+                    "El plazo para enviar este comprobante venció. Contacta a Elegan para continuar."
+                else -> "No se pudo enviar el comprobante. Inténtalo de nuevo."
+            }
+            throw IllegalStateException(message, e)
+        }
         (response["success"] as? Boolean)?.let { if (!it) throw IllegalStateException("No se pudo guardar el comprobante.") }
         response["paymentProofUrl"] as? String ?: response["url"] as? String ?: "uploaded"
     }
