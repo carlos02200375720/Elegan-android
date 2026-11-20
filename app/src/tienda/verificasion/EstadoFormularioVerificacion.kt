@@ -25,15 +25,16 @@ internal class EstadoFormularioVerificacion(
     var address by mutableStateOf(initialAddress)
     var city by mutableStateOf(initialCity)
 
-    val paymentOptions = listOf(OPCION_PAGO_PAYPAL)
+    val paymentOptions = listOf(OPCION_PAGO_TRANSFERENCIA, OPCION_PAGO_CONTRA_ENTREGA)
     var selectedPayment by mutableStateOf(paymentOptions[0])
-    var showPayPalPage by mutableStateOf(false)
+    var showTransferPage by mutableStateOf(false)
+    var showCashOnDeliveryPage by mutableStateOf(false)
 
     fun isDeliveryFormValid(): Boolean =
         customerName.isNotBlank() && email.isNotBlank() && address.isNotBlank() && city.isNotBlank()
 
     fun mensajeCampoFaltante(): String =
-        "Completa los datos de entrega para continuar con el pago por PayPal."
+        "Completa los datos de entrega para continuar con tu pedido."
 }
 
 @Composable
