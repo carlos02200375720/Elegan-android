@@ -76,7 +76,7 @@ private val privacySections = listOf(
     ),
     LegalSection(
         title = "5. Retención y eliminación de datos",
-        body = "Conservamos tus datos únicamente mientras mantengas una cuenta activa o sea necesario para atender tus pedidos. Puedes eliminar permanentemente tu cuenta, historial de pedidos, perfil y comprobantes en cualquier momento desde la opción \"Eliminar mi cuenta\" en el menú de la aplicación o escribiendo a cg0220037@gmail.com."
+        body = "Puedes solicitar la eliminación de tu cuenta desde la opción \"Eliminar mi cuenta\" en el menú de la aplicación o escribiendo a cg0220037@gmail.com. Al completar la solicitud eliminamos tu cuenta, perfil, carrito, publicaciones guardadas, conversaciones y comprobantes. Los registros de compra que deban conservarse por obligaciones contables, fiscales o para atender reclamaciones se desvinculan de tu cuenta y se anonimizan; dejan de estar disponibles en tu historial personal. Los demás datos personales se eliminan de nuestros sistemas."
     )
 )
 
