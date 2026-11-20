@@ -140,6 +140,12 @@ internal fun PantallasSecundariasNavegacion(
                             viewModel.removeFromCart(id)
                         }
                     },
+                    onValidateCoupon = { code, subtotal, onResult ->
+                        onRequireAuth("Inicia sesión para validar un cupón.") {
+                            viewModel.validateCoupon(code, subtotal, onResult)
+                        }
+                    },
+                    onCouponCodeApplied = { code -> viewModel.setCouponCode(code) },
                     onNavigateToVerificasion = { sub, disc, ship, tot ->
                         onRequireAuth("Regístrate para continuar con tu compra.") {
                             onUpdateCheckoutTotals(sub, disc, ship, tot)
