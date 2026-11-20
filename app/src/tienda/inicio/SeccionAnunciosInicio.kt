@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,7 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -40,12 +44,12 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.announcementBadge
-import com.example.data.model.announcementCategory
 import com.example.data.model.announcementId
 import com.example.data.model.announcementImageUrl
 import com.example.data.model.announcementMessage
 import com.example.data.model.announcementTitle
 import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 
@@ -102,65 +106,106 @@ internal fun SeccionAnunciosInicio(
                 val message = item.announcementMessage()
                 val imageUrl = item.announcementImageUrl()
                 val badge = item.announcementBadge().ifBlank { "COMUNICADO" }
-                val targetCat = item.announcementCategory().takeIf { it.isNotBlank() }
+                val cardShape = RoundedCornerShape(16.dp)
+                val overlayShadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.6f),
+                    offset = Offset(0f, 1.5f),
+                    blurRadius = 5f
+                )
 
                 Card(
                     modifier = Modifier
-                        .width(280.dp)
+                        .width(292.dp)
+                        .height(206.dp)
+                        .clip(cardShape)
                         .clickable { onAnnouncementClick(item) }
                         .testTag("announcement_card_$idx"),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF6F1)),
+                    shape = cardShape,
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent),
                     border = BorderStroke(1.dp, Color(0xFFE7DFD5)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
                 ) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(EleganBurgundyDark, EleganCharcoal)
+                                )
+                            )
+                    ) {
                         if (imageUrl.isNotBlank()) {
                             AsyncImage(
                                 model = imageUrl,
                                 contentDescription = title.ifBlank { "Anuncio Elegan" },
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(112.dp)
-                                    .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
-                                    .background(Color(0xFFEFEAE3))
+                                    .fillMaxSize()
+                                    .testTag("announcement_image_$idx")
                             )
                         }
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = EleganGold.copy(alpha = 0.22f)
-                            ) {
-                                Text(
-                                    text = badge.uppercase(),
-                                    color = EleganBurgundy,
-                                    fontSize = 9.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp,
-                                    maxLines = 1,
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    Brush.verticalGradient(
+                                        0f to Color.Transparent,
+                                        0.42f to Color.Transparent,
+                                        0.74f to Color.Black.copy(alpha = 0.44f),
+                                        1f to Color.Black.copy(alpha = 0.80f)
+                                    )
                                 )
-                            }
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = EleganBurgundy.copy(alpha = 0.86f),
+                            border = BorderStroke(0.8.dp, EleganGold.copy(alpha = 0.7f)),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(12.dp)
+                        ) {
+                            Text(
+                                text = badge.uppercase(),
+                                color = Color.White,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                                maxLines = 1,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .align(Alignment.BottomStart)
+                                .background(Color.Transparent)
+                                .padding(horizontal = 14.dp, vertical = 12.dp)
+                                .testTag("announcement_text_container_$idx")
+                        ) {
                             if (title.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = title,
                                     style = MaterialTheme.typography.titleSmall.copy(
+                                        fontSize = 15.5.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = EleganCharcoal
+                                        color = Color.White,
+                                        shadow = overlayShadow
                                     ),
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
                             if (message.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(
                                     text = message,
                                     style = MaterialTheme.typography.bodySmall.copy(
-                                        color = Color(0xFF5D564F),
-                                        lineHeight = 16.sp
+                                        color = Color.White.copy(alpha = 0.92f),
+                                        lineHeight = 16.sp,
+                                        shadow = overlayShadow
                                     ),
                                     maxLines = 2,
                                     overflow = TextOverflow.Ellipsis

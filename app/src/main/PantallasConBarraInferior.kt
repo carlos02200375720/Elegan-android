@@ -14,10 +14,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import com.example.data.model.announcementDestinationId
-import com.example.data.model.announcementDestinationType
-import com.example.data.model.announcementCategory
-import com.example.data.model.productId
+import com.example.data.model.AnnouncementDestination
+import com.example.data.model.announcementDestination
 import com.example.data.model.productColors
 import com.example.data.model.productInStock
 import com.example.data.model.productSizes
@@ -122,18 +120,29 @@ internal fun PantallasConBarraInferior(
                             onNavigateTo(Screen.CATALOGO)
                         },
                         onAnnouncementClick = { announcement ->
-                            val destinationId = announcement.announcementDestinationId()
-                            when (announcement.announcementDestinationType()) {
-                                "product" -> products.firstOrNull { it.productId() == destinationId }?.let { product ->
-                                    viewModel.selectProduct(product)
-                                    onNavigateTo(Screen.PRODUCTO)
+                            when (val destination = announcement.announcementDestination()) {
+                                is AnnouncementDestination.Product -> {
+                                    viewModel.selectProductById(
+                                        productId = destination.productId,
+                                        onFound = { onNavigateTo(Screen.PRODUCTO) },
+                                        onNotFound = {
+                                            viewModel.setCategory(null)
+                                            onNavigateTo(Screen.CATALOGO)
+                                        }
+                                    )
                                 }
-                                "category" -> {
-                                    viewModel.setCategory(destinationId)
+                                is AnnouncementDestination.Category -> {
+                                    val resolvedCategoryId = categories
+                                        .firstOrNull { it.id == destination.categoryId }?.id
+                                        ?: categories.firstOrNull {
+                                            it.id.equals(destination.categoryId, ignoreCase = true)
+                                        }?.id
+                                        ?: destination.categoryId
+                                    viewModel.setCategory(resolvedCategoryId)
                                     onNavigateTo(Screen.CATALOGO)
                                 }
-                                else -> {
-                                    viewModel.setCategory(announcement.announcementCategory().ifBlank { null })
+                                AnnouncementDestination.None -> {
+                                    viewModel.setCategory(null)
                                     onNavigateTo(Screen.CATALOGO)
                                 }
                             }
@@ -141,16 +150,6 @@ internal fun PantallasConBarraInferior(
                         onNavigateToProduct = { prod ->
                             viewModel.selectProduct(prod)
                             onNavigateTo(Screen.PRODUCTO)
-                        },
-                        onNavigateToProductById = { productId ->
-                            viewModel.selectProductById(
-                                productId = productId,
-                                onFound = { onNavigateTo(Screen.PRODUCTO) },
-                                onNotFound = {
-                                    viewModel.setCategory(null)
-                                    onNavigateTo(Screen.CATALOGO)
-                                }
-                            )
                         },
                         onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
                         onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },

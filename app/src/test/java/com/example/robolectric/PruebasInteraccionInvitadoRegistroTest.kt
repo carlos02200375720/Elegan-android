@@ -14,8 +14,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToKey
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import com.example.data.model.AnnouncementDestination
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
+import com.example.data.model.announcementDestination
 import com.example.ui.CatalogoScreen
 import com.example.ui.ChatsScreen
 import com.example.ui.InicioScreen
@@ -451,8 +453,14 @@ class PruebasInteraccionInvitadoRegistroTest {
                     onSubmitComment = { _, _, _, _ -> },
                     onRecordShare = { _, _ -> },
                     onNavigateToCatalogo = { navigatedCategory = it },
+                    onAnnouncementClick = { announcement ->
+                        when (val destination = announcement.announcementDestination()) {
+                            is AnnouncementDestination.Category -> navigatedCategory = destination.categoryId
+                            is AnnouncementDestination.Product -> navigatedProductId = destination.productId
+                            AnnouncementDestination.None -> navigatedCategory = null
+                        }
+                    },
                     onNavigateToProduct = {},
-                    onNavigateToProductById = { navigatedProductId = it },
                     onNavigateToMenu = {},
                     onNavigateToChats = {}
                 )
