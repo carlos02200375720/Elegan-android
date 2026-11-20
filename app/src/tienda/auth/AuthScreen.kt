@@ -49,7 +49,8 @@ fun AuthScreen(
     var acceptedTerms by remember { mutableStateOf(false) }
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }\n    var showPasswordRecovery by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var showPasswordRecovery by remember { mutableStateOf(false) }
 
     val submitAuth: () -> Unit = {
         validarYEjecutarAutenticacion(
