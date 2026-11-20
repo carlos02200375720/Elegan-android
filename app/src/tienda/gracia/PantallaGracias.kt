@@ -23,6 +23,7 @@ import com.example.ui.viewmodel.OrderConfirmationDetails
 fun GraciaScreen(
     orderId: String?,
     isBankTransfer: Boolean = false,
+    isCashOnDelivery: Boolean = false,
     orderDetails: OrderConfirmationDetails? = null,
     onNavigateToInicio: () -> Unit,
     onNavigateToPerfil: () -> Unit,
@@ -68,7 +69,8 @@ fun GraciaScreen(
         ) {
             CabeceraConfirmacionCompra(
                 isCompact = isCompact,
-                isBankTransfer = isBankTransfer
+                isBankTransfer = isBankTransfer,
+                isCashOnDelivery = isCashOnDelivery
             )
 
             Spacer(modifier = Modifier.height(if (isCompact) 16.dp else 20.dp))
