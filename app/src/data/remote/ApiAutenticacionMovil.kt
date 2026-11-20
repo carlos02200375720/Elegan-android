@@ -82,6 +82,11 @@ internal interface EleganAuthApi {
     @POST("api/movil/auth/logout")
     suspend fun logout(@Header("Authorization") authorization: String)
 
+    @DELETE("api/movil/account")
+    suspend fun deleteAccount(
+        @Header("Authorization") authorization: String
+    ): Map<String, @JvmSuppressWildcards Any?>
+
     @GET("api/movil/products")
     suspend fun products(): Map<String, Any?>
 
