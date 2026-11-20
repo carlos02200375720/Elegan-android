@@ -6,11 +6,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
+import android.net.Uri
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.example.data.model.BankAccountInfo
 import com.example.data.model.productId
 import com.example.ui.CarritoScreen
 import com.example.ui.CategoriaScreen
@@ -47,9 +52,9 @@ internal fun PantallasSecundariasNavegacion(
     val lastOrderId by viewModel.lastCreatedOrderId.collectAsState()
     val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsState()
     val lastOrderDetails by viewModel.lastOrderDetails.collectAsState()
-    val payPalSession by viewModel.payPalOrderSession.collectAsState()
-    val isProcessingPayPal by viewModel.isProcessingPayPal.collectAsState()
-    val payPalError by viewModel.payPalError.collectAsState()
+    var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(emptyList()) }
+    var isSubmittingPayment by remember { mutableStateOf(false) }
+    var paymentError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(screen) {
         when (screen) {
@@ -170,41 +175,48 @@ internal fun PantallasSecundariasNavegacion(
                     shipping = checkoutShipping,
                     total = checkoutTotal,
                     userProfile = userProfile,
-                    payPalSession = payPalSession,
-                    isProcessingPayPal = isProcessingPayPal,
-                    payPalError = payPalError,
-                    onCreatePayPalOrder = { name, email, phone, addr, city, onSessionReady ->
-                        onRequireAuth("Regístrate para realizar pagos con PayPal.") {
-                            viewModel.startPayPalOrder(
-                                customerName = name,
-                                email = email,
-                                phone = phone,
-                                address = addr,
-                                city = city,
-                                total = checkoutTotal,
-                                itemCount = totalItemCount,
-                                itemsSummary = itemsSummary,
-                                onSessionReady = onSessionReady
-                            )
+                    bankAccounts = bankAccounts,
+                    isSubmittingPayment = isSubmittingPayment,
+                    paymentError = paymentError,
+                    onLoadBankAccounts = {
+                        viewModel.loadBankAccounts { result ->
+                            result.onSuccess { bankAccounts = it; paymentError = null }
+                                .onFailure { paymentError = it.localizedMessage ?: "No se pudieron cargar las cuentas bancarias." }
                         }
                     },
-                    onCapturePayPalOrder = { paypalOrderId, name, email, phone, addr, city ->
-                        onRequireAuth("Regístrate para confirmar tu pedido.") {
-                            viewModel.capturePayPalOrder(
-                                paypalOrderId = paypalOrderId,
-                                customerName = name,
-                                email = email,
-                                phone = phone,
-                                address = addr,
-                                city = city,
-                                total = checkoutTotal,
-                                itemCount = totalItemCount,
-                                itemsSummary = itemsSummary,
-                                onSuccess = { onNavigateTo(Screen.GRACIA) }
-                            )
+                    onSubmitBankTransfer = { accountId, proofUri, name, email, phone, address, city ->
+                        isSubmittingPayment = true
+                        paymentError = null
+                        viewModel.createManualPaymentOrder(
+                            paymentMethod = "bank_transfer", bankAccountId = accountId, cashOnDeliveryAccepted = false,
+                            customerName = name, email = email, phone = phone, address = address, city = city,
+                            total = checkoutTotal, couponCode = ""
+                        ) { result ->
+                            result.onSuccess { orderId ->
+                                viewModel.uploadPaymentProof(orderId, proofUri) { upload ->
+                                    isSubmittingPayment = false
+                                    upload.onSuccess { onNavigateTo(Screen.GRACIA) }
+                                        .onFailure { paymentError = it.localizedMessage ?: "El pedido se creó, pero no se pudo subir el comprobante. Vuelve a intentarlo desde soporte." }
+                                }
+                            }.onFailure {
+                                isSubmittingPayment = false
+                                paymentError = it.localizedMessage ?: "No se pudo registrar el pedido."
+                            }
                         }
                     },
-                    onClearPayPalState = { viewModel.clearPayPalState() },
+                    onSubmitCashOnDelivery = { name, email, phone, address, city ->
+                        isSubmittingPayment = true
+                        paymentError = null
+                        viewModel.createManualPaymentOrder(
+                            paymentMethod = "cash_on_delivery", bankAccountId = "", cashOnDeliveryAccepted = true,
+                            customerName = name, email = email, phone = phone, address = address, city = city,
+                            total = checkoutTotal, couponCode = ""
+                        ) { result ->
+                            isSubmittingPayment = false
+                            result.onSuccess { onNavigateTo(Screen.GRACIA) }
+                                .onFailure { paymentError = it.localizedMessage ?: "No se pudo registrar el pedido." }
+                        }
+                    },
                     onBack = { viewModel.setCouponCode(""); onNavigateTo(Screen.CARRITO) }
                 )
             }
