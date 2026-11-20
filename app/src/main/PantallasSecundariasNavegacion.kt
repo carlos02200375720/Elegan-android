@@ -190,7 +190,7 @@ internal fun PantallasSecundariasNavegacion(
                         viewModel.createManualPaymentOrder(
                             paymentMethod = "bank_transfer", bankAccountId = accountId, cashOnDeliveryAccepted = false,
                             customerName = name, email = email, phone = phone, address = address, city = city,
-                            total = checkoutTotal, couponCode = ""
+                            total = checkoutTotal
                         ) { result ->
                             result.onSuccess { orderId ->
                                 viewModel.uploadPaymentProof(orderId, proofUri) { upload ->
@@ -210,7 +210,7 @@ internal fun PantallasSecundariasNavegacion(
                         viewModel.createManualPaymentOrder(
                             paymentMethod = "cash_on_delivery", bankAccountId = "", cashOnDeliveryAccepted = true,
                             customerName = name, email = email, phone = phone, address = address, city = city,
-                            total = checkoutTotal, couponCode = ""
+                            total = checkoutTotal
                         ) { result ->
                             isSubmittingPayment = false
                             result.onSuccess { onNavigateTo(Screen.GRACIA) }
