@@ -96,6 +96,14 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
 
         val token = activeBackendToken()
         if (token != null) {
+            if (cleanMedia.isNotBlank() &&
+                !cleanMedia.startsWith("https://", ignoreCase = true) &&
+                !cleanMedia.startsWith("http://", ignoreCase = true)
+            ) {
+                throw IllegalArgumentException(
+                    "El adjunto todavía no tiene una URL permanente. Vuelve a seleccionarlo e inténtalo otra vez."
+                )
+            }
             try {
                 val payload = mapOf(
                     "text" to clean,
