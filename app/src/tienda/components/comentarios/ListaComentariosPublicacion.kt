@@ -28,6 +28,7 @@ import com.example.ui.theme.EleganCharcoal
 internal fun ListaComentariosPublicacion(
     comments: List<PublicationComment>,
     modifier: Modifier = Modifier,
+    currentUserId: String = "",
     onReport: (PublicationComment) -> Unit = {},
     onBlock: (PublicationComment) -> Unit = {}
 ) {
@@ -53,12 +54,14 @@ internal fun ListaComentariosPublicacion(
                         lineHeight = 18.sp
                     )
                 )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = { onReport(comment) }) { Text("Reportar") }
-                    TextButton(onClick = { onBlock(comment) }) { Text("Bloquear") }
+                if (comment.userId.isNotBlank() && comment.userId != currentUserId) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { onReport(comment) }) { Text("Reportar") }
+                        TextButton(onClick = { onBlock(comment) }) { Text("Bloquear") }
+                    }
                 }
             }
             HorizontalDivider(color = Color(0xFFF5F0EA), thickness = 0.75.dp)
