@@ -117,4 +117,5 @@ internal class ControladorPerfilYSoporte(
                 onFailure(e.localizedMessage ?: "No se pudo eliminar la cuenta. Inténtalo de nuevo.")
             }
         }
-    }}
+    }
+}
