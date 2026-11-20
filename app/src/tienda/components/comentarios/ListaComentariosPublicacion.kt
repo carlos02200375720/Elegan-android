@@ -10,6 +10,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,7 +27,9 @@ import com.example.ui.theme.EleganCharcoal
 @Composable
 internal fun ListaComentariosPublicacion(
     comments: List<PublicationComment>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onReport: (PublicationComment) -> Unit = {},
+    onBlock: (PublicationComment) -> Unit = {}
 ) {
     LazyColumn(modifier = modifier.fillMaxWidth()) {
         items(comments, key = { it.id }) { comment ->
@@ -48,6 +53,13 @@ internal fun ListaComentariosPublicacion(
                         lineHeight = 18.sp
                     )
                 )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { onReport(comment) }) { Text("Reportar") }
+                    TextButton(onClick = { onBlock(comment) }) { Text("Bloquear") }
+                }
             }
             HorizontalDivider(color = Color(0xFFF5F0EA), thickness = 0.75.dp)
         }
