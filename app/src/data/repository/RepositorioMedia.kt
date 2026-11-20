@@ -24,36 +24,55 @@ internal class RepositorioMedia(
     private val apiProvider: () -> EleganAuthApi = { ApiAutenticacionMovil.uploadService }
 ) {
 
-    suspend fun uploadMedia(mediaUri: Uri): String = withContext(Dispatchers.IO) {
+    suspend fun uploadMedia(mediaUri: Uri): String =
+        uploadMediaInternal(mediaUri, supportAttachment = false)
+
+    suspend fun uploadSupportAttachment(mediaUri: Uri): String =
+        uploadMediaInternal(mediaUri, supportAttachment = true)
+
+    private suspend fun uploadMediaInternal(
+        mediaUri: Uri,
+        supportAttachment: Boolean
+    ): String = withContext(Dispatchers.IO) {
         val token = MobileSession.token(appContext)
+            ?.takeIf { it.isNotBlank() && !it.startsWith("local_session_") }
             ?: throw IllegalStateException("Debes iniciar sesión para subir multimedia.")
-        val user = MobileSession.user(appContext)
-        if (user == null || !user.canUploadMedia) {
-            throw SecurityException("Solo usuarios con rol admin o superadmin pueden subir multimedia.")
+
+        if (!supportAttachment) {
+            val user = MobileSession.user(appContext)
+            if (user == null || !user.canUploadMedia) {
+                throw SecurityException("Solo usuarios con rol admin o superadmin pueden subir multimedia.")
+            }
         }
 
         val resolver = appContext.contentResolver
-        val mimeType = resolver.getType(mediaUri)?.takeIf { it.isNotBlank() } ?: "application/octet-stream"
+        val mimeType = resolver.getType(mediaUri)?.takeIf { it.isNotBlank() }
+            ?: "application/octet-stream"
         val rawFileName = resolveFileName(mediaUri) ?: if (mimeType.startsWith("video/")) {
             "upload_${System.currentTimeMillis()}.mp4"
         } else {
             "upload_${System.currentTimeMillis()}.jpg"
         }
-        val fileName = rawFileName.replace("\"", "_").replace("\r", "_").replace("\n", "_")
-        val knownSize = resolveContentLength(resolver, mediaUri)
-
+        val fileName = rawFileName.replace("\\\"", "_").replace("\\r", "_").replace("\\n", "_")
         val body = StreamingUriRequestBody(
             contentResolver = resolver,
             uri = mediaUri,
             mediaType = mimeType.toMediaTypeOrNull(),
-            knownSize = knownSize
+            knownSize = resolveContentLength(resolver, mediaUri)
         )
         val part = MultipartBody.Part.createFormData("file", fileName, body)
 
-        val response = apiProvider().uploadMedia(
-            authorization = "Bearer $token",
-            file = part
-        )
+        val response = if (supportAttachment) {
+            apiProvider().uploadSupportMedia(
+                authorization = "Bearer $token",
+                file = part
+            )
+        } else {
+            apiProvider().uploadMedia(
+                authorization = "Bearer $token",
+                file = part
+            )
+        }
         extractUploadedMediaUrl(response)
             ?: throw IllegalStateException("El servidor no devolvió la URL del archivo subido.")
     }
