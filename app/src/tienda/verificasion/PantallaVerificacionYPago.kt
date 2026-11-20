@@ -90,7 +90,6 @@ fun VerificasionScreen(
                 }
             )
             else -> Scaffold(
-                snackbarHost = { SnackbarHost(snackbarHostState) },
                 contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                 topBar = { CabeceraVerificacion(onBack = onBack) },
                 bottomBar = {
