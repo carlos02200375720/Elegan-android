@@ -131,7 +131,7 @@ internal fun extractCapturedOrderIdJson(response: Map<String, Any?>): String? {
         ?: (response["item"] as? Map<*, *>)
         ?: (response["data"] as? Map<*, *>)
         ?: response
-    return listOf("orderId", "order_id", "id", "_id", "paypalOrderId", "paypal_order_id")
+    return listOf("orderId", "order_id", "id", "_id")
         .firstNotNullOfOrNull { key ->
             (nested[key] as? String)?.trim()?.takeIf { it.isNotBlank() }
                 ?: (response[key] as? String)?.trim()?.takeIf { it.isNotBlank() }
