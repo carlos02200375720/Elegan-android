@@ -82,10 +82,16 @@ fun VerificasionScreen(
                     onSubmitBankTransfer(selectedAccountId, uri, estado.customerName, estado.email, estado.phone, estado.address, estado.city)
                 }
             )
-            estado.showCashOnDeliveryPage -> PantallaContraEntrega(
-                total = total, isSubmitting = isSubmittingPayment,
+            estado.showCashOnDeliveryPage -> ContraEntregaScreen(
+                total = total,
+                customerName = estado.customerName,
+                phone = estado.phone,
+                address = estado.address,
+                city = estado.city,
+                itemCount = cartItems.sumOf { it.quantity },
+                isSubmitting = isSubmittingPayment,
                 onBack = { estado.showCashOnDeliveryPage = false },
-                onAccept = {
+                onConfirmOrder = {
                     if (validateDelivery()) onSubmitCashOnDelivery(estado.customerName, estado.email, estado.phone, estado.address, estado.city)
                 }
             )
