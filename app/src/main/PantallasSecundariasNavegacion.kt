@@ -60,6 +60,7 @@ internal fun PantallasSecundariasNavegacion(
     var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(activeTransferLock?.bankAccounts.orEmpty()) }
     var isSubmittingPayment by remember { mutableStateOf(false) }
     var paymentError by remember { mutableStateOf<String?>(null) }
+    var accountDeletionError by remember { mutableStateOf<String?>(null) }
     var pendingTransferOrderId by remember { mutableStateOf<String?>(activeTransferLock?.pendingTransferOrderId) }
 
     LaunchedEffect(screen) {
@@ -86,9 +87,15 @@ internal fun PantallasSecundariasNavegacion(
                         viewModel.setCategory(cat)
                         onNavigateTo(Screen.CATALOGO)
                     },
+                    deleteAccountError = accountDeletionError,
+                    onDismissDeleteAccountError = { accountDeletionError = null },
                     onDeleteAccount = {
                         if (isAuthenticated) {
-                            viewModel.deleteAccount { onAccountDeleted() }
+                            accountDeletionError = null
+                            viewModel.deleteAccount(
+                                onComplete = { onAccountDeleted() },
+                                onFailure = { accountDeletionError = it }
+                            )
                         } else {
                             onRequireAuth("Regístrate o inicia sesión para gestionar tu cuenta.") {}
                         }
