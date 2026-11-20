@@ -68,7 +68,7 @@ internal fun SeccionResumenArticulos(
         if (discount > 0.0) {
             SummaryRow(
                 label = "Descuento",
-                value = "-$${String.format("%.2f", discount)}",
+                value = "-RD$ ${String.format("%.2f", discount)}",
                 valueColor = Color(0xFF1E7E34)
             )
         }
@@ -152,7 +152,7 @@ private fun FilaArticuloResumen(item: CartItem) {
         Spacer(modifier = Modifier.width(10.dp))
 
         Text(
-            text = "$${String.format("%.2f", item.price * item.quantity)}",
+            text = "RD$ ${String.format("%.2f", item.price * item.quantity)}",
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = EleganBurgundyDark
