@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,7 +34,9 @@ import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.productId
 import com.example.data.model.productName
+import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
+import kotlinx.coroutines.launch
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
 
@@ -49,6 +55,9 @@ fun PublicationCommentsBottomSheet(
     val commentsNotifier = remember { EleganNotificationState() }
     var newCommentText by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
+    var blockedUserIds by remember { mutableStateOf(setOf<String>()) }
+    var pendingBlock by remember { mutableStateOf<PublicationComment?>(null) }
+    val scope = rememberCoroutineScope()
     // skipPartiallyExpanded = true garantiza que abra completamente y no a medias
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -121,14 +130,73 @@ fun PublicationCommentsBottomSheet(
                     onDismiss = onDismiss
                 )
                 ListaComentariosPublicacion(
-                    comments = comments,
-                    modifier = Modifier.weight(1f)
+                    comments = comments.filterNot { it.userId in blockedUserIds },
+                    modifier = Modifier.weight(1f),
+                    onReport = { comment ->
+                        if (!isAuthenticated) {
+                            onRequireAuth("Inicia sesión para reportar comentarios.") {}
+                        } else {
+                            scope.launch {
+                                try {
+                                    val token = MobileSession.token(context)
+                                        ?.takeIf { it.isNotBlank() && !it.startsWith("local_session_") }
+                                        ?: throw IllegalStateException("Inicia sesión para reportar.")
+                                    ApiAutenticacionMovil.service.reportComment(
+                                        authorization = "Bearer $token",
+                                        commentId = comment.id,
+                                        request = mapOf("reason" to "Contenido inapropiado")
+                                    )
+                                    commentsNotifier.show("Reporte enviado para revisión")
+                                } catch (error: Exception) {
+                                    commentsNotifier.show(error.message ?: "No se pudo enviar el reporte")
+                                }
+                            }
+                        }
+                    },
+                    onBlock = { comment ->
+                        if (!isAuthenticated) {
+                            onRequireAuth("Inicia sesión para bloquear usuarios.") {}
+                        } else {
+                            pendingBlock = comment
+                        }
+                    }
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 BarraEntradaComentario(
                     commentText = newCommentText,
                     onCommentTextChange = { newCommentText = it },
                     onSubmit = submitCurrentComment
+                )
+            }
+
+            pendingBlock?.let { target ->
+                AlertDialog(
+                    onDismissRequest = { pendingBlock = null },
+                    title = { Text("Bloquear usuario") },
+                    text = { Text("Dejarás de ver los comentarios de este usuario en las publicaciones.") },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            pendingBlock = null
+                            scope.launch {
+                                try {
+                                    val token = MobileSession.token(context)
+                                        ?.takeIf { it.isNotBlank() && !it.startsWith("local_session_") }
+                                        ?: throw IllegalStateException("Inicia sesión para bloquear.")
+                                    ApiAutenticacionMovil.service.blockUser(
+                                        authorization = "Bearer $token",
+                                        userId = target.userId
+                                    )
+                                    blockedUserIds = blockedUserIds + target.userId
+                                    commentsNotifier.show("Usuario bloqueado")
+                                } catch (error: Exception) {
+                                    commentsNotifier.show(error.message ?: "No se pudo bloquear al usuario")
+                                }
+                            }
+                        }) { Text("Bloquear") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { pendingBlock = null }) { Text("Cancelar") }
+                    }
                 )
             }
 
