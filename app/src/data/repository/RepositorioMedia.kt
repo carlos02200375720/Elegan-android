@@ -58,6 +58,22 @@ internal class RepositorioMedia(
             ?: throw IllegalStateException("El servidor no devolvió la URL del archivo subido.")
     }
 
+    suspend fun uploadPaymentProof(orderId: String, mediaUri: Uri): String = withContext(Dispatchers.IO) {
+        val token = MobileSession.token(appContext)
+            ?: throw IllegalStateException("Debes iniciar sesión para enviar el comprobante.")
+        val resolver = appContext.contentResolver
+        val mimeType = resolver.getType(mediaUri)?.lowercase().orEmpty()
+        if (mimeType !in setOf("image/jpeg", "image/png", "image/webp")) {
+            throw IllegalArgumentException("Selecciona una imagen JPG, PNG o WEBP.")
+        }
+        val name = resolveFileName(mediaUri)?.replace("\"", "_") ?: "comprobante.jpg"
+        val body = StreamingUriRequestBody(resolver, mediaUri, mimeType.toMediaTypeOrNull(), resolveContentLength(resolver, mediaUri))
+        val part = MultipartBody.Part.createFormData("file", name, body)
+        val response = apiProvider().uploadPaymentProof("Bearer $token", orderId, part)
+        (response["success"] as? Boolean)?.let { if (!it) throw IllegalStateException("No se pudo guardar el comprobante.") }
+        response["paymentProofUrl"] as? String ?: response["url"] as? String ?: "uploaded"
+    }
+
     private fun resolveFileName(uri: Uri): String? {
         if ("file".equals(uri.scheme, ignoreCase = true)) {
             uri.lastPathSegment?.takeIf { it.isNotBlank() }?.let { return it }
