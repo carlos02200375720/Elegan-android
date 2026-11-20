@@ -137,7 +137,7 @@ fun TarjetaPasosContraEntrega(amountFormatted: String) {
                 stepNumber = "3",
                 icon = Icons.Default.Payments,
                 title = "Pago en efectivo al recibir",
-                description = "Entrega el monto total de $$amountFormatted USD al mensajero al recibir tu paquete. Te recomendamos tener el efectivo exacto listo."
+                description = "Entrega el monto total de RD\$ $amountFormatted al mensajero al recibir tu paquete. Te recomendamos tener el efectivo exacto listo."
             )
         }
     }
