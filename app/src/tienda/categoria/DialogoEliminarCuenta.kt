@@ -35,7 +35,7 @@ internal fun DialogoEliminarCuenta(
         },
         text = {
             Text(
-                text = "¿Estás seguro? Se borrarán tus datos permanentemente, incluyendo tu cuenta, perfil, historial de pedidos, publicaciones guardadas y comprobantes.",
+                text = "¿Estás seguro? Se eliminarán tu cuenta, perfil, carrito, publicaciones guardadas, conversaciones y comprobantes. Los registros de compra que deban conservarse por obligaciones legales se desvincularán de tu cuenta y se anonimizarán.",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = Color(0xFF4A4A4A),
                     lineHeight = 19.sp
