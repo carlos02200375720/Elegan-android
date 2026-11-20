@@ -132,6 +132,7 @@ fun PublicationCommentsBottomSheet(
                 ListaComentariosPublicacion(
                     comments = comments.filterNot { it.userId in blockedUserIds },
                     modifier = Modifier.weight(1f),
+                    currentUserId = MobileSession.userId(context).orEmpty(),
                     onReport = { comment ->
                         if (!isAuthenticated) {
                             onRequireAuth("Inicia sesión para reportar comentarios.") {}
