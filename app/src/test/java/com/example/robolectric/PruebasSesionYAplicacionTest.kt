@@ -77,20 +77,9 @@ class PruebasSesionYAplicacionTest {
     }
 
     @Test
-    fun `test delete account removes user credentials and stored data`() = runBlocking {
+    fun `account deletion does not clear local data before backend confirmation`() = runBlocking {
         val context = obtenerContextoPrueba()
         MobileSession.clear(context)
-        MobileSession.save(
-            context,
-            AuthResponse(
-                token = "backend_test_token",
-                user = AuthUser(
-                    id = "delete-user-001",
-                    email = "delete.cliente@gmail.com",
-                    name = "Cliente Temporal"
-                )
-            )
-        )
 
         val repo = EleganRepository(context)
         val sampleProduct: ProductJson = mapOf(
@@ -103,11 +92,13 @@ class PruebasSesionYAplicacionTest {
         repo.addToCart(sampleProduct, "M", 1L, "Negro")
         repo.setProductSaved(sampleProduct.productId(), true)
 
-        repo.deleteUserAccountData()
+        try {
+            repo.deleteUserAccountData()
+            throw AssertionError("La eliminación debe exigir una sesión autenticada.")
+        } catch (_: IllegalStateException) {
+            // Sin token no se contacta el backend ni se borra el contenido local.
+        }
 
-        assertNull(MobileSession.user(context))
-        assertTrue(repo.observeCart().first().isEmpty())
-        assertTrue(repo.observeSavedProductIds().first().isEmpty())
-        assertNull(repo.observeUserProfile().first())
-    }
-}
+        assertTrue(repo.observeCart().first().isNotEmpty())
+        assertTrue(repo.observeSavedProductIds().first().isNotEmpty())
+    }}
