@@ -21,10 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
-import com.example.ui.theme.EleganGold
 
 @Composable
 fun TarjetaResumenPedidoCarrito(
@@ -32,7 +30,8 @@ fun TarjetaResumenPedidoCarrito(
     discountAmount: Double,
     shippingCost: Double,
     total: Double,
-    isCompact: Boolean
+    isCompact: Boolean,
+    appliedCouponCode: String = ""
 ) {
     ElevatedCard(
         modifier = Modifier
@@ -51,31 +50,26 @@ fun TarjetaResumenPedidoCarrito(
             )
             Spacer(modifier = Modifier.height(12.dp))
 
-            SummaryRow(label = "Subtotal", value = "$${String.format("%.2f", subtotal)}")
+            SummaryRow(label = "Subtotal", value = formatearPrecioRd(subtotal))
 
             if (discountAmount > 0.0) {
+                val discountLabel = if (appliedCouponCode.isNotBlank()) {
+                    "Descuento (${appliedCouponCode.trim()})"
+                } else {
+                    "Descuento"
+                }
                 SummaryRow(
-                    label = "Descuento (10%)",
-                    value = "-$${String.format("%.2f", discountAmount)}",
+                    label = discountLabel,
+                    value = formatearDescuentoRd(discountAmount),
                     valueColor = Color(0xFF1E7E34)
                 )
             }
 
             SummaryRow(
                 label = "Envío",
-                value = if (shippingCost == 0.0) "GRATIS" else "$${String.format("%.2f", shippingCost)}",
+                value = formatearEnvioRd(shippingCost),
                 valueColor = if (shippingCost == 0.0) Color(0xFF1E7E34) else EleganCharcoal
             )
-
-            if (subtotal < 100.0) {
-                Text(
-                    text = "Agrega $${String.format("%.2f", 100.0 - subtotal)} más para envío gratuito.",
-                    color = EleganGold,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
 
             Spacer(modifier = Modifier.height(8.dp))
             HorizontalDivider(color = Color(0xFFE5DDD5))
@@ -94,7 +88,7 @@ fun TarjetaResumenPedidoCarrito(
                     )
                 )
                 Text(
-                    text = "$${String.format("%.2f", total)}",
+                    text = formatearPrecioRd(total),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = EleganBurgundyDark

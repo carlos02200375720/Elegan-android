@@ -31,10 +31,18 @@ fun GraciaScreen(
 ) {
     BackHandler { onNavigateToInicio() }
 
-    val displayOrderId = orderDetails?.orderId ?: orderId ?: "ELG-2026-${(10000..99999).random()}"
+    val displayOrderId = orderDetails?.orderId?.takeIf { it.isNotBlank() }
+        ?: orderId?.takeIf { it.isNotBlank() }
+        ?: "Pendiente de confirmación"
     val purchasedItems = orderDetails?.items.orEmpty()
     val displayPaymentMethod = orderDetails?.paymentMethod.orEmpty()
-        .ifBlank { if (isBankTransfer) "Transferencia Bancaria Inmediata" else "Pago Confirmado" }
+        .ifBlank {
+            when {
+                isBankTransfer -> "Transferencia Bancaria Inmediata"
+                isCashOnDelivery -> "Pago Contra Entrega"
+                else -> "Pago Confirmado"
+            }
+        }
     val displayAddress = listOfNotNull(
         orderDetails?.address?.takeIf { it.isNotBlank() },
         orderDetails?.city?.takeIf { it.isNotBlank() }

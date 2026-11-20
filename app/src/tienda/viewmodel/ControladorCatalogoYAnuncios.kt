@@ -4,6 +4,7 @@ import com.example.data.model.AnnouncementJson
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productId
+import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -106,7 +107,12 @@ internal class ControladorCatalogoYAnuncios(
                     }
                 } catch (e: CancellationException) {
                     throw e
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    MonitorErrores.registrarAdvertencia(
+                        "EleganCatalog",
+                        "No se pudo refrescar el detalle del producto $productId.",
+                        e
+                    )
                 }
             }
         }
@@ -140,7 +146,12 @@ internal class ControladorCatalogoYAnuncios(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                MonitorErrores.registrarAdvertencia(
+                    "EleganCatalog",
+                    "No se pudo cargar el producto $cleanId por identificador.",
+                    e
+                )
                 onNotFound()
             }
         }

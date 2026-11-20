@@ -4,15 +4,7 @@ import android.net.Uri
 import com.example.data.model.ProductJson
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.AuthUser
-import com.example.data.remote.EleganAuthApi
-import com.example.data.remote.GoogleAuthRequest
-import com.example.data.remote.InicioSesionRequest
 import com.example.data.remote.MobileSession
-import com.example.data.remote.PerfilActualizadoRespuesta
-import com.example.data.remote.PerfilActualizarRequest
-import com.example.data.remote.PerfilRespuesta
-import com.example.data.remote.RegistroRequest
-import com.example.data.remote.UsuarioRespuesta
 import com.example.data.repository.EleganRepository
 import com.example.data.repository.RepositorioCarrito
 import com.example.data.repository.RepositorioMedia
@@ -363,39 +355,4 @@ class PruebasPerfilPedidosYSoporteTest {
     }
 }
 
-private open class OrdersFakeEleganAuthApi : EleganAuthApi {
-    override suspend fun register(request: RegistroRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun login(request: InicioSesionRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun loginGoogle(request: GoogleAuthRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun me(authorization: String): UsuarioRespuesta = throw UnsupportedOperationException()
-    override suspend fun logout(authorization: String) = Unit
-    override suspend fun products(): Map<String, Any?> = emptyMap()
-    override suspend fun productById(productId: String): Map<String, Any?> = emptyMap()
-    override suspend fun categories(): Map<String, Any?> = emptyMap()
-    override suspend fun announcements(): Map<String, Any?> = emptyMap()
-    override suspend fun getCart(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun addToCart(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun updateCartItem(authorization: String, itemId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun removeCartItem(authorization: String, itemId: String): Map<String, Any?> = emptyMap()
-    override suspend fun clearCart(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun getSaved(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun setSaved(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getSavedCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun getLikes(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun setLike(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getLikeCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun recordShare(authorization: String?, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getShareCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun getPublicationComments(authorization: String, productId: String): Map<String, Any?> = emptyMap()
-    override suspend fun addPublicationComment(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun profile(authorization: String): PerfilRespuesta = throw UnsupportedOperationException()
-    override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
-    override suspend fun validateCoupon(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun getBankAccounts(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun createPaymentOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun uploadPaymentProof(authorization: String, orderId: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
-    override suspend fun getMessages(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun sendMessage(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun uploadMedia(authorization: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
-}
+private open class OrdersFakeEleganAuthApi : BaseFakeEleganAuthApi()

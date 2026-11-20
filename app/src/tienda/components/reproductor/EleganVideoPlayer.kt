@@ -49,8 +49,7 @@ fun EleganVideoPlayer(
         state = state,
         isFocused = isFocused,
         autoPlay = autoPlay,
-        videoUrl = videoUrl,
-        posterUrl = posterUrl
+        videoUrl = videoUrl
     )
 
     CicloVidaMediaPlayer(
@@ -58,7 +57,7 @@ fun EleganVideoPlayer(
         state = state
     )
 
-    val effectivePoster = posterUrl?.takeIf { it.isNotBlank() } ?: state.extractedPosterUrl
+    val effectivePoster = posterUrl?.takeIf { it.isNotBlank() }
     val posterRequest = remember(effectivePoster, context) {
         construirPeticionPortadaVideo(context, effectivePoster)
     }

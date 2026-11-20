@@ -1,11 +1,12 @@
 package com.example.data.repository
 
 import android.content.Context
-import android.util.Log
 import com.example.data.model.PublicationComment
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -55,8 +56,15 @@ internal class RepositorioComentarios(
                 if (count != null) statsRepo.updateCommentsCount(productId, count)
                 commentsUpdated.tryEmit(productId)
                 remoteComments
+            } catch (e: CancellationException) {
+                throw e
             } catch (error: Exception) {
-                Log.w("EleganComments", "No se pudieron cargar los comentarios desde el backend.", error)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganComments",
+                    mensaje = "No se pudieron cargar los comentarios desde el backend.",
+                    error = error,
+                    extras = mapOf("operation" to "refreshPublicationComments", "productId" to productId)
+                )
                 cachedComments(productId)
             }
         }

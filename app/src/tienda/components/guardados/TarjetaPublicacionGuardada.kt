@@ -36,6 +36,7 @@ import com.example.data.model.productImageUrl
 import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.ui.GalleryMediaItem
+import com.example.ui.formatearMonedaRD
 import com.example.ui.getProductMediaItems
 import com.example.ui.theme.EleganGold
 
@@ -156,10 +157,12 @@ fun SavedPublicationGridItem(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "$${productPrice.toInt()}",
+                text = formatearMonedaRD(productPrice),
                 color = EleganGold,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

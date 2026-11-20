@@ -152,7 +152,7 @@ fun BarraInferiorTotalCarrito(
                             maxLines = 1
                         )
                         Text(
-                            text = "$${String.format("%.2f", total)}",
+                            text = formatearPrecioRd(total),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundyDark,

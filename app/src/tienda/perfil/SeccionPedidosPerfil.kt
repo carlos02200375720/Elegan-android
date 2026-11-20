@@ -137,7 +137,7 @@ fun OrderHistoryItemCard(order: Order, modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Total: $${String.format("%.2f", order.total)}",
+                text = "Total: ${formatearPrecioRd(order.total)}",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = EleganBurgundy

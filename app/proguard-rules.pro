@@ -12,10 +12,28 @@
 #   public *;
 #}
 
-# Preserva nombres de archivo y números de línea para stack traces legibles en monitoreo de crashes
+# Preserva nombres de archivo, números de línea y firmas genéricas para monitoreo de crashes y Retrofit/Moshi
 -keepattributes SourceFile,LineNumberTable
--keepattributes *Annotation*
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,RuntimeVisibleAnnotations,RuntimeVisibleParameterAnnotations
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# Metadatos de Kotlin requeridos por Moshi KotlinJsonAdapterFactory (reflexión)
+-keep class kotlin.Metadata { *; }
+
+# DTOs de autenticación, sesión y perfil serializados/deserializados por Retrofit + Moshi
+-keep class com.example.data.remote.AuthUser { *; }
+-keep class com.example.data.remote.AuthResponse { *; }
+-keep class com.example.data.remote.RegistroRequest { *; }
+-keep class com.example.data.remote.InicioSesionRequest { *; }
+-keep class com.example.data.remote.SolicitarRecuperacionRequest { *; }
+-keep class com.example.data.remote.RestablecerContrasenaRequest { *; }
+-keep class com.example.data.remote.GoogleAuthRequest { *; }
+-keep class com.example.data.remote.UsuarioRespuesta { *; }
+-keep class com.example.data.remote.PerfilUsuarioRespuesta { *; }
+-keep class com.example.data.remote.PerfilRespuesta { *; }
+-keep class com.example.data.remote.PerfilActualizarRequest { *; }
+-keep class com.example.data.remote.PerfilActualizadoRespuesta { *; }
+
+# Interfaz Retrofit del backend móvil (mantiene métodos y anotaciones de red)
+-keep,allowobfuscation,allowshrinking interface com.example.data.remote.EleganAuthApi {
+    <methods>;
+}

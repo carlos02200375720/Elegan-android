@@ -10,10 +10,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.AnnouncementDestination
 import com.example.data.model.announcementDestination
 import com.example.data.model.productColors
@@ -33,20 +33,20 @@ internal fun PantallasConBarraInferior(
     onNavigateTo: (Screen) -> Unit,
     onSignOut: () -> Unit
 ) {
-    val products by viewModel.products.collectAsState()
-    val announcements by viewModel.announcements.collectAsState()
-    val categories by viewModel.categories.collectAsState()
-    val cartItems by viewModel.cartItems.collectAsState()
-    val orders by viewModel.orders.collectAsState()
-    val userProfile by viewModel.userProfile.collectAsState()
-    val savedProductIds by viewModel.savedProductIds.collectAsState()
-    val savedProducts by viewModel.savedProducts.collectAsState()
-    val publicationStats by viewModel.publicationStats.collectAsState()
-    val likedPublicationIds by viewModel.likedPublicationIds.collectAsState()
-    val publicationComments by viewModel.publicationComments.collectAsState()
-    val selectedCategory by viewModel.selectedCategory.collectAsState()
-    val isLoadingProducts by viewModel.isLoadingProducts.collectAsState()
-    val productsError by viewModel.productsError.collectAsState()
+    val products by viewModel.products.collectAsStateWithLifecycle()
+    val announcements by viewModel.announcements.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
+    val orders by viewModel.orders.collectAsStateWithLifecycle()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    val savedProductIds by viewModel.savedProductIds.collectAsStateWithLifecycle()
+    val savedProducts by viewModel.savedProducts.collectAsStateWithLifecycle()
+    val publicationStats by viewModel.publicationStats.collectAsStateWithLifecycle()
+    val likedPublicationIds by viewModel.likedPublicationIds.collectAsStateWithLifecycle()
+    val publicationComments by viewModel.publicationComments.collectAsStateWithLifecycle()
+    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
+    val isLoadingProducts by viewModel.isLoadingProducts.collectAsStateWithLifecycle()
+    val productsError by viewModel.productsError.collectAsStateWithLifecycle()
 
     LaunchedEffect(screen) {
         if (screen == Screen.PERFIL) {

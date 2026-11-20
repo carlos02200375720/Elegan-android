@@ -196,11 +196,19 @@ private fun ProductJson.readStringArray(key: String): List<String> {
 internal fun resolveBackendMediaUrl(rawUrl: String): String {
     val clean = rawUrl.trim()
     if (clean.isBlank()) return ""
-    if (clean.startsWith("http://", ignoreCase = true) || clean.startsWith("https://", ignoreCase = true)) {
+    if (clean.startsWith("https://", ignoreCase = true)) {
         return clean
     }
-    if (clean.startsWith("//")) return "https:$clean"
+    if (clean.startsWith("//")) {
+        val candidate = "https:$clean"
+        return if (candidate.length > "https://".length) candidate else ""
+    }
+    // Bloquea esquemas en texto plano o no permitidos (http://, javascript:, data:, file:, etc.)
+    if (clean.contains("://") || clean.substringBefore('/').contains(':')) {
+        return ""
+    }
     val cleanBase = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
+    if (!cleanBase.startsWith("https://", ignoreCase = true)) return ""
     return if (clean.startsWith("/")) "$cleanBase$clean" else "$cleanBase/$clean"
 }
 

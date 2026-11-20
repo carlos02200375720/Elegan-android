@@ -12,11 +12,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import coil.request.ImageRequest
 import coil.size.Precision
 import java.io.File
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-
-internal val videoReleaseScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 private object CacheMultimediaVideo {
     private const val TAMANO_MAXIMO_CACHE = 200L * 1024L * 1024L
@@ -24,20 +19,38 @@ private object CacheMultimediaVideo {
     @Volatile
     private var instancia: SimpleCache? = null
 
+    @Volatile
+    private var rutaCacheActiva: String? = null
+
     fun obtener(context: Context): SimpleCache {
-        return instancia ?: synchronized(this) {
-            instancia ?: SimpleCache(
-                File(context.cacheDir, "elegan_video_cache"),
-                LeastRecentlyUsedCacheEvictor(TAMANO_MAXIMO_CACHE),
-                StandaloneDatabaseProvider(context.applicationContext)
-            ).also { instancia = it }
+        val directorio = File(context.cacheDir, "elegan_video_cache")
+        val ruta = directorio.absolutePath
+        val actual = instancia
+        if (actual != null && rutaCacheActiva == ruta && directorio.exists()) {
+            return actual
+        }
+        return synchronized(this) {
+            val revalidada = instancia
+            if (revalidada != null && rutaCacheActiva == ruta && directorio.exists()) {
+                revalidada
+            } else {
+                runCatching { revalidada?.release() }
+                SimpleCache(
+                    directorio,
+                    LeastRecentlyUsedCacheEvictor(TAMANO_MAXIMO_CACHE),
+                    StandaloneDatabaseProvider(context.applicationContext)
+                ).also {
+                    instancia = it
+                    rutaCacheActiva = ruta
+                }
+            }
         }
     }
 }
 
 internal fun crearMediaSourceConCacheVideo(context: Context): DefaultMediaSourceFactory {
     val servidor = DefaultHttpDataSource.Factory()
-        .setAllowCrossProtocolRedirects(true)
+        .setAllowCrossProtocolRedirects(false)
         .setConnectTimeoutMs(15_000)
         .setReadTimeoutMs(30_000)
 
@@ -47,23 +60,6 @@ internal fun crearMediaSourceConCacheVideo(context: Context): DefaultMediaSource
         .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
 
     return DefaultMediaSourceFactory(fuente)
-}
-
-/**
- * No extrae ni guarda fotogramas locales; la caché se limita a los datos
- * de reproducción y se administra por tamaño máximo.
- */
-fun extractVideoPosterLocally(context: Context, videoUriStr: String): String? {
-    return null
-}
-
-fun purgeLocalMediaStorage(context: Context) {
-    try {
-        val mediaDir = File(context.filesDir, "product_media")
-        if (mediaDir.exists()) {
-            mediaDir.deleteRecursively()
-        }
-    } catch (_: Exception) {}
 }
 
 internal fun ajustarTransformacionVideo(

@@ -267,7 +267,8 @@ fun CarritoScreen(
                                 discountAmount = discountAmount,
                                 shippingCost = shippingCost,
                                 total = total,
-                                isCompact = isCompact
+                                isCompact = isCompact,
+                                appliedCouponCode = appliedCouponCode
                             )
                         }
 

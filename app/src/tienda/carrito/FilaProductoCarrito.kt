@@ -111,7 +111,7 @@ fun CartItemRow(
                     Spacer(modifier = Modifier.height(4.dp))
 
                     Text(
-                        text = "$${String.format("%.2f", item.price)}",
+                        text = formatearPrecioRd(item.price),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = EleganBurgundyDark,
@@ -127,7 +127,7 @@ fun CartItemRow(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = "Costo de envío: ${if (item.shippingPrice == 0.0) "GRATIS" else "$" + String.format("%.2f", item.shippingPrice)}",
+                            text = "Costo de envío: ${formatearEnvioRd(item.shippingPrice)}",
                             style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
                         )
                         if (item.shippingDeliveryTime.isNotBlank()) {

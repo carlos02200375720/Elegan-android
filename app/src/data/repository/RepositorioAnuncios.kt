@@ -1,12 +1,13 @@
 package com.example.data.repository
 
-import android.util.Log
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.announcementActive
 import com.example.data.model.announcementId
 import com.example.data.model.announcementMessage
 import com.example.data.model.announcementTitle
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,8 +30,15 @@ internal class RepositorioAnuncios {
                 val items = extractAnnouncementsJson(response)
                 announcementsFlow.value = items
                 items
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.w("EleganAnnouncements", "No se pudieron obtener los anuncios del backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganAnnouncements",
+                    mensaje = "No se pudieron obtener los anuncios del backend.",
+                    error = e,
+                    extras = mapOf("operation" to "refreshAnnouncements")
+                )
                 announcementsFlow.value
             }
         }

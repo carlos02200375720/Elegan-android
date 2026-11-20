@@ -41,7 +41,8 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
@@ -63,12 +64,8 @@ android {
   }
   sourceSets {
     getByName("main") {
-      java.srcDir("src/main")
-      kotlin.srcDir("src/main")
-      java.srcDir("src/tienda")
-      kotlin.srcDir("src/tienda")
-      java.srcDir("src/data")
-      kotlin.srcDir("src/data")
+      java.directories.addAll(listOf("src/main", "src/tienda", "src/data"))
+      kotlin.directories.addAll(listOf("src/main", "src/tienda", "src/data"))
     }
   }
 }
@@ -95,7 +92,7 @@ dependencies {
   implementation(libs.androidx.lifecycle.runtime.compose)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.lifecycle.viewmodel.compose)
-  implementation(libs.androidx.navigation.compose)
+  // implementation(libs.androidx.navigation.compose)
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
   ksp(libs.androidx.room.compiler)
@@ -106,7 +103,7 @@ dependencies {
   implementation(libs.moshi.kotlin)
   implementation(libs.okhttp)
   implementation(libs.retrofit)
-  implementation(libs.androidx.security.crypto)
+  // implementation(libs.androidx.security.crypto)
   implementation(libs.media3.exoplayer)
   implementation(libs.media3.datasource)
   implementation(libs.media3.database)
@@ -127,8 +124,10 @@ dependencies {
 }
 
 tasks.withType<Test> {
-  failFast = true
-  timeout.set(Duration.ofMinutes(2))
+  failFast = false
+  forkEvery = 1
+  maxHeapSize = "1024m"
+  timeout.set(Duration.ofMinutes(5))
   testLogging { events("passed", "failed", "skipped") }
 }
 

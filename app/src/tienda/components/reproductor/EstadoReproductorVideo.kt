@@ -1,5 +1,6 @@
 package com.example.ui.components
 
+import android.view.TextureView
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -8,13 +9,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import android.view.TextureView
-import kotlinx.coroutines.Dispatchers
+import com.example.data.observability.MonitorErrores
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 
 @Stable
 internal class EstadoReproductorVideo(
@@ -37,7 +34,6 @@ internal class EstadoReproductorVideo(
 
     var textureViewRef by mutableStateOf<TextureView?>(null)
     var playerRef by mutableStateOf<ExoPlayer?>(null)
-    var extractedPosterUrl by mutableStateOf<String?>(null)
 
     fun alPulsarContenedor() {
         if (isPlaying) {
@@ -55,7 +51,9 @@ internal class EstadoReproductorVideo(
         try {
             player.play()
             hasStarted = true
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            MonitorErrores.registrarAdvertencia("EleganVideoPlayer", "No se pudo iniciar la reproducción de video", e)
+        }
     }
 
     fun reiniciarYReproducirSiPreparado() {
@@ -65,7 +63,9 @@ internal class EstadoReproductorVideo(
             player.seekTo(0L)
             player.play()
             hasStarted = true
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            MonitorErrores.registrarAdvertencia("EleganVideoPlayer", "No se pudo reiniciar la reproducción de video", e)
+        }
     }
 
     fun pausarSiEsPosible() {
@@ -76,7 +76,23 @@ internal class EstadoReproductorVideo(
                 player.pause()
             }
             hasStarted = false
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            MonitorErrores.registrarAdvertencia("EleganVideoPlayer", "No se pudo pausar la reproducción de video", e)
+        }
+    }
+
+    fun pausarPorSegundoPlano() {
+        val activoEnPlayer = runCatching {
+            val player = playerRef
+            player != null && !isDisposed && (player.isPlaying || player.playWhenReady)
+        }.getOrDefault(false)
+
+        if (isPlaying || hasStarted || activoEnPlayer) {
+            isPlaying = false
+            hasStarted = false
+            showOverlayControls = true
+            pausarSiEsPosible()
+        }
     }
 
     fun repetirVideo() {
@@ -120,10 +136,8 @@ internal fun EfectoFocoYControlesVideo(
     state: EstadoReproductorVideo,
     isFocused: Boolean,
     autoPlay: Boolean,
-    videoUrl: String,
-    posterUrl: String?
+    videoUrl: String
 ) {
-    val context = LocalContext.current
     var wasFocused by remember(videoUrl) { mutableStateOf(false) }
 
     LaunchedEffect(isFocused, autoPlay) {
@@ -148,18 +162,6 @@ internal fun EfectoFocoYControlesVideo(
             state.shouldLoadPlayer = false
         }
         wasFocused = isFocused
-    }
-
-    LaunchedEffect(videoUrl, posterUrl, state.shouldLoadPlayer) {
-        state.isFirstFrameRendered = false
-        if (state.shouldLoadPlayer && posterUrl.isNullOrBlank() && videoUrl.isNotBlank()) {
-            withContext(Dispatchers.IO) {
-                val thumb = extractVideoPosterLocally(context, videoUrl)
-                if (thumb != null) {
-                    state.extractedPosterUrl = thumb
-                }
-            }
-        }
     }
 
     LaunchedEffect(state.isPlaying, state.showOverlayControls) {

@@ -81,7 +81,7 @@ fun ProductPublicationPost(
         getProductMediaItems(product)
     }
     val priceText = remember(productPrice) {
-        "$${String.format("%.2f", productPrice)}"
+        formatearPrecioRd(productPrice)
     }
     val categoryLabel = remember(productCategoryName) {
         if (productCategoryName.isNotBlank()) {

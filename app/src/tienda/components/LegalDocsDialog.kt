@@ -43,6 +43,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.data.observability.MonitorErrores
+import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -92,7 +94,10 @@ fun LegalDocumentDialog(
                     content = item["content"]?.toString().orEmpty()
                 )
             }
-        } catch (_: Exception) {
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            MonitorErrores.registrarAdvertencia("LegalDocs", "No se pudo cargar el documento legal $documentType.", e)
             error = "No se pudo cargar el documento. Comprueba tu conexión e inténtalo de nuevo."
         } finally {
             loading = false

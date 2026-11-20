@@ -64,17 +64,17 @@ internal fun SeccionResumenArticulos(
         HorizontalDivider(color = Color(0xFFE5DDD5))
         Spacer(modifier = Modifier.height(10.dp))
 
-        SummaryRow(label = "Subtotal", value = "RD$ ${String.format("%.2f", subtotal)}")
+        SummaryRow(label = "Subtotal", value = formatearPrecioRd(subtotal))
         if (discount > 0.0) {
             SummaryRow(
                 label = "Descuento",
-                value = "-RD$ ${String.format("%.2f", discount)}",
+                value = formatearDescuentoRd(discount),
                 valueColor = Color(0xFF1E7E34)
             )
         }
         SummaryRow(
             label = "Envío",
-            value = if (shipping == 0.0) "GRATIS" else "RD$ ${String.format("%.2f", shipping)}"
+            value = formatearEnvioRd(shipping)
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -84,7 +84,7 @@ internal fun SeccionResumenArticulos(
         ) {
             Text(text = "Total Final", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             Text(
-                text = "RD$ ${String.format("%.2f", total)}",
+                text = formatearPrecioRd(total),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
                     color = EleganBurgundyDark
@@ -152,7 +152,7 @@ private fun FilaArticuloResumen(item: CartItem) {
         Spacer(modifier = Modifier.width(10.dp))
 
         Text(
-            text = "RD$ ${String.format("%.2f", item.price * item.quantity)}",
+            text = formatearPrecioRd(item.price * item.quantity),
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = EleganBurgundyDark

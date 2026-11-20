@@ -34,8 +34,10 @@ import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.productId
 import com.example.data.model.productName
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
@@ -148,7 +150,10 @@ fun PublicationCommentsBottomSheet(
                                         request = mapOf("reason" to "Contenido inapropiado")
                                     )
                                     commentsNotifier.show("Reporte enviado para revisión")
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (error: Exception) {
+                                    MonitorErrores.registrarAdvertencia("EleganComments", "No se pudo enviar el reporte del comentario.", error)
                                     commentsNotifier.show(error.message ?: "No se pudo enviar el reporte")
                                 }
                             }
@@ -189,7 +194,10 @@ fun PublicationCommentsBottomSheet(
                                     )
                                     blockedUserIds = blockedUserIds + target.userId
                                     commentsNotifier.show("Usuario bloqueado")
+                                } catch (e: CancellationException) {
+                                    throw e
                                 } catch (error: Exception) {
+                                    MonitorErrores.registrarAdvertencia("EleganComments", "No se pudo bloquear al usuario.", error)
                                     commentsNotifier.show(error.message ?: "No se pudo bloquear al usuario")
                                 }
                             }

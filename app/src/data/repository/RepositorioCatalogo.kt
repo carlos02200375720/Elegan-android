@@ -5,6 +5,7 @@ import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +34,8 @@ internal class RepositorioCatalogo {
             val remoteProducts = fetchProductsFromBackend()
             productsFlow.value = remoteProducts
             remoteProducts
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             MonitorErrores.registrarError("EleganCatalog", "Error al obtener productos desde el backend.", e)
             errorFlow.value = e.localizedMessage ?: "No se pudo cargar el catálogo desde el servidor."
@@ -61,6 +64,8 @@ internal class RepositorioCatalogo {
                 .mapNotNull { (k, v) -> k?.toString()?.let { it to v } }
                 .toMap()
             typed.takeIf { it.productId().isNotBlank() && it.productName().isNotBlank() }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("EleganCatalog", "No se pudo consultar el producto $productId desde el backend.", e)
             productsFlow.value.find { it.productId() == productId }

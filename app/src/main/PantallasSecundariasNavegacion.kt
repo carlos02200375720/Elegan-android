@@ -11,10 +11,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.productId
 import com.example.ui.CarritoScreen
@@ -46,17 +46,17 @@ internal fun PantallasSecundariasNavegacion(
     onUpdateCheckoutTotals: (Double, Double, Double, Double) -> Unit,
     onAccountDeleted: () -> Unit
 ) {
-    val products by viewModel.products.collectAsState()
-    val categories by viewModel.categories.collectAsState()
-    val cartItems by viewModel.cartItems.collectAsState()
-    val cartError by viewModel.cartError.collectAsState()
-    val messages by viewModel.messages.collectAsState()
-    val userProfile by viewModel.userProfile.collectAsState()
-    val savedProductIds by viewModel.savedProductIds.collectAsState()
-    val selectedProduct by viewModel.selectedProduct.collectAsState()
-    val lastOrderId by viewModel.lastCreatedOrderId.collectAsState()
-    val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsState()
-    val lastOrderDetails by viewModel.lastOrderDetails.collectAsState()
+    val products by viewModel.products.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
+    val cartError by viewModel.cartError.collectAsStateWithLifecycle()
+    val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
+    val savedProductIds by viewModel.savedProductIds.collectAsStateWithLifecycle()
+    val selectedProduct by viewModel.selectedProduct.collectAsStateWithLifecycle()
+    val lastOrderId by viewModel.lastCreatedOrderId.collectAsStateWithLifecycle()
+    val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsStateWithLifecycle()
+    val lastOrderDetails by viewModel.lastOrderDetails.collectAsStateWithLifecycle()
     var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(activeTransferLock?.bankAccounts.orEmpty()) }
     var isSubmittingPayment by remember { mutableStateOf(false) }
     var paymentError by remember { mutableStateOf<String?>(null) }
@@ -68,6 +68,7 @@ internal fun PantallasSecundariasNavegacion(
             Screen.CATEGORIA -> viewModel.loadCategoriesOnce()
             Screen.CARRITO -> viewModel.refreshCart()
             Screen.CHATS -> viewModel.refreshMessages()
+            Screen.VERIFICASION -> paymentError = null
             else -> {}
         }
     }
@@ -189,6 +190,7 @@ internal fun PantallasSecundariasNavegacion(
                     bankAccounts = bankAccounts,
                     isSubmittingPayment = isSubmittingPayment,
                     paymentError = paymentError,
+                    onDismissPaymentError = { paymentError = null },
                     couponCode = viewModel.currentCouponCode(),
                     pendingTransferOrderId = pendingTransferOrderId,
                     restoredTransferLock = activeTransferLock,
@@ -249,7 +251,11 @@ internal fun PantallasSecundariasNavegacion(
                                 .onFailure { paymentError = it.localizedMessage ?: "No se pudo registrar el pedido." }
                         }
                     },
-                    onBack = { viewModel.setCouponCode(""); onNavigateTo(Screen.CARRITO) }
+                    onBack = {
+                        paymentError = null
+                        viewModel.setCouponCode("")
+                        onNavigateTo(Screen.CARRITO)
+                    }
                 )
             }
 

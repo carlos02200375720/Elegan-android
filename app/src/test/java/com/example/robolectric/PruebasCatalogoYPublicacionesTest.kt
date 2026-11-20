@@ -30,15 +30,6 @@ import com.example.data.model.productMediaFormat
 import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.productVideoUrl
-import com.example.data.remote.AuthResponse
-import com.example.data.remote.EleganAuthApi
-import com.example.data.remote.GoogleAuthRequest
-import com.example.data.remote.InicioSesionRequest
-import com.example.data.remote.PerfilActualizadoRespuesta
-import com.example.data.remote.PerfilActualizarRequest
-import com.example.data.remote.PerfilRespuesta
-import com.example.data.remote.RegistroRequest
-import com.example.data.remote.UsuarioRespuesta
 import com.example.data.repository.EleganRepository
 import com.example.data.repository.RepositorioCategorias
 import com.example.data.repository.RepositorioEstadisticasPublicaciones
@@ -50,6 +41,7 @@ import com.example.data.repository.extractSavedProductIdsJson
 import com.example.ui.DespachadorCompartidoPublicacion
 import com.example.ui.ReceptorCompartidoPublicacion
 import com.example.ui.components.EstadoReproductorVideo
+import com.example.ui.components.sanitizarUrlVideoParaLog
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
@@ -240,6 +232,44 @@ class PruebasCatalogoYPublicacionesTest {
         state.iniciarReproduccion()
         assertTrue(state.isPlaying)
         assertTrue(state.shouldLoadPlayer)
+    }
+
+    @Test
+    fun `test video player pauses cleanly on background lifecycle and sanitizes log url`() {
+        val state = EstadoReproductorVideo(initialAutoPlay = false, initialFocused = true)
+        state.iniciarReproduccion()
+        state.hasStarted = true
+        assertTrue(state.isPlaying)
+        assertFalse(state.showOverlayControls)
+
+        state.pausarPorSegundoPlano()
+
+        assertFalse(state.isPlaying)
+        assertFalse(state.hasStarted)
+        assertTrue(state.showOverlayControls)
+        assertEquals(
+            "https://cdn.elegan.com/videos/traje.mp4",
+            sanitizarUrlVideoParaLog("https://cdn.elegan.com/videos/traje.mp4?token=secreto#t=5")
+        )
+    }
+
+    @Test
+    fun `test media url resolver allows only https and relative backend paths`() {
+        assertEquals(
+            "https://cdn.elegan.com/img/traje.jpg",
+            com.example.data.model.resolveBackendMediaUrl("https://cdn.elegan.com/img/traje.jpg")
+        )
+        assertEquals(
+            "https://cdn.elegan.com/img/traje.jpg",
+            com.example.data.model.resolveBackendMediaUrl("//cdn.elegan.com/img/traje.jpg")
+        )
+        assertTrue(
+            com.example.data.model.resolveBackendMediaUrl("/uploads/traje.jpg")
+                .startsWith("https://")
+        )
+        assertEquals("", com.example.data.model.resolveBackendMediaUrl("http://cdn.elegan.com/img/traje.jpg"))
+        assertEquals("", com.example.data.model.resolveBackendMediaUrl("javascript:alert(1)"))
+        assertEquals("", com.example.data.model.resolveBackendMediaUrl("file:///etc/passwd"))
     }
 
     @Test
@@ -890,41 +920,59 @@ class PruebasCatalogoYPublicacionesTest {
         )
         assertEquals("", productAnnouncement.announcementCategory())
     }
+
+    @Test
+    fun `test setProductSaved and togglePublicationLike rethrow CancellationException and revert optimistic state`(): Unit = runBlocking {
+        val context = obtenerContextoPrueba()
+        val statsRepo = RepositorioEstadisticasPublicaciones()
+        val fakeApi = object : StubEleganAuthApi() {
+            override suspend fun getSaved(authorization: String): Map<String, Any?> =
+                mapOf("productIds" to emptyList<String>())
+
+            override suspend fun getLikes(authorization: String): Map<String, Any?> =
+                mapOf("productIds" to emptyList<String>())
+
+            override suspend fun setSaved(
+                authorization: String,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                throw kotlinx.coroutines.CancellationException("Cancelado al salir de pantalla")
+            }
+
+            override suspend fun setLike(
+                authorization: String,
+                productId: String,
+                request: Map<String, Any?>
+            ): Map<String, Any?> {
+                throw kotlinx.coroutines.CancellationException("Cancelado al salir de pantalla")
+            }
+        }
+        val repo = RepositorioGuardadosYLikes(
+            appContext = context,
+            statsRepo = statsRepo,
+            apiProvider = { fakeApi },
+            tokenProvider = { "valid_backend_token" }
+        )
+
+        var saveCancelled = false
+        try {
+            repo.setProductSaved("prod_cancel_1", true)
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            saveCancelled = true
+        }
+        assertTrue("CancellationException debe propagarse en setProductSaved", saveCancelled)
+        assertFalse("prod_cancel_1" in repo.observeSavedProductIds().first())
+
+        var likeCancelled = false
+        try {
+            repo.togglePublicationLike("prod_cancel_1")
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            likeCancelled = true
+        }
+        assertTrue("CancellationException debe propagarse en togglePublicationLike", likeCancelled)
+        assertFalse("prod_cancel_1" in repo.observeLikedPublicationIds().first())
+    }
 }
 
-private open class StubEleganAuthApi : EleganAuthApi {
-    override suspend fun register(request: RegistroRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun login(request: InicioSesionRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun loginGoogle(request: GoogleAuthRequest): AuthResponse = throw UnsupportedOperationException()
-    override suspend fun me(authorization: String): UsuarioRespuesta = throw UnsupportedOperationException()
-    override suspend fun logout(authorization: String) = Unit
-    override suspend fun products(): Map<String, Any?> = emptyMap()
-    override suspend fun productById(productId: String): Map<String, Any?> = emptyMap()
-    override suspend fun categories(): Map<String, Any?> = emptyMap()
-    override suspend fun announcements(): Map<String, Any?> = emptyMap()
-    override suspend fun getCart(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun addToCart(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun updateCartItem(authorization: String, itemId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun removeCartItem(authorization: String, itemId: String): Map<String, Any?> = emptyMap()
-    override suspend fun clearCart(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun getSaved(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun setSaved(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getSavedCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun getLikes(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun setLike(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getLikeCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun recordShare(authorization: String?, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getShareCounts(authorization: String?, productIds: List<String>): Map<String, Any?> = emptyMap()
-    override suspend fun getPublicationComments(authorization: String, productId: String): Map<String, Any?> = emptyMap()
-    override suspend fun addPublicationComment(authorization: String, productId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun profile(authorization: String): PerfilRespuesta = throw UnsupportedOperationException()
-    override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
-    override suspend fun validateCoupon(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun getBankAccounts(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun createPaymentOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun uploadPaymentProof(authorization: String, orderId: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
-    override suspend fun getMessages(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun sendMessage(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun uploadMedia(authorization: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
-}
+private open class StubEleganAuthApi : BaseFakeEleganAuthApi()

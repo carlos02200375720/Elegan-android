@@ -106,7 +106,7 @@ fun TarjetaCuponCarrito(
             if (discountAmount > 0.0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "✓ Descuento de RD$ ${String.format("%.2f", discountAmount)} aplicado",
+                    text = "✓ Descuento de ${formatearPrecioRd(discountAmount)} aplicado",
                     color = Color(0xFF1E7E34),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold

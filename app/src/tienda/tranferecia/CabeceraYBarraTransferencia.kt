@@ -105,7 +105,7 @@ fun CabeceraTransferencia(
                             )
                         )
                         Text(
-                            text = "RD\$ ${String.format("%.2f", total)}",
+                            text = formatearPrecioRd(total),
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundy,

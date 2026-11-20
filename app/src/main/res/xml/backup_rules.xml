@@ -5,4 +5,7 @@
     <exclude domain="sharedpref" path="elegan_transfer_lock_state.xml" />
     <!-- El comprobante pendiente puede contener datos personales. -->
     <exclude domain="file" path="pending_transfer_proof/" />
+    <!-- Excluir bases de datos locales temporales (Room y caché multimedia). -->
+    <exclude domain="database" path="elegan_local.db" />
+    <exclude domain="database" path="exoplayer_internal.db" />
 </full-backup-content>

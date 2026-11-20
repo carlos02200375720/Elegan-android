@@ -2,7 +2,9 @@ package com.example
 
 import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -16,6 +18,7 @@ import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
 import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.EstadoBloqueoTransferencia
+import com.example.ui.GraciaScreen
 import com.example.ui.VerificasionScreen
 import com.example.ui.theme.EleganTheme
 import java.io.File
@@ -263,5 +266,93 @@ class PruebasBloqueoTransferenciaTest {
         composeTestRule.onNodeWithTag("copy_holder_document_${sampleAccount.id}").performScrollTo().assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
         assertEquals("02200375729", clipboard.primaryClip?.getItemAt(0)?.text?.toString())
+    }
+
+    @Test
+    fun `payment error banner is dismissible and does not block advancing to transfer screen`() {
+        var dismissed = false
+        var loadAccountsCalls = 0
+
+        composeTestRule.setContent {
+            EleganTheme {
+                VerificasionScreen(
+                    cartItems = listOf(CartItem(id = "c1", productId = "p1", name = "Camisa", price = 55.0, quantity = 1)),
+                    subtotal = 55.0,
+                    discount = 0.0,
+                    shipping = 0.0,
+                    total = 55.0,
+                    userProfile = sampleProfile,
+                    bankAccounts = emptyList(),
+                    paymentError = "No se pudieron cargar las cuentas bancarias.",
+                    onDismissPaymentError = { dismissed = true },
+                    onLoadBankAccounts = { loadAccountsCalls++ },
+                    onSubmitBankTransfer = { _, _, _, _, _, _, _ -> },
+                    onSubmitCashOnDelivery = { _, _, _, _, _ -> },
+                    onBack = {}
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("payment_error_banner").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No se pudieron cargar las cuentas bancarias.").assertIsDisplayed()
+
+        // Descartar el aviso debe ocultarlo y notificar el callback
+        composeTestRule.onNodeWithTag("dismiss_payment_error_btn").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(dismissed)
+        composeTestRule.onNodeWithTag("payment_error_banner").assertDoesNotExist()
+
+        // El botón inferior de confirmar sigue accesible y permite avanzar a Transferencia
+        composeTestRule.onNodeWithTag("confirm_order_btn").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("tranferecia_screen").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("retry_load_bank_accounts_btn").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(loadAccountsCalls >= 2)
+    }
+
+    @Test
+    fun `gracia screen shows stable pending order id across recompositions and respects cash on delivery fallback`() {
+        val recomposeTick = mutableIntStateOf(0)
+
+        composeTestRule.setContent {
+            // Fuerza lectura de estado para provocar recomposiciones reales
+            @Suppress("UNUSED_VARIABLE")
+            val tick = recomposeTick.intValue
+            EleganTheme {
+                GraciaScreen(
+                    orderId = "   ",
+                    isBankTransfer = false,
+                    isCashOnDelivery = true,
+                    orderDetails = null,
+                    onNavigateToInicio = {},
+                    onNavigateToPerfil = {},
+                    onNavigateToChats = {}
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("gracia_order_id")
+            .assertIsDisplayed()
+            .assertTextEquals("Pendiente de confirmación")
+        composeTestRule.onNodeWithTag("gracia_payment_method")
+            .assertIsDisplayed()
+            .assertTextEquals("Pago Contra Entrega")
+        composeTestRule.onNodeWithText("Pago Confirmado").assertDoesNotExist()
+
+        // Provoca múltiples recomposiciones y confirma que el texto no cambia ni genera códigos aleatorios
+        composeTestRule.runOnIdle { recomposeTick.intValue++ }
+        composeTestRule.waitForIdle()
+        composeTestRule.runOnIdle { recomposeTick.intValue++ }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("gracia_order_id")
+            .assertIsDisplayed()
+            .assertTextEquals("Pendiente de confirmación")
+        composeTestRule.onNodeWithTag("gracia_payment_method")
+            .assertIsDisplayed()
+            .assertTextEquals("Pago Contra Entrega")
     }
 }

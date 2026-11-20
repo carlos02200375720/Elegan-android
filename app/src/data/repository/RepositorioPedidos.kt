@@ -2,10 +2,10 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
@@ -52,7 +52,12 @@ internal class RepositorioPedidos(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganOrders", "No se pudieron obtener las órdenes desde el backend.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganOrders",
+                mensaje = "No se pudieron obtener las órdenes desde el backend.",
+                error = e,
+                extras = mapOf("operation" to "refreshOrders")
+            )
             ordersList.toList()
         }
     }

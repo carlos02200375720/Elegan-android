@@ -1,8 +1,8 @@
 package com.example.data.repository
 
-import android.util.Log
 import com.example.data.model.CategoryItem
 import com.example.data.model.resolveBackendMediaUrl
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -49,7 +49,12 @@ internal class RepositorioCategorias(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganCategories", "No se pudieron obtener las categorías del backend.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganCategories",
+                mensaje = "No se pudieron obtener las categorías del backend.",
+                error = e,
+                extras = mapOf("operation" to "fetchCategories", "force" to force.toString())
+            )
             categoriesFlow.value
         }
     }

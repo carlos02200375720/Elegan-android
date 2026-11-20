@@ -205,5 +205,5 @@ internal fun extractUploadedMediaUrl(response: Map<String, Any?>): String? {
                 ?: (response[key] as? String)?.trim()?.takeIf { it.isNotBlank() }
         }
         ?: return null
-    return resolveBackendMediaUrl(rawUrl)
+    return resolveBackendMediaUrl(rawUrl).takeIf { it.isNotBlank() }
 }

@@ -87,7 +87,7 @@ internal fun SeccionDireccionEntrega(
         Spacer(modifier = Modifier.height(10.dp))
         CampoEntregaVerificacion(email, onEmailChange, "Correo Electrónico *", "checkout_email_input")
         Spacer(modifier = Modifier.height(10.dp))
-        CampoEntregaVerificacion(phone, onPhoneChange, "Teléfono de Contacto", "checkout_phone_input")
+        CampoEntregaVerificacion(phone, onPhoneChange, "Teléfono de Contacto *", "checkout_phone_input")
         Spacer(modifier = Modifier.height(10.dp))
         CampoEntregaVerificacion(address, onAddressChange, "Calle, Número y Apartamento *", "checkout_address_input")
         Spacer(modifier = Modifier.height(10.dp))

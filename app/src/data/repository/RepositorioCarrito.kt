@@ -2,7 +2,6 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import com.example.data.model.CartItem
 import com.example.data.model.ProductJson
 import com.example.data.model.productId
@@ -11,6 +10,7 @@ import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.data.model.productShippingMethods
 import com.example.data.model.resolveBackendMediaUrl
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
@@ -111,7 +111,12 @@ internal class RepositorioCarrito(
                 val errorMessage = e.localizedMessage?.takeIf { it.isNotBlank() }
                     ?: "No se pudo sincronizar el carrito desde el servidor."
                 cartErrorFlow.value = errorMessage
-                Log.w("EleganCart", "No se pudo sincronizar el carrito desde el backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganCart",
+                    mensaje = "No se pudo sincronizar el carrito desde el backend.",
+                    error = e,
+                    extras = mapOf("operation" to "refreshCart")
+                )
                 throw e
             }
         }
@@ -201,7 +206,12 @@ internal class RepositorioCarrito(
                 runCatching { fetchAndApplyRemoteCartLocked(token) }
                 cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
                     ?: "No se pudo agregar al carrito en el servidor."
-                Log.w("EleganCart", "No se pudo agregar al carrito en el backend; se conserva estado confirmado.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganCart",
+                    mensaje = "No se pudo agregar al carrito en el backend; se conserva estado confirmado.",
+                    error = e,
+                    extras = mapOf("operation" to "addToCart", "productId" to productId)
+                )
                 throw e
             }
         }
@@ -250,7 +260,12 @@ internal class RepositorioCarrito(
                 runCatching { fetchAndApplyRemoteCartLocked(token) }
                 cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
                     ?: "No se pudo actualizar la cantidad en el servidor."
-                Log.w("EleganCart", "No se pudo actualizar cantidad en el backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganCart",
+                    mensaje = "No se pudo actualizar cantidad en el backend.",
+                    error = e,
+                    extras = mapOf("operation" to "updateCartQuantity")
+                )
                 throw e
             }
         }
@@ -287,7 +302,12 @@ internal class RepositorioCarrito(
                 runCatching { fetchAndApplyRemoteCartLocked(token) }
                 cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
                     ?: "No se pudo eliminar el artículo en el servidor."
-                Log.w("EleganCart", "No se pudo eliminar artículo del carrito en el backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganCart",
+                    mensaje = "No se pudo eliminar artículo del carrito en el backend.",
+                    error = e,
+                    extras = mapOf("operation" to "removeFromCart")
+                )
                 throw e
             }
         }
@@ -329,7 +349,12 @@ internal class RepositorioCarrito(
                 runCatching { fetchAndApplyRemoteCartLocked(token) }
                 cartErrorFlow.value = e.localizedMessage?.takeIf { it.isNotBlank() }
                     ?: "No se pudo vaciar el carrito en el servidor."
-                Log.w("EleganCart", "No se pudo vaciar el carrito en el backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganCart",
+                    mensaje = "No se pudo vaciar el carrito en el backend.",
+                    error = e,
+                    extras = mapOf("operation" to "clearCart")
+                )
                 throw e
             }
         }

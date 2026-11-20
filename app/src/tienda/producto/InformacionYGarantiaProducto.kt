@@ -74,7 +74,7 @@ fun BloqueDetalleProducto(
         Spacer(modifier = Modifier.height(6.dp))
 
         Text(
-            text = "$${String.format("%.2f", product.productPrice())}",
+            text = formatearPrecioRd(product.productPrice()),
             style = MaterialTheme.typography.titleLarge.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = EleganBurgundy,
@@ -163,7 +163,7 @@ fun BloqueDetalleProducto(
                             color = EleganCharcoal
                         )
                         Text(
-                            text = if (method.price == 0.0) "GRATIS" else "$${String.format("%.2f", method.price)}",
+                            text = formatearEnvioRd(method.price),
                             fontWeight = FontWeight.Bold,
                             color = EleganBurgundy
                         )

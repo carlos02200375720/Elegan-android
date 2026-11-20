@@ -1,12 +1,13 @@
 package com.example.data.repository
 
 import android.content.Context
-import android.util.Log
 import com.example.data.model.UserProfile
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import com.example.data.remote.PerfilActualizarRequest
 import com.example.data.remote.PerfilUsuarioRespuesta
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,8 +56,15 @@ internal class RepositorioPerfilYCuenta(
                 mapRemoteProfile(
                     ApiAutenticacionMovil.service.profile("Bearer $token").item
                 )
+            } catch (e: CancellationException) {
+                throw e
             } catch (error: Exception) {
-                Log.w("EleganRepository", "No se pudo obtener el perfil desde el backend.", error)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganRepository",
+                    mensaje = "No se pudo obtener el perfil desde el backend.",
+                    error = error,
+                    extras = mapOf("operation" to "ensureProfileLoaded")
+                )
                 cachedUser?.let {
                     UserProfile(
                         id = it.effectiveId,
@@ -109,8 +117,15 @@ internal class RepositorioPerfilYCuenta(
         loadedToken = token
         try {
             MobileSession.validateSession(appContext)
+        } catch (e: CancellationException) {
+            throw e
         } catch (error: Exception) {
-            Log.w("EleganRepository", "El perfil se guardó, pero no se pudo refrescar la sesión.", error)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganRepository",
+                mensaje = "El perfil se guardó, pero no se pudo refrescar la sesión.",
+                error = error,
+                extras = mapOf("operation" to "saveUserProfile")
+            )
         }
     }
 

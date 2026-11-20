@@ -56,11 +56,16 @@ internal class ControladorPerfilYSoporte(
         scope.launch {
             try {
                 var resolvedMediaUrl = mediaUri.trim()
-                val isRemoteUrl = resolvedMediaUrl.startsWith("https://", ignoreCase = true) ||
-                    resolvedMediaUrl.startsWith("http://", ignoreCase = true)
-                if (resolvedMediaUrl.isNotBlank() && !isRemoteUrl) {
+                if (resolvedMediaUrl.startsWith("http://", ignoreCase = true)) {
+                    MonitorErrores.registrarError("EleganViewModel", "Se bloqueó un adjunto de soporte con URL en texto plano (HTTP).")
+                    return@launch
+                }
+                val isRemoteHttpsUrl = resolvedMediaUrl.startsWith("https://", ignoreCase = true)
+                if (resolvedMediaUrl.isNotBlank() && !isRemoteHttpsUrl) {
                     try {
                         resolvedMediaUrl = repository.uploadSupportAttachment(Uri.parse(resolvedMediaUrl))
+                    } catch (e: CancellationException) {
+                        throw e
                     } catch (uploadError: Exception) {
                         MonitorErrores.registrarError(
                             "EleganViewModel",
@@ -71,10 +76,9 @@ internal class ControladorPerfilYSoporte(
                     }
                 }
                 if (resolvedMediaUrl.isNotBlank() &&
-                    !resolvedMediaUrl.startsWith("https://", ignoreCase = true) &&
-                    !resolvedMediaUrl.startsWith("http://", ignoreCase = true)
+                    !resolvedMediaUrl.startsWith("https://", ignoreCase = true)
                 ) {
-                    MonitorErrores.registrarError("EleganViewModel", "Se bloqueó el envío de una URI local como adjunto de soporte.")
+                    MonitorErrores.registrarError("EleganViewModel", "Se bloqueó el envío de un adjunto de soporte sin URL HTTPS válida.")
                     return@launch
                 }
                 repository.sendSupportMessage(text, resolvedMediaUrl, mediaType, scope)

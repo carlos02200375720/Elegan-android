@@ -2,14 +2,15 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Build
-import android.util.Log
 import com.example.data.model.SupportMessage
 import com.example.data.model.resolveBackendMediaUrl
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -73,8 +74,15 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                 messagesFlow.value = messagesList.toList()
             }
             messagesList.toList()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Log.w("EleganMessages", "No se pudieron obtener mensajes desde el backend.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganMessages",
+                mensaje = "No se pudieron obtener mensajes desde el backend.",
+                error = e,
+                extras = mapOf("operation" to "refreshMessages")
+            )
             messagesList.toList()
         }
     }
@@ -97,11 +105,10 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
         val token = activeBackendToken()
         if (token != null) {
             if (cleanMedia.isNotBlank() &&
-                !cleanMedia.startsWith("https://", ignoreCase = true) &&
-                !cleanMedia.startsWith("http://", ignoreCase = true)
+                !cleanMedia.startsWith("https://", ignoreCase = true)
             ) {
                 throw IllegalArgumentException(
-                    "El adjunto todavía no tiene una URL permanente. Vuelve a seleccionarlo e inténtalo otra vez."
+                    "El adjunto debe tener una URL segura (HTTPS). Vuelve a seleccionarlo e inténtalo otra vez."
                 )
             }
             try {
@@ -127,8 +134,18 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                 if (refreshed.any { it.text == clean || (cleanMedia.isNotBlank() && it.mediaUrl == cleanMedia) }) {
                     return@withContext
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                Log.w("EleganMessages", "No se pudo enviar el mensaje al backend; usando respaldo de sesión.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganMessages",
+                    mensaje = "No se pudo enviar el mensaje al backend; usando respaldo de sesión.",
+                    error = e,
+                    extras = mapOf(
+                        "operation" to "sendSupportMessage",
+                        "hasMedia" to cleanMedia.isNotBlank().toString()
+                    )
+                )
             }
         }
 

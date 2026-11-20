@@ -122,7 +122,7 @@ fun ResumenProductosPedidoConfirmado(
             )
         )
         Text(
-            text = "$${String.format("%.2f", totalPaid)}",
+            text = formatearPrecioRd(totalPaid),
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.ExtraBold,
                 color = EleganBurgundyDark
@@ -189,7 +189,7 @@ private fun FilaProductoConfirmado(item: CartItem) {
         Spacer(modifier = Modifier.width(8.dp))
 
         Text(
-            text = "$${String.format("%.2f", item.price * item.quantity)}",
+            text = formatearPrecioRd(item.price * item.quantity),
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.Bold,
                 color = EleganBurgundyDark

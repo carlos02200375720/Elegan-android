@@ -136,7 +136,7 @@ fun ProductGridCard(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "$${String.format("%.2f", productPrice)}",
+                            text = formatearPrecioRd(productPrice),
                             style = MaterialTheme.typography.titleSmall.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundy,

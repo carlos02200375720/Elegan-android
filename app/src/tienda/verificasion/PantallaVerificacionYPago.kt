@@ -46,6 +46,7 @@ fun VerificasionScreen(
     cartItems: List<CartItem>, subtotal: Double, discount: Double, shipping: Double, total: Double,
     userProfile: UserProfile?, bankAccounts: List<BankAccountInfo> = emptyList(),
     isSubmittingPayment: Boolean = false, paymentError: String? = null,
+    onDismissPaymentError: () -> Unit = {},
     couponCode: String = "",
     pendingTransferOrderId: String? = null,
     restoredTransferLock: EstadoBloqueoTransferencia? = null,
@@ -68,6 +69,12 @@ fun VerificasionScreen(
         )
     }
     var selectedAccountId by remember { mutableStateOf(restoredTransferLock?.selectedAccountId.orEmpty()) }
+    var isLocalErrorDismissed by remember(paymentError) { mutableStateOf(false) }
+
+    fun dismissPaymentError() {
+        isLocalErrorDismissed = true
+        onDismissPaymentError()
+    }
 
     fun buildTransferLockState(
         accountId: String = selectedAccountId,
@@ -147,8 +154,12 @@ fun VerificasionScreen(
     }
 
     fun validateDelivery(): Boolean {
-        if (!estado.isDeliveryFormValid() || estado.phone.isBlank()) {
-            scope.launch { snackbarHostState.showSnackbar("Completa nombre, teléfono y dirección de entrega.") }
+        if (!estado.isDeliveryFormValid()) {
+            val mensaje = estado.mensajeCampoFaltante()
+            scope.launch {
+                snackbarHostState.currentSnackbarData?.dismiss()
+                snackbarHostState.showSnackbar(mensaje)
+            }
             return false
         }
         return true
@@ -157,6 +168,7 @@ fun VerificasionScreen(
     // Solo contra entrega permite regresar con el botón atrás del sistema.
     // Transferencia bloquea el botón atrás del sistema dentro de TranfereciaScreen.
     BackHandler(enabled = estado.showCashOnDeliveryPage && !estado.showTransferPage) {
+        dismissPaymentError()
         estado.showCashOnDeliveryPage = false
     }
 
@@ -176,6 +188,7 @@ fun VerificasionScreen(
                     }
                 },
                 onPickPaymentProof = {
+                    dismissPaymentError()
                     imagePicker.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
@@ -187,16 +200,40 @@ fun VerificasionScreen(
                     persistTransferLock(proofPath = null)
                 },
                 onSelectAccount = { accountId ->
+                    dismissPaymentError()
                     selectedAccountId = accountId
                     persistTransferLock(accountId = accountId)
                 },
                 onConfirmPayment = {
                     val uri = proofUri
                     if (!validateDelivery()) return@TranfereciaScreen
-                    if (bankAccounts.isEmpty()) { scope.launch { snackbarHostState.showSnackbar("No hay cuentas bancarias disponibles.") }; return@TranfereciaScreen }
-                    if (selectedAccountId.isBlank()) { scope.launch { snackbarHostState.showSnackbar("Selecciona la cuenta a la que realizaste la transferencia.") }; return@TranfereciaScreen }
-                    if (uri == null) { scope.launch { snackbarHostState.showSnackbar("Sube la imagen del comprobante.") }; return@TranfereciaScreen }
+                    if (bankAccounts.isEmpty()) {
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar("No hay cuentas bancarias disponibles. Pulsa reintentar para cargarlas.")
+                        }
+                        return@TranfereciaScreen
+                    }
+                    if (selectedAccountId.isBlank()) {
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar("Selecciona la cuenta a la que realizaste la transferencia.")
+                        }
+                        return@TranfereciaScreen
+                    }
+                    if (uri == null) {
+                        scope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar("Sube la imagen del comprobante.")
+                        }
+                        return@TranfereciaScreen
+                    }
+                    dismissPaymentError()
                     onSubmitBankTransfer(selectedAccountId, uri, estado.customerName, estado.email, estado.phone, estado.address, estado.city)
+                },
+                onRetryLoadAccounts = {
+                    dismissPaymentError()
+                    onLoadBankAccounts()
                 }
             )
             estado.showCashOnDeliveryPage -> ContraEntregaScreen(
@@ -207,9 +244,15 @@ fun VerificasionScreen(
                 city = estado.city,
                 itemCount = cartItems.sumOf { it.quantity },
                 isSubmitting = isSubmittingPayment,
-                onBack = { estado.showCashOnDeliveryPage = false },
+                onBack = {
+                    dismissPaymentError()
+                    estado.showCashOnDeliveryPage = false
+                },
                 onConfirmOrder = {
-                    if (validateDelivery()) onSubmitCashOnDelivery(estado.customerName, estado.email, estado.phone, estado.address, estado.city)
+                    if (validateDelivery()) {
+                        dismissPaymentError()
+                        onSubmitCashOnDelivery(estado.customerName, estado.email, estado.phone, estado.address, estado.city)
+                    }
                 }
             )
             else -> Scaffold(
@@ -218,6 +261,7 @@ fun VerificasionScreen(
                 bottomBar = {
                     BarraInferiorConfirmarPago(total = total, isSubmitting = isSubmittingPayment, onConfirmClick = {
                         if (validateDelivery()) {
+                            dismissPaymentError()
                             if (estado.selectedPayment == OPCION_PAGO_TRANSFERENCIA) {
                                 abrirPantallaTransferencia(resetDraft = true)
                             } else {
@@ -257,9 +301,25 @@ fun VerificasionScreen(
                 }
             }
         }
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
-        if (!paymentError.isNullOrBlank()) {
-            androidx.compose.material3.Text(paymentError, color = Color(0xFFB00020), modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
-        }
+        BannerErrorPago(
+            message = paymentError,
+            visible = !paymentError.isNullOrBlank() && !isLocalErrorDismissed,
+            showRetry = estado.showTransferPage && bankAccounts.isEmpty(),
+            retryLabel = "Reintentar cargar cuentas",
+            onRetry = {
+                dismissPaymentError()
+                onLoadBankAccounts()
+            },
+            onDismiss = { dismissPaymentError() },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 58.dp, start = 14.dp, end = 14.dp)
+        )
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 72.dp, start = 12.dp, end = 12.dp)
+        )
     }
 }

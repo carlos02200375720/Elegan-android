@@ -199,8 +199,6 @@ object MonitorErrores {
     internal fun esDsnValido(dsn: String): Boolean {
         val trimmed = dsn.trim()
         if (trimmed.isEmpty() || trimmed.equals(PLACEHOLDER_DSN, ignoreCase = true)) return false
-        val hasHttpScheme = trimmed.startsWith("https://", ignoreCase = true) ||
-            trimmed.startsWith("http://", ignoreCase = true)
-        return hasHttpScheme && trimmed.contains("@")
+        return trimmed.startsWith("https://", ignoreCase = true) && trimmed.contains("@")
     }
 }

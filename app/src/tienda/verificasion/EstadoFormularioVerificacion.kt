@@ -32,10 +32,26 @@ internal class EstadoFormularioVerificacion(
     var showCashOnDeliveryPage by mutableStateOf(false)
 
     fun isDeliveryFormValid(): Boolean =
-        customerName.isNotBlank() && email.isNotBlank() && address.isNotBlank() && city.isNotBlank()
+        customerName.isNotBlank() &&
+            email.isNotBlank() &&
+            phone.isNotBlank() &&
+            address.isNotBlank() &&
+            city.isNotBlank()
 
-    fun mensajeCampoFaltante(): String =
-        "Completa los datos de entrega para continuar con tu pedido."
+    fun mensajeCampoFaltante(): String {
+        val faltantes = buildList {
+            if (customerName.isBlank()) add("nombre")
+            if (email.isBlank()) add("correo")
+            if (phone.isBlank()) add("teléfono")
+            if (address.isBlank()) add("dirección")
+            if (city.isBlank()) add("ciudad")
+        }
+        return if (faltantes.isEmpty()) {
+            "Completa los datos de entrega para continuar con tu pedido."
+        } else {
+            "Completa los campos obligatorios: ${faltantes.joinToString(", ")}."
+        }
+    }
 }
 
 @Composable

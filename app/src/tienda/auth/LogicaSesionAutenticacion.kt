@@ -101,10 +101,12 @@ fun signOutUser(
     scope.launch {
         try {
             withContext(Dispatchers.IO) { MobileSession.logout(context) }
+            onSignOutComplete()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
             MobileSession.clear(context)
-        } finally {
             onSignOutComplete()
         }
     }

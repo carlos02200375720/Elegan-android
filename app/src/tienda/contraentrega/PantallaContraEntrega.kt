@@ -23,7 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import java.util.Locale
 
 @Composable
 fun ContraEntregaScreen(
@@ -41,7 +40,7 @@ fun ContraEntregaScreen(
 
     var hasAcceptedResponsibility by remember { mutableStateOf(false) }
     val amountFormatted = remember(total) {
-        String.format(Locale.US, "%.2f", total.coerceAtLeast(0.0))
+        formatearMontoDecimal(total.coerceAtLeast(0.0))
     }
 
     Scaffold(

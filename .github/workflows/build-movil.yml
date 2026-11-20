@@ -11,6 +11,15 @@ on:
       - "*.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/build-movil.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - "gradle/**"
+      - "*.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/build-movil.yml"
 
 permissions:
   contents: read
@@ -21,7 +30,7 @@ concurrency:
 
 jobs:
   build-android:
-    name: Compilar APK y AAB
+    name: Validar pruebas y compilar Android
     runs-on: ubuntu-latest
     timeout-minutes: 60
 
@@ -59,23 +68,7 @@ jobs:
         with:
           gradle-version: "9.3.1"
 
-      - name: Preparar firma de publicación
-        id: signing
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: |
-          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_STORE_PASSWORD" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
-            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-key.jks"
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::No se configuró la firma Android. Se generará el APK de prueba; el AAB firmado se omitirá."
-          fi
-
-      - name: Preparar firma debug
-        if: steps.signing.outputs.available != 'true'
+      - name: Preparar firma debug para pruebas y compilación local
         env:
           DEBUG_KEYSTORE_BASE64: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
         run: |
@@ -101,6 +94,40 @@ jobs:
           fi
           keytool -list -v -keystore debug.keystore -storepass android -alias androiddebugkey | grep "SHA1:" || true
 
+      - name: Ejecutar pruebas unitarias (puerta de calidad)
+        id: unit_tests
+        run: gradle --no-daemon :app:testDebugUnitTest
+
+      - name: Publicar reporte de pruebas en caso de fallo
+        if: failure() && steps.unit_tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: elegan-test-reports
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Preparar firma de publicación
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ] && [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_STORE_PASSWORD" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-key.jks"
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "Validación de Pull Request: se compilará el APK debug sin firma de publicación."
+            else
+              echo "::warning::No se configuró la firma Android. Se generará el APK de prueba; el AAB firmado y el mapping.txt de release se omitirán."
+            fi
+          fi
+
       - name: Compilar APK firmado para distribución
         if: steps.signing.outputs.available == 'true'
         env:
@@ -110,7 +137,7 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: gradle --no-daemon :app:assembleRelease
 
-      - name: Compilar APK de prueba (sin firma de distribución)
+      - name: Compilar APK de prueba (debug / validación de PR)
         if: steps.signing.outputs.available != 'true'
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
@@ -125,6 +152,7 @@ jobs:
           done
 
       - name: Publicar APK Android
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: elegan-apk
@@ -150,16 +178,29 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+      - name: Publicar archivo de mapeo R8 (mapping.txt)
+        if: steps.signing.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: elegan-r8-mapping-release
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Resumen de compilación Android
         if: always()
         run: |
           {
-            echo "## Compilación Android (APK y AAB)"
-            if [ "${{ steps.signing.outputs.available }}" = "true" ]; then
+            echo "## Validación y Compilación Android"
+            echo "- Pruebas unitarias (\`:app:testDebugUnitTest\`): **${{ steps.unit_tests.outcome }}**."
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "- Pull Request: validación de pruebas y compilación debug ejecutada (sin publicación de artefactos de distribución)."
+            elif [ "${{ steps.signing.outputs.available }}" = "true" ]; then
               echo "- APK firmado (release): compilado y publicado."
               echo "- AAB firmado (Google Play Store): compilado y publicado."
+              echo "- Archivo de mapeo R8 (\`mapping.txt\`): respaldado como artefacto (retención 90 días)."
             else
               echo "- APK de prueba (debug): compilado y publicado."
-              echo "- AAB para Google Play Store: omitido; configura los secretos de firma (ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD y ANDROID_KEY_PASSWORD) para generarlo."
+              echo "- AAB para Google Play Store y \`mapping.txt\`: omitidos; configura los secretos de firma (ANDROID_KEYSTORE_BASE64, ANDROID_STORE_PASSWORD y ANDROID_KEY_PASSWORD) para generarlos."
             fi
           } >> "$GITHUB_STEP_SUMMARY"

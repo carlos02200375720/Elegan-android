@@ -2,6 +2,7 @@ package com.example.ui
 
 import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -9,20 +10,35 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.font.FontWeight
+import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganCharcoal
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -44,7 +60,8 @@ fun TranfereciaScreen(
     onPickPaymentProof: () -> Unit,
     onRemovePaymentProof: () -> Unit,
     onSelectAccount: (String) -> Unit,
-    onConfirmPayment: () -> Unit
+    onConfirmPayment: () -> Unit,
+    onRetryLoadAccounts: (() -> Unit)? = null
 ) {
     // Regla de bloqueo: el botón o gesto atrás del sistema NO puede salir de esta pantalla.
     // Solo se puede salir confirmando el pago o haciendo clic en la flecha de regreso en la cabecera.
@@ -106,6 +123,68 @@ fun TranfereciaScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (bankAccounts.isEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFFAF6F1),
+                            border = BorderStroke(1.dp, Color(0xFFE5DDD5)),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("empty_bank_accounts_card")
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountBalance,
+                                        contentDescription = null,
+                                        tint = EleganBurgundy,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Cuentas bancarias no disponibles",
+                                        style = MaterialTheme.typography.titleSmall.copy(
+                                            color = EleganCharcoal,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+                                }
+                                Text(
+                                    text = "No pudimos cargar las cuentas bancarias en este momento. Reintenta para ver los datos de transferencia.",
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        color = Color(0xFF5F5F5F),
+                                        lineHeight = 18.sp
+                                    )
+                                )
+                                if (onRetryLoadAccounts != null) {
+                                    OutlinedButton(
+                                        onClick = onRetryLoadAccounts,
+                                        enabled = !isSubmitting,
+                                        shape = RoundedCornerShape(10.dp),
+                                        border = BorderStroke(1.dp, EleganBurgundy),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = EleganBurgundy),
+                                        modifier = Modifier
+                                            .heightIn(min = 48.dp)
+                                            .testTag("retry_load_bank_accounts_btn")
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Refresh,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Reintentar cargar cuentas",
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     bankAccounts.forEach { account ->
                         val accountKey = "${account.id}:account"
                         val holderNameKey = "${account.id}:holderName"

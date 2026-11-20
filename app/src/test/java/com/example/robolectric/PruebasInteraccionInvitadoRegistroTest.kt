@@ -25,17 +25,16 @@ import com.example.ui.PerfilScreen
 import com.example.ui.ProductoScreen
 import com.example.ui.auth.VentanaEmergenteRegistro
 import com.example.ui.theme.EleganTheme
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import android.net.Uri
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.shadows.ShadowMediaPlayer
-import org.robolectric.shadows.util.DataSource
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
@@ -43,6 +42,16 @@ class PruebasInteraccionInvitadoRegistroTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
+
+    @Before
+    fun setUp() {
+        instalarImageLoaderOfflineParaPruebas(obtenerContextoPrueba())
+    }
+
+    @After
+    fun tearDown() {
+        restaurarImageLoaderPruebas()
+    }
 
     private fun crearProductoEjemplo(id: String = "prod-invitado-1"): ProductJson = mapOf(
         "id" to id,
@@ -310,10 +319,6 @@ class PruebasInteraccionInvitadoRegistroTest {
     @Test
     fun `inicio feed video does not autoplay and starts only when user taps play button`() {
         val videoUrl = "https://cdn.example.com/video.mp4"
-        ShadowMediaPlayer.addMediaInfo(
-            DataSource.toDataSource(obtenerContextoPrueba(), Uri.parse(videoUrl)),
-            ShadowMediaPlayer.MediaInfo(5000, 0)
-        )
 
         val videoProduct: ProductJson = mapOf(
             "id" to "p-video-1",
@@ -357,20 +362,21 @@ class PruebasInteraccionInvitadoRegistroTest {
         composeTestRule.onNodeWithTag("inicio_video_p-video-1_0_play_btn").performScrollTo().assertIsDisplayed()
 
         // El usuario decide reproducirlo tocando el botón de Play.
-        composeTestRule.onNodeWithTag("inicio_video_p-video-1_0_play_btn").performClick()
-        composeTestRule.mainClock.advanceTimeBy(400L)
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithTag("inicio_video_p-video-1_0_play_btn").assertDoesNotExist()
+        // Desactivamos autoAdvance para evitar que el CircularProgressIndicator de carga bloquee waitForIdle.
+        composeTestRule.mainClock.autoAdvance = false
+        try {
+            composeTestRule.onNodeWithTag("inicio_video_p-video-1_0_play_btn").performClick()
+            composeTestRule.mainClock.advanceTimeBy(500L)
+            composeTestRule.mainClock.advanceTimeByFrame()
+            composeTestRule.onNodeWithTag("inicio_video_p-video-1_0_play_btn").assertDoesNotExist()
+        } finally {
+            composeTestRule.mainClock.autoAdvance = true
+        }
     }
 
     @Test
     fun `producto detail video does not autoplay and starts only when user clicks play`() {
         val videoUrl = "https://cdn.example.com/producto-detail.mp4"
-        ShadowMediaPlayer.addMediaInfo(
-            DataSource.toDataSource(obtenerContextoPrueba(), Uri.parse(videoUrl)),
-            ShadowMediaPlayer.MediaInfo(5000, 0)
-        )
 
         val videoProduct: ProductJson = mapOf(
             "id" to "p-detail-video",
@@ -406,11 +412,15 @@ class PruebasInteraccionInvitadoRegistroTest {
         composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").assertIsDisplayed()
 
         // Solo se reproduce cuando el usuario hace clic en él.
-        composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").performClick()
-        composeTestRule.mainClock.advanceTimeBy(400L)
-        composeTestRule.waitForIdle()
-
-        composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").assertDoesNotExist()
+        composeTestRule.mainClock.autoAdvance = false
+        try {
+            composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").performClick()
+            composeTestRule.mainClock.advanceTimeBy(500L)
+            composeTestRule.mainClock.advanceTimeByFrame()
+            composeTestRule.onNodeWithTag("gallery_video_p-detail-video_play_btn").assertDoesNotExist()
+        } finally {
+            composeTestRule.mainClock.autoAdvance = true
+        }
     }
 
     @Test
@@ -475,7 +485,9 @@ class PruebasInteraccionInvitadoRegistroTest {
         composeTestRule.waitForIdle()
         assertEquals(categoryUuid, navigatedCategory)
 
-        composeTestRule.onNodeWithTag("announcement_card_1").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("inicio_announcements_row").performScrollToKey("ann-2")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("announcement_card_1").assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
         assertEquals(productUuid, navigatedProductId)
     }

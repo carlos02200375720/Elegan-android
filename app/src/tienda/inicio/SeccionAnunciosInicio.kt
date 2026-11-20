@@ -95,6 +95,7 @@ internal fun SeccionAnunciosInicio(
         Spacer(modifier = Modifier.height(10.dp))
 
         LazyRow(
+            modifier = Modifier.testTag("inicio_announcements_row"),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {

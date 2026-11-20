@@ -53,7 +53,7 @@ internal fun lanzarSelectorCompartirPublicacion(
         type = "text/plain"
         putExtra(
             Intent.EXTRA_TEXT,
-            "ELEGAN: Descubre $productName por $${String.format("%.2f", productPrice)} USD. Pieza exclusiva de la boutique."
+            "ELEGAN: Descubre $productName por ${formatearPrecioRd(productPrice)}. Pieza exclusiva de la boutique."
         )
     }
     val callbackIntent = Intent(appContext, ReceptorCompartidoPublicacion::class.java).apply {

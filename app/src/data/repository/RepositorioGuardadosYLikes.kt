@@ -5,12 +5,12 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
-import android.util.Log
 import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareDao
 import com.example.data.local.PendingVisitorShareEntity
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
@@ -86,9 +86,10 @@ internal class RepositorioGuardadosYLikes(
                         )
                     )
                     if (response["success"] == false) {
-                        Log.w(
-                            "EleganShares",
-                            "El backend no confirmó el compartido pendiente (${entry.eventId}, ${entry.productId}); se conserva en Room."
+                        MonitorErrores.registrarAdvertencia(
+                            tag = "EleganShares",
+                            mensaje = "El backend no confirmó el compartido pendiente; se conserva en Room.",
+                            extras = mapOf("operation" to "flushPendingVisitorShares", "productId" to entry.productId)
                         )
                         continue
                     }
@@ -101,10 +102,11 @@ internal class RepositorioGuardadosYLikes(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    Log.w(
-                        "EleganShares",
-                        "No se pudo enviar compartido pendiente (${entry.eventId}, ${entry.productId}); permanece guardado en Room.",
-                        e
+                    MonitorErrores.registrarAdvertencia(
+                        tag = "EleganShares",
+                        mensaje = "No se pudo enviar compartido pendiente; permanece guardado en Room.",
+                        error = e,
+                        extras = mapOf("operation" to "flushPendingVisitorShares", "productId" to entry.productId)
                     )
                     break
                 }
@@ -206,7 +208,12 @@ internal class RepositorioGuardadosYLikes(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganSaved", "No se pudieron obtener los productos guardados desde el backend.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganSaved",
+                mensaje = "No se pudieron obtener los productos guardados desde el backend.",
+                error = e,
+                extras = mapOf("operation" to "refreshSavedProducts")
+            )
             savedProductIds.toSet()
         }
     }
@@ -274,6 +281,15 @@ internal class RepositorioGuardadosYLikes(
                     statsRepo.updateSavesCount(productId, savesCount)
                 }
                 confirmedSaved
+            } catch (e: CancellationException) {
+                if (wasSaved) savedProductIds.add(productId) else savedProductIds.remove(productId)
+                savedFlow.value = savedProductIds.toSet()
+                if (previousSavesCount != null) {
+                    statsRepo.updateSavesCount(productId, previousSavesCount)
+                } else if (wasSaved != isSaved) {
+                    statsRepo.adjustSaves(productId, if (wasSaved) 1L else -1L)
+                }
+                throw e
             } catch (e: Exception) {
                 if (wasSaved) savedProductIds.add(productId) else savedProductIds.remove(productId)
                 savedFlow.value = savedProductIds.toSet()
@@ -282,7 +298,12 @@ internal class RepositorioGuardadosYLikes(
                 } else if (wasSaved != isSaved) {
                     statsRepo.adjustSaves(productId, if (wasSaved) 1L else -1L)
                 }
-                Log.w("EleganSaved", "No se pudo sincronizar producto guardado $productId con el backend.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganSaved",
+                    mensaje = "No se pudo sincronizar producto guardado con el backend.",
+                    error = e,
+                    extras = mapOf("operation" to "setProductSaved", "productId" to productId)
+                )
                 throw e
             }
         }
@@ -301,7 +322,12 @@ internal class RepositorioGuardadosYLikes(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganLikes", "No se pudieron cargar los likes desde el servidor.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganLikes",
+                mensaje = "No se pudieron cargar los likes desde el servidor.",
+                error = e,
+                extras = mapOf("operation" to "refreshPublicationLikes")
+            )
             likedPublicationIds.toSet()
         }
     }
@@ -355,7 +381,12 @@ internal class RepositorioGuardadosYLikes(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganLikes", "No se pudieron actualizar los conteos de likes.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganLikes",
+                mensaje = "No se pudieron actualizar los conteos de likes.",
+                error = e,
+                extras = mapOf("operation" to "refreshPublicationLikeCounts")
+            )
         }
     }
 
@@ -378,7 +409,12 @@ internal class RepositorioGuardadosYLikes(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganSaved", "No se pudieron actualizar los conteos globales de guardados.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganSaved",
+                mensaje = "No se pudieron actualizar los conteos globales de guardados.",
+                error = e,
+                extras = mapOf("operation" to "refreshPublicationSaveCounts")
+            )
         }
     }
 
@@ -402,7 +438,12 @@ internal class RepositorioGuardadosYLikes(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.w("EleganShares", "No se pudieron actualizar los conteos globales de compartidos.", e)
+            MonitorErrores.registrarAdvertencia(
+                tag = "EleganShares",
+                mensaje = "No se pudieron actualizar los conteos globales de compartidos.",
+                error = e,
+                extras = mapOf("operation" to "refreshPublicationShareCounts")
+            )
         }
     }
 
@@ -457,6 +498,11 @@ internal class RepositorioGuardadosYLikes(
                 }
                 if (likesCount != null) statsRepo.updateLikesCount(productId, likesCount)
                 confirmedLiked
+            } catch (e: CancellationException) {
+                if (wasLiked) likedPublicationIds.add(productId) else likedPublicationIds.remove(productId)
+                likedFlow.value = likedPublicationIds.toSet()
+                statsRepo.adjustLikes(productId, if (wasLiked) 1L else -1L)
+                throw e
             } catch (e: Exception) {
                 // Revierte el corazón y el contador si el servidor no confirma el cambio.
                 if (wasLiked) likedPublicationIds.add(productId) else likedPublicationIds.remove(productId)
@@ -516,7 +562,12 @@ internal class RepositorioGuardadosYLikes(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("EleganShares", "No se pudo registrar el compartido de $productId; se conserva el conteo confirmado.", e)
+                MonitorErrores.registrarAdvertencia(
+                    tag = "EleganShares",
+                    mensaje = "No se pudo registrar el compartido; se conserva el conteo confirmado.",
+                    error = e,
+                    extras = mapOf("operation" to "recordPublicationShare", "productId" to productId)
+                )
                 previousSharesCount
             }
         }

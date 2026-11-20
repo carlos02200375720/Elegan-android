@@ -38,7 +38,9 @@ internal fun SuperficieTextureVideo(
             }
         },
         update = { view ->
-            state.textureViewRef = view
+            if (state.textureViewRef !== view) {
+                state.textureViewRef = view
+            }
             ajustarTransformacionVideo(view, state.videoWidth, state.videoHeight)
         },
         modifier = Modifier.fillMaxSize()

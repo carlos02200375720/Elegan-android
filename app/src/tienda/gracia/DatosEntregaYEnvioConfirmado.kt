@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,7 +38,8 @@ fun DatosEntregaYEnvioConfirmado(
         tint = EleganBurgundy,
         label = "Método de Pago",
         primaryValue = displayPaymentMethod,
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.Top,
+        valueTestTag = "gracia_payment_method"
     )
 
     if (displayAddress.isNotBlank() || recipientLine.isNotBlank()) {
@@ -104,7 +106,8 @@ private fun FilaDetalleConfirmacion(
     tint: Color,
     label: String,
     primaryValue: String,
-    verticalAlignment: Alignment.Vertical
+    verticalAlignment: Alignment.Vertical,
+    valueTestTag: String? = null
 ) {
     Row(verticalAlignment = verticalAlignment) {
         Icon(
@@ -124,7 +127,8 @@ private fun FilaDetalleConfirmacion(
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = EleganCharcoal
-                )
+                ),
+                modifier = if (valueTestTag != null) Modifier.testTag(valueTestTag) else Modifier
             )
         }
     }
