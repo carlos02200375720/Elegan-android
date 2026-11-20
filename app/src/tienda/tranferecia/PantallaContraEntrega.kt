@@ -19,6 +19,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -37,7 +41,7 @@ import com.example.ui.theme.EleganBurgundy
 fun PantallaContraEntrega(total: Double, isSubmitting: Boolean, onBack: () -> Unit, onAccept: () -> Unit) {
     BackHandler { onBack() }
     var accepted by remember { mutableStateOf(false) }
-    Scaffold(topBar = { TopAppBar(title = { Text("Pago contra entrega") }) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { Text("Pago contra entrega") }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver") } }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("Antes de confirmar tu pedido", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Card(colors = CardDefaults.cardColors(containerColor = Color(0xFFFAF6F1)), shape = RoundedCornerShape(14.dp)) {
