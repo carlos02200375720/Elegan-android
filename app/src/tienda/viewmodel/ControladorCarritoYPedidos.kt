@@ -77,6 +77,7 @@ internal class ControladorCarritoYPedidos(
     }
 
     fun clearOrderState() {
+        selectedCouponCode = ""
         _lastCreatedOrderId.value = null
         _lastOrderPaymentMethod.value = ""
         _lastOrderDetails.value = null
