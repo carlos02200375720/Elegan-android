@@ -343,33 +343,6 @@ data class BankAccountInfo(
     val holderDocument: String = ""
 )
 
-fun defaultBankAccounts(): List<BankAccountInfo> = listOf(
-    BankAccountInfo(
-        id = "bank_1",
-        bankName = "Banco Popular",
-        accountNumber = "804-291847-3",
-        accountType = "Cuenta Corriente",
-        holderName = "Carlos Alberto García",
-        holderDocument = "001-1849203-7"
-    ),
-    BankAccountInfo(
-        id = "bank_2",
-        bankName = "Banreservas",
-        accountNumber = "960-448201-5",
-        accountType = "Cuenta de Ahorros",
-        holderName = "Elegan Sartorial S.R.L.",
-        holderDocument = "1-32-84910-4"
-    ),
-    BankAccountInfo(
-        id = "bank_3",
-        bankName = "Banco BHD",
-        accountNumber = "215-009384-1",
-        accountType = "Cuenta Corriente",
-        holderName = "Carlos Alberto García",
-        holderDocument = "001-1849203-7"
-    )
-)
-
 @Immutable
 data class SupportMessage(
     val id: String = "",
