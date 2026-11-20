@@ -102,7 +102,8 @@ internal class ControladorPerfilYSoporte(
 
     fun deleteAccount(
         onCleared: () -> Unit,
-        onComplete: () -> Unit
+        onComplete: () -> Unit,
+        onFailure: (String) -> Unit
     ) {
         scope.launch {
             try {
@@ -112,8 +113,8 @@ internal class ControladorPerfilYSoporte(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al eliminar la cuenta: ${e.message}")
+                Log.e("EleganViewModel", "Error al eliminar la cuenta.", e)
+                onFailure(e.localizedMessage ?: "No se pudo eliminar la cuenta. Inténtalo de nuevo.")
             }
         }
-    }
-}
+    }}
