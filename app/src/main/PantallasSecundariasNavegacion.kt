@@ -234,6 +234,7 @@ internal fun PantallasSecundariasNavegacion(
                 GraciaScreen(
                     orderId = lastOrderId,
                     isBankTransfer = lastOrderPaymentMethod.contains("Transferencia", ignoreCase = true),
+                    isCashOnDelivery = lastOrderPaymentMethod.contains("contra entrega", ignoreCase = true),
                     orderDetails = lastOrderDetails,
                     onNavigateToInicio = { onNavigateTo(Screen.INICIO) },
                     onNavigateToPerfil = { onNavigateTo(Screen.PERFIL) },
