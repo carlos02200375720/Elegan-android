@@ -2,9 +2,19 @@ package com.example.ui
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyProperties
+import android.util.Base64
 import android.webkit.MimeTypeMap
 import com.example.data.model.BankAccountInfo
 import java.io.File
+import java.nio.charset.StandardCharsets
+import java.security.KeyStore
+import javax.crypto.Cipher
+import javax.crypto.KeyGenerator
+import javax.crypto.SecretKey
+import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -29,8 +39,10 @@ data class EstadoBloqueoTransferencia(
 object AlmacenBloqueoTransferencia {
     private const val PREFS_NAME = "elegan_transfer_lock_state"
     private const val PROOF_DIR_NAME = "pending_transfer_proof"
-
     private const val KEY_ACTIVE = "is_active"
+    private const val KEY_ENCRYPTED_STATE = "encrypted_state_v1"
+
+    // Claves antiguas: se conservan solo para migrar el estado existente a la versión cifrada.
     private const val KEY_USER_ID = "user_id"
     private const val KEY_SUBTOTAL = "subtotal"
     private const val KEY_DISCOUNT = "discount"
@@ -47,74 +59,175 @@ object AlmacenBloqueoTransferencia {
     private const val KEY_PROOF_FILE_PATH = "payment_proof_file_path"
     private const val KEY_BANK_ACCOUNTS_JSON = "bank_accounts_json"
 
+    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
+    private const val KEY_ALIAS = "elegan_transfer_state_aes_key_v1"
+    private const val CIPHER_TRANSFORMATION = "AES/GCM/NoPadding"
+    private const val GCM_IV_LENGTH_BYTES = 12
+    private const val GCM_TAG_LENGTH_BITS = 128
+    private const val ENCRYPTED_PREFIX = "v1:"
+    private val lock = Any()
+
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    fun tieneBloqueoActivo(context: Context, expectedUserId: String? = null): Boolean {
-        val sp = prefs(context)
-        if (!sp.getBoolean(KEY_ACTIVE, false)) return false
-        val savedUserId = sp.getString(KEY_USER_ID, "").orEmpty()
-        if (!expectedUserId.isNullOrBlank() && savedUserId.isNotBlank() && savedUserId != expectedUserId) {
-            return false
-        }
-        return true
+    private fun isRobolectric(): Boolean =
+        "robolectric".equals(Build.FINGERPRINT, ignoreCase = true)
+
+    private fun obtenerOCrearClave(): SecretKey {
+        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
+        val existing = (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
+        if (existing != null) return existing
+
+        val spec = KeyGenParameterSpec.Builder(
+            KEY_ALIAS,
+            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
+        )
+            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+            .setKeySize(256)
+            .build()
+
+        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
+            .apply { init(spec) }
+            .generateKey()
     }
 
-    fun guardar(context: Context, estado: EstadoBloqueoTransferencia) {
-        val accountsJson = JSONArray().apply {
-            estado.bankAccounts.forEach { acc ->
-                put(
-                    JSONObject().apply {
-                        put("id", acc.id)
-                        put("bankName", acc.bankName)
-                        put("accountNumber", acc.accountNumber)
-                        put("accountType", acc.accountType)
-                        put("holderName", acc.holderName)
-                        put("holderDocument", acc.holderDocument)
-                    }
-                )
+    private fun cifrarEstado(plainText: String): String {
+        // Robolectric no implementa AndroidKeyStore; este bypass solo existe en pruebas JVM.
+        if (isRobolectric()) return plainText
+
+        val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, obtenerOCrearClave())
+        val iv = cipher.iv
+        require(iv != null && iv.size == GCM_IV_LENGTH_BYTES) { "IV AES-GCM inválido." }
+        val encrypted = cipher.doFinal(plainText.toByteArray(StandardCharsets.UTF_8))
+        val payload = ByteArray(iv.size + encrypted.size)
+        System.arraycopy(iv, 0, payload, 0, iv.size)
+        System.arraycopy(encrypted, 0, payload, iv.size, encrypted.size)
+        return ENCRYPTED_PREFIX + Base64.encodeToString(payload, Base64.NO_WRAP)
+    }
+
+    private fun descifrarEstado(stored: String): String {
+        if (isRobolectric()) return stored
+        require(stored.startsWith(ENCRYPTED_PREFIX)) { "Formato de estado de transferencia no reconocido." }
+
+        val payload = Base64.decode(stored.removePrefix(ENCRYPTED_PREFIX), Base64.NO_WRAP)
+        require(payload.size > GCM_IV_LENGTH_BYTES) { "Estado de transferencia cifrado incompleto." }
+        val iv = payload.copyOfRange(0, GCM_IV_LENGTH_BYTES)
+        val encrypted = payload.copyOfRange(GCM_IV_LENGTH_BYTES, payload.size)
+        val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
+        cipher.init(Cipher.DECRYPT_MODE, obtenerOCrearClave(), GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
+        return String(cipher.doFinal(encrypted), StandardCharsets.UTF_8)
+    }
+
+    private fun estadoComoJson(estado: EstadoBloqueoTransferencia): String {
+        val accounts = JSONArray().apply {
+            estado.bankAccounts.forEach { account ->
+                put(JSONObject().apply {
+                    put("id", account.id)
+                    put("bankName", account.bankName)
+                    put("accountNumber", account.accountNumber)
+                    put("accountType", account.accountType)
+                    put("holderName", account.holderName)
+                    put("holderDocument", account.holderDocument)
+                })
             }
-        }.toString()
-
-        prefs(context).edit()
-            .putBoolean(KEY_ACTIVE, true)
-            .putString(KEY_USER_ID, estado.userId)
-            .putString(KEY_SUBTOTAL, estado.subtotal.toString())
-            .putString(KEY_DISCOUNT, estado.discount.toString())
-            .putString(KEY_SHIPPING, estado.shipping.toString())
-            .putString(KEY_TOTAL, estado.total.toString())
-            .putString(KEY_COUPON_CODE, estado.couponCode)
-            .putString(KEY_CUSTOMER_NAME, estado.customerName)
-            .putString(KEY_EMAIL, estado.email)
-            .putString(KEY_PHONE, estado.phone)
-            .putString(KEY_ADDRESS, estado.address)
-            .putString(KEY_CITY, estado.city)
-            .putString(KEY_SELECTED_ACCOUNT_ID, estado.selectedAccountId)
-            .putString(KEY_PENDING_ORDER_ID, estado.pendingTransferOrderId.orEmpty())
-            .putString(KEY_PROOF_FILE_PATH, estado.paymentProofFilePath.orEmpty())
-            .putString(KEY_BANK_ACCOUNTS_JSON, accountsJson)
-            .commit()
-    }
-
-    fun cargar(context: Context, expectedUserId: String? = null): EstadoBloqueoTransferencia? {
-        val sp = prefs(context)
-        if (!sp.getBoolean(KEY_ACTIVE, false)) return null
-        val savedUserId = sp.getString(KEY_USER_ID, "").orEmpty()
-        if (!expectedUserId.isNullOrBlank() && savedUserId.isNotBlank() && savedUserId != expectedUserId) {
-            return null
         }
 
-        val rawProofPath = sp.getString(KEY_PROOF_FILE_PATH, "").orEmpty()
-        val validProofPath = rawProofPath
-            .takeIf { it.isNotBlank() }
-            ?.let { path -> File(path).takeIf { it.isFile && it.length() > 0L }?.absolutePath }
+        return JSONObject().apply {
+            put("userId", estado.userId)
+            put("subtotal", estado.subtotal)
+            put("discount", estado.discount)
+            put("shipping", estado.shipping)
+            put("total", estado.total)
+            put("couponCode", estado.couponCode)
+            put("customerName", estado.customerName)
+            put("email", estado.email)
+            put("phone", estado.phone)
+            put("address", estado.address)
+            put("city", estado.city)
+            put("selectedAccountId", estado.selectedAccountId)
+            put("pendingTransferOrderId", estado.pendingTransferOrderId)
+            put("paymentProofFilePath", estado.paymentProofFilePath)
+            put("bankAccounts", accounts)
+        }.toString()
+    }
 
-        val rawPendingOrderId = sp.getString(KEY_PENDING_ORDER_ID, "").orEmpty().takeIf { it.isNotBlank() }
-
-        val accounts = parseBankAccounts(sp.getString(KEY_BANK_ACCOUNTS_JSON, "[]").orEmpty())
+    private fun jsonAEstado(raw: String): EstadoBloqueoTransferencia {
+        val json = JSONObject(raw)
+        val accountsJson = json.optJSONArray("bankAccounts") ?: JSONArray()
+        val accounts = buildList(accountsJson.length()) {
+            for (index in 0 until accountsJson.length()) {
+                val account = accountsJson.optJSONObject(index) ?: continue
+                val id = account.optString("id", "")
+                if (id.isBlank()) continue
+                add(BankAccountInfo(
+                    id = id,
+                    bankName = account.optString("bankName", ""),
+                    accountNumber = account.optString("accountNumber", ""),
+                    accountType = account.optString("accountType", ""),
+                    holderName = account.optString("holderName", ""),
+                    holderDocument = account.optString("holderDocument", "")
+                ))
+            }
+        }
 
         return EstadoBloqueoTransferencia(
-            userId = savedUserId,
+            userId = json.optString("userId", ""),
+            subtotal = json.optDouble("subtotal", 0.0),
+            discount = json.optDouble("discount", 0.0),
+            shipping = json.optDouble("shipping", 0.0),
+            total = json.optDouble("total", 0.0),
+            couponCode = json.optString("couponCode", ""),
+            customerName = json.optString("customerName", ""),
+            email = json.optString("email", ""),
+            phone = json.optString("phone", ""),
+            address = json.optString("address", ""),
+            city = json.optString("city", ""),
+            selectedAccountId = json.optString("selectedAccountId", ""),
+            pendingTransferOrderId = json.optString("pendingTransferOrderId", "").takeIf { it.isNotBlank() },
+            paymentProofFilePath = json.optString("paymentProofFilePath", "").takeIf { it.isNotBlank() },
+            bankAccounts = accounts
+        )
+    }
+
+    private fun cargarEstadoInterno(context: Context): EstadoBloqueoTransferencia? {
+        val sp = prefs(context)
+        if (!sp.getBoolean(KEY_ACTIVE, false)) return null
+
+        val encrypted = sp.getString(KEY_ENCRYPTED_STATE, null)
+        if (!encrypted.isNullOrBlank()) {
+            return runCatching { jsonAEstado(descifrarEstado(encrypted)) }
+                .getOrElse {
+                    // Si el contenido fue alterado o la clave dejó de estar disponible, no se usa
+                    // información incompleta ni se deja un bloqueo ilegible permanentemente.
+                    sp.edit().clear().commit()
+                    null
+                }
+        }
+
+        // Migración transparente de instalaciones que aún guardaban cada dato en texto plano.
+        val legacyAccounts = runCatching {
+            val array = JSONArray(sp.getString(KEY_BANK_ACCOUNTS_JSON, "[]").orEmpty())
+            buildList(array.length()) {
+                for (index in 0 until array.length()) {
+                    val account = array.optJSONObject(index) ?: continue
+                    val id = account.optString("id", "")
+                    if (id.isBlank()) continue
+                    add(BankAccountInfo(
+                        id = id,
+                        bankName = account.optString("bankName", ""),
+                        accountNumber = account.optString("accountNumber", ""),
+                        accountType = account.optString("accountType", ""),
+                        holderName = account.optString("holderName", ""),
+                        holderDocument = account.optString("holderDocument", "")
+                    ))
+                }
+            }
+        }.getOrDefault(emptyList())
+
+        val legacy = EstadoBloqueoTransferencia(
+            userId = sp.getString(KEY_USER_ID, "").orEmpty(),
             subtotal = sp.getString(KEY_SUBTOTAL, "0.0")?.toDoubleOrNull() ?: 0.0,
             discount = sp.getString(KEY_DISCOUNT, "0.0")?.toDoubleOrNull() ?: 0.0,
             shipping = sp.getString(KEY_SHIPPING, "0.0")?.toDoubleOrNull() ?: 0.0,
@@ -126,10 +239,43 @@ object AlmacenBloqueoTransferencia {
             address = sp.getString(KEY_ADDRESS, "").orEmpty(),
             city = sp.getString(KEY_CITY, "").orEmpty(),
             selectedAccountId = sp.getString(KEY_SELECTED_ACCOUNT_ID, "").orEmpty(),
-            pendingTransferOrderId = rawPendingOrderId,
-            paymentProofFilePath = validProofPath,
-            bankAccounts = accounts
+            pendingTransferOrderId = sp.getString(KEY_PENDING_ORDER_ID, "").orEmpty().takeIf { it.isNotBlank() },
+            paymentProofFilePath = sp.getString(KEY_PROOF_FILE_PATH, "").orEmpty().takeIf { it.isNotBlank() },
+            bankAccounts = legacyAccounts
         )
+        guardar(context, legacy)
+        return legacy
+    }
+
+    fun tieneBloqueoActivo(context: Context, expectedUserId: String? = null): Boolean = synchronized(lock) {
+        val estado = cargarEstadoInterno(context) ?: return@synchronized false
+        if (!expectedUserId.isNullOrBlank() && estado.userId.isNotBlank() && estado.userId != expectedUserId) {
+            return@synchronized false
+        }
+        true
+    }
+
+    fun guardar(context: Context, estado: EstadoBloqueoTransferencia) = synchronized(lock) {
+        val encrypted = cifrarEstado(estadoComoJson(estado))
+        val success = prefs(context).edit()
+            .clear()
+            .putBoolean(KEY_ACTIVE, true)
+            .putString(KEY_ENCRYPTED_STATE, encrypted)
+            .commit()
+        check(success) { "No se pudo guardar el estado cifrado de transferencia." }
+    }
+
+    fun cargar(context: Context, expectedUserId: String? = null): EstadoBloqueoTransferencia? = synchronized(lock) {
+        val estado = cargarEstadoInterno(context) ?: return@synchronized null
+        if (!expectedUserId.isNullOrBlank() && estado.userId.isNotBlank() && estado.userId != expectedUserId) {
+            return@synchronized null
+        }
+
+        val validProofPath = estado.paymentProofFilePath
+            ?.takeIf { it.isNotBlank() }
+            ?.let { path -> File(path).takeIf { it.isFile && it.length() > 0L }?.absolutePath }
+
+        estado.copy(paymentProofFilePath = validProofPath)
     }
 
     fun guardarCopiaComprobante(context: Context, sourceUri: Uri): String? {
@@ -158,9 +304,7 @@ object AlmacenBloqueoTransferencia {
             }
             val destFile = File(dir, "comprobante_${System.currentTimeMillis()}.$extension")
             resolver.openInputStream(sourceUri)?.use { input ->
-                destFile.outputStream().use { output ->
-                    input.copyTo(output)
-                }
+                destFile.outputStream().use { output -> input.copyTo(output) }
             } ?: return null
             if (destFile.isFile && destFile.length() > 0L) destFile.absolutePath else null
         } catch (_: Exception) {
@@ -176,34 +320,8 @@ object AlmacenBloqueoTransferencia {
         }
     }
 
-    fun limpiar(context: Context) {
+    fun limpiar(context: Context) = synchronized(lock) {
         prefs(context).edit().clear().commit()
         eliminarCopiaComprobante(context)
-    }
-
-    private fun parseBankAccounts(rawJson: String): List<BankAccountInfo> {
-        if (rawJson.isBlank()) return emptyList()
-        return try {
-            val array = JSONArray(rawJson)
-            buildList(array.length()) {
-                for (i in 0 until array.length()) {
-                    val obj = array.optJSONObject(i) ?: continue
-                    val id = obj.optString("id", "")
-                    if (id.isBlank()) continue
-                    add(
-                        BankAccountInfo(
-                            id = id,
-                            bankName = obj.optString("bankName", ""),
-                            accountNumber = obj.optString("accountNumber", ""),
-                            accountType = obj.optString("accountType", ""),
-                            holderName = obj.optString("holderName", ""),
-                            holderDocument = obj.optString("holderDocument", "")
-                        )
-                    )
-                }
-            }
-        } catch (_: Exception) {
-            emptyList()
-        }
     }
 }
