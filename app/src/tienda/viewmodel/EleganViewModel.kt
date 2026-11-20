@@ -99,6 +99,14 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshOrders() = pedidosCtrl.refreshOrders()
 
+    fun setCouponCode(code: String) = pedidosCtrl.setCouponCode(code)
+
+    fun validateCoupon(
+        code: String,
+        subtotalDOP: Double,
+        onResult: (Result<Map<String, Any?>>) -> Unit
+    ) = pedidosCtrl.validateCoupon(code, subtotalDOP, onResult)
+
     fun refreshMessages() = perfilCtrl.refreshMessages()
 
     fun setCategory(category: String?) = catalogoCtrl.setCategory(category)
