@@ -135,6 +135,7 @@ fun VerificasionScreen(
                 }
             }
         }
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.align(Alignment.BottomCenter))
         if (!paymentError.isNullOrBlank()) {
             androidx.compose.material3.Text(paymentError, color = Color(0xFFB00020), modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp))
         }
