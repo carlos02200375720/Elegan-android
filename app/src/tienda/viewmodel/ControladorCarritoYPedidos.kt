@@ -58,10 +58,10 @@ internal class ControladorCarritoYPedidos(
         selectedCouponCode = code.trim().uppercase()
     }
 
-    fun validateCoupon(code: String, subtotalDOP: Double, onResult: (Result<Map<String, Any?>>) -> Unit) {
+    fun validateCoupon(code: String, onResult: (Result<Map<String, Any?>>) -> Unit) {
         scope.launch {
             try {
-                onResult(Result.success(repository.validateCoupon(code, subtotalDOP)))
+                onResult(Result.success(repository.validateCoupon(code)))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
