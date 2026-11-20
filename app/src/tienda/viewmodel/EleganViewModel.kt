@@ -103,9 +103,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun validateCoupon(
         code: String,
-        subtotalDOP: Double,
         onResult: (Result<Map<String, Any?>>) -> Unit
-    ) = pedidosCtrl.validateCoupon(code, subtotalDOP, onResult)
+    ) = pedidosCtrl.validateCoupon(code, onResult)
 
     fun refreshMessages() = perfilCtrl.refreshMessages()
 
