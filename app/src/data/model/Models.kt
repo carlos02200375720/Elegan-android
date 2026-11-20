@@ -269,13 +269,6 @@ fun AnnouncementJson.announcementActive(): Boolean =
     readBoolean("active", "isActive", "is_active", "published", defaultValue = true)
 
 @Immutable
-data class PayPalOrderSession(
-    val paypalOrderId: String,
-    val approveUrl: String,
-    val status: String = "CREATED"
-)
-
-@Immutable
 data class PublicationStats(
     val id: String = "",
     val likesCount: Long = 0L,
