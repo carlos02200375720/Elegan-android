@@ -3,6 +3,7 @@ package com.example.data.repository
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.PayPalOrderSession
@@ -245,6 +246,48 @@ internal class RepositorioPedidos(
         }
         refreshOrders()
         capturedOrder.id
+    }
+
+    suspend fun getBankAccounts(): List<BankAccountInfo> = withContext(Dispatchers.IO) {
+        val token = activeBackendToken() ?: throw IllegalStateException("Debes iniciar sesión.")
+        val response = apiProvider().getBankAccounts("Bearer $token")
+        val raw = response["items"] as? List<*> ?: emptyList<Any?>()
+        raw.mapNotNull { entry ->
+            val row = entry as? Map<*, *> ?: return@mapNotNull null
+            val id = row["id"]?.toString().orEmpty()
+            if (id.isBlank()) return@mapNotNull null
+            BankAccountInfo(
+                id = id,
+                bankName = row["bankName"]?.toString().orEmpty(),
+                accountNumber = row["accountNumber"]?.toString().orEmpty(),
+                accountType = row["accountType"]?.toString().orEmpty(),
+                holderName = row["holderName"]?.toString().orEmpty(),
+                holderDocument = row["holderDocument"]?.toString().orEmpty()
+            )
+        }
+    }
+
+    suspend fun createPaymentOrder(
+        paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
+        customerName: String, email: String, phone: String, address: String, city: String,
+        couponCode: String
+    ): String = withContext(Dispatchers.IO) {
+        val token = activeBackendToken() ?: throw IllegalStateException("Debes iniciar sesión para realizar tu pedido.")
+        val payload = mapOf(
+            "paymentMethod" to paymentMethod,
+            "bankAccountId" to bankAccountId,
+            "cashOnDeliveryAccepted" to cashOnDeliveryAccepted,
+            "customerName" to customerName.trim(), "email" to email.trim(),
+            "phone" to phone.trim(), "address" to address.trim(), "city" to city.trim(),
+            "couponCode" to couponCode.trim().uppercase()
+        )
+        val response = apiProvider().createPaymentOrder("Bearer $token", payload)
+        val order = response["order"] as? Map<*, *> ?: response
+        val id = (order["id"] as? String) ?: (response["id"] as? String)
+            ?: throw IllegalStateException("El servidor no devolvió el número de pedido.")
+        runCatching { carritoRepo.refreshCart() }
+        refreshOrders()
+        id
     }
 
     fun clearUserData() {
