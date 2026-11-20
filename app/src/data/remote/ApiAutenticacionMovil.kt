@@ -30,6 +30,14 @@ internal data class InicioSesionRequest(
     val password: String
 )
 
+internal data class SolicitarRecuperacionRequest(val email: String)
+
+internal data class RestablecerContrasenaRequest(
+    val email: String,
+    val code: String,
+    val newPassword: String
+)
+
 internal data class GoogleAuthRequest(
     val idToken: String
 )
@@ -72,6 +80,12 @@ internal interface EleganAuthApi {
 
     @POST("api/movil/auth/login")
     suspend fun login(@Body request: InicioSesionRequest): AuthResponse
+
+    @POST("api/movil/auth/password/forgot")
+    suspend fun requestPasswordReset(@Body request: SolicitarRecuperacionRequest): Map<String, Any?>
+
+    @POST("api/movil/auth/password/reset")
+    suspend fun resetPassword(@Body request: RestablecerContrasenaRequest): Map<String, Any?>
 
     @POST("api/movil/auth/google")
     suspend fun loginGoogle(@Body request: GoogleAuthRequest): AuthResponse
