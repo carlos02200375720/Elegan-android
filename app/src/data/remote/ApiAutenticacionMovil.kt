@@ -189,6 +189,12 @@ internal interface EleganAuthApi {
     @GET("api/movil/orders")
     suspend fun getOrders(@Header("Authorization") authorization: String): Map<String, Any?>
 
+    @POST("api/movil/coupons/validate")
+    suspend fun validateCoupon(
+        @Header("Authorization") authorization: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Map<String, Any?>
+
     @POST("api/movil/payments/paypal/orders")
     suspend fun createPayPalOrder(
         @Header("Authorization") authorization: String,
