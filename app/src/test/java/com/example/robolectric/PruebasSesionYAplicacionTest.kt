@@ -101,4 +101,5 @@ class PruebasSesionYAplicacionTest {
 
         assertTrue(repo.observeCart().first().isNotEmpty())
         assertTrue(repo.observeSavedProductIds().first().isNotEmpty())
-    }}
+    }
+}
