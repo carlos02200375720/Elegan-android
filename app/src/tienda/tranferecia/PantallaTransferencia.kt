@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,10 +37,12 @@ fun TranfereciaScreen(
     total: Double,
     bankAccounts: List<BankAccountInfo>,
     paymentProofUri: Uri?,
+    selectedAccountId: String,
     isSubmitting: Boolean,
     onBack: () -> Unit,
     onPickPaymentProof: () -> Unit,
     onRemovePaymentProof: () -> Unit,
+    onSelectAccount: (String) -> Unit,
     onConfirmPayment: () -> Unit
 ) {
     BackHandler { onBack() }
@@ -100,14 +103,20 @@ fun TranfereciaScreen(
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     bankAccounts.forEach { account ->
-                        TarjetaCuentaBancaria(
-                            account = account,
-                            isCopied = copiedAccountId == account.id,
-                            onCopyAccount = {
-                                clipboardManager.setText(AnnotatedString(account.accountNumber))
-                                copiedAccountId = account.id
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                RadioButton(selected = selectedAccountId == account.id, onClick = { onSelectAccount(account.id) })
+                                Text("Seleccionar esta cuenta", style = MaterialTheme.typography.labelMedium)
                             }
-                        )
+                            TarjetaCuentaBancaria(
+                                account = account,
+                                isCopied = copiedAccountId == account.id,
+                                onCopyAccount = {
+                                    clipboardManager.setText(AnnotatedString(account.accountNumber))
+                                    copiedAccountId = account.id
+                                }
+                            )
+                        }
                     }
                 }
 
