@@ -248,6 +248,13 @@ internal interface EleganAuthApi {
         @Header("Authorization") authorization: String,
         @Part file: MultipartBody.Part
     ): Map<String, Any?>
+
+    @Multipart
+    @POST("api/movil/media/support")
+    suspend fun uploadSupportMedia(
+        @Header("Authorization") authorization: String,
+        @Part file: MultipartBody.Part
+    ): Map<String, Any?>
 }
 
 internal object ApiAutenticacionMovil {
