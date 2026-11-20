@@ -21,7 +21,6 @@ import com.example.data.repository.extractCapturedOrderIdJson
 import com.example.data.repository.extractCartItemsJson
 import com.example.data.repository.extractMessagesJson
 import com.example.data.repository.extractOrdersJson
-import com.example.data.repository.extractPayPalSessionJson
 import com.example.data.repository.extractUploadedMediaUrl
 import java.io.File
 import kotlinx.coroutines.flow.first
@@ -59,114 +58,6 @@ class PruebasPerfilPedidosYSoporteTest {
         assertTrue("El guardado debe fallar si el backend no confirma la operación", saveResult.isFailure)
 
         MobileSession.clear(context)
-    }
-
-    @Test
-    fun `test paypal order capture persists backend order clears cart and does not confirm locally on failure`() = runBlocking {
-        val context = obtenerContextoPrueba()
-        val carritoRepo = RepositorioCarrito(context)
-        val backendProduct: ProductJson = mapOf(
-            "id" to "backend_prod_order_1",
-            "name" to "Camisa Oxford Blanca",
-            "category" to "camisa",
-            "price" to 89.0,
-            "imageUrl" to "https://cdn.example.com/camisa.jpg"
-        )
-        carritoRepo.addToCart(backendProduct, selectedSize = "M", quantity = 2L, selectedColor = "Negro")
-
-        var shouldFailCapture = true
-        val remoteOrders = mutableListOf<Map<String, Any?>>()
-        val fakeApi = object : OrdersFakeEleganAuthApi() {
-            override suspend fun createPayPalOrder(
-                authorization: String,
-                request: Map<String, Any?>
-            ): Map<String, Any?> = mapOf(
-                "paypalOrderId" to "PAYPAL_TEST_100",
-                "approveUrl" to "https://www.paypal.com/checkoutnow?token=PAYPAL_TEST_100",
-                "status" to "CREATED"
-            )
-
-            override suspend fun capturePayPalOrder(
-                authorization: String,
-                paypalOrderId: String,
-                request: Map<String, Any?>
-            ): Map<String, Any?> {
-                if (shouldFailCapture) {
-                    throw IllegalStateException("HTTP 410 Gone")
-                }
-                val orderMap = mapOf(
-                    "id" to "ORD_MONGO_100",
-                    "customerName" to "Cliente Elegan",
-                    "paymentMethod" to "PayPal",
-                    "total" to 178.0,
-                    "itemCount" to 2L,
-                    "status" to "pagado"
-                )
-                remoteOrders.add(orderMap)
-                return mapOf("order" to orderMap)
-            }
-
-            override suspend fun getOrders(authorization: String): Map<String, Any?> =
-                mapOf("orders" to remoteOrders.toList())
-        }
-
-        val pedidosRepo = RepositorioPedidos(
-            appContext = context,
-            carritoRepo = carritoRepo,
-            apiProvider = { fakeApi },
-            tokenProvider = { "valid_backend_token" }
-        )
-
-        val session = pedidosRepo.createPayPalOrder(
-            customerName = "Cliente Elegan",
-            email = "cliente.elegan@gmail.com",
-            phone = "809-555-0199",
-            address = "Av. Winston Churchill 101",
-            city = "Santo Domingo",
-            total = 178.0,
-            itemCount = 2L,
-            itemsSummary = "2x Camisa Oxford Blanca",
-            cartItems = carritoRepo.observeCart().first()
-        )
-        assertEquals("PAYPAL_TEST_100", session.paypalOrderId)
-
-        val failedCapture = runCatching {
-            pedidosRepo.capturePayPalOrder(
-                paypalOrderId = session.paypalOrderId,
-                customerName = "Cliente Elegan",
-                email = "cliente.elegan@gmail.com",
-                phone = "809-555-0199",
-                address = "Av. Winston Churchill 101",
-                city = "Santo Domingo",
-                total = 178.0,
-                itemCount = 2L,
-                itemsSummary = "2x Camisa Oxford Blanca"
-            )
-        }
-        assertTrue("Si falla el backend no debe confirmarse ninguna orden local", failedCapture.isFailure)
-        assertTrue("No debe haber órdenes en memoria tras error del servidor", pedidosRepo.observeOrders().first().isEmpty())
-        assertFalse("El carrito no debe vaciarse si el pago falló", carritoRepo.observeCart().first().isEmpty())
-
-        shouldFailCapture = false
-        val confirmedOrderId = pedidosRepo.capturePayPalOrder(
-            paypalOrderId = session.paypalOrderId,
-            customerName = "Cliente Elegan",
-            email = "cliente.elegan@gmail.com",
-            phone = "809-555-0199",
-            address = "Av. Winston Churchill 101",
-            city = "Santo Domingo",
-            total = 178.0,
-            itemCount = 2L,
-            itemsSummary = "2x Camisa Oxford Blanca"
-        )
-
-        val orders = pedidosRepo.observeOrders().first()
-        assertEquals("ORD_MONGO_100", confirmedOrderId)
-        assertEquals(1, orders.size)
-        assertEquals("ORD_MONGO_100", orders.first().id)
-        assertEquals("PayPal", orders.first().paymentMethod)
-        assertEquals(178.0, orders.first().total, 0.01)
-        assertTrue(carritoRepo.observeCart().first().isEmpty())
     }
 
     @Test
@@ -283,77 +174,6 @@ class PruebasPerfilPedidosYSoporteTest {
     }
 
     @Test
-    fun `test paypal order creation syncs cart from mongodb and rejects stale local cart on CART_EMPTY`(): Unit = runBlocking {
-        val context = obtenerContextoPrueba()
-        val serverCart = mutableListOf(
-            mapOf<String, Any?>(
-                "id" to "mongo_cart_1",
-                "productId" to "prod_paypal_1",
-                "name" to "Corbata de Seda",
-                "price" to 65.0,
-                "quantity" to 1L,
-                "selectedSize" to "Única",
-                "selectedColor" to "Burdeos"
-            )
-        )
-        var payPalCalls = 0
-        val fakeApi = object : OrdersFakeEleganAuthApi() {
-            override suspend fun getCart(authorization: String): Map<String, Any?> =
-                mapOf("items" to serverCart.toList())
-
-            override suspend fun createPayPalOrder(
-                authorization: String,
-                request: Map<String, Any?>
-            ): Map<String, Any?> {
-                payPalCalls++
-                if (serverCart.isEmpty()) {
-                    return mapOf("success" to false, "code" to "CART_EMPTY", "message" to "Carrito vacío")
-                }
-                return mapOf(
-                    "paypalOrderId" to "PP_SYNCED_1",
-                    "approveUrl" to "https://www.paypal.com/checkoutnow?token=PP_SYNCED_1"
-                )
-            }
-        }
-
-        val carritoRepo = RepositorioCarrito(
-            appContext = context,
-            apiProvider = { fakeApi },
-            tokenProvider = { "valid_backend_token" }
-        )
-        val pedidosRepo = RepositorioPedidos(
-            appContext = context,
-            carritoRepo = carritoRepo,
-            apiProvider = { fakeApi },
-            tokenProvider = { "valid_backend_token" }
-        )
-
-        carritoRepo.refreshCart()
-        assertEquals(1, carritoRepo.observeCart().first().size)
-
-        // Simulamos que MongoDB fue vaciado en el backend mientras Android aún mostraba 1 artículo.
-        serverCart.clear()
-        val staleCartBeforeCheckout = carritoRepo.observeCart().first()
-        val payPalAttempt = runCatching {
-            pedidosRepo.createPayPalOrder(
-                customerName = "Cliente Elegan",
-                email = "cliente@elegan.com",
-                phone = "809-555-0100",
-                address = "Av. Lincoln",
-                city = "Santo Domingo",
-                total = 65.0,
-                itemCount = 1L,
-                itemsSummary = "1x Corbata de Seda",
-                cartItems = staleCartBeforeCheckout
-            )
-        }
-
-        assertTrue("Debe fallar si MongoDB tiene el carrito vacío", payPalAttempt.isFailure)
-        assertEquals("No debe invocar createPayPalOrder con carrito vacío en servidor", 0, payPalCalls)
-        assertTrue("El carrito en Android debe quedar sincronizado como vacío", carritoRepo.observeCart().first().isEmpty())
-    }
-
-    @Test
     fun `test support chat sends image and video messages in memory`() {
         runBlocking {
             val context = obtenerContextoPrueba()
@@ -387,7 +207,7 @@ class PruebasPerfilPedidosYSoporteTest {
     }
 
     @Test
-    fun `test cart paypal orders messages and media json extractors`() {
+    fun `test cart orders messages and media json extractors`() {
         val cartItems = extractCartItemsJson(
             mapOf(
                 "items" to listOf(
@@ -413,20 +233,6 @@ class PruebasPerfilPedidosYSoporteTest {
         assertEquals("42", cartItems.first().selectedSize)
         assertTrue(cartItems.first().imageUrl.endsWith("/uploads/mocasin.jpg"))
 
-        val paypalSession = extractPayPalSessionJson(
-            mapOf(
-                "id" to "PAYPAL_ORD_123",
-                "status" to "CREATED",
-                "links" to listOf(
-                    mapOf("rel" to "self", "href" to "https://api.paypal.com/self"),
-                    mapOf("rel" to "approve", "href" to "https://www.paypal.com/checkoutnow?token=PAYPAL_ORD_123")
-                )
-            )
-        )
-        assertNotNull(paypalSession)
-        assertEquals("PAYPAL_ORD_123", paypalSession?.paypalOrderId)
-        assertEquals("https://www.paypal.com/checkoutnow?token=PAYPAL_ORD_123", paypalSession?.approveUrl)
-
         val capturedId = extractCapturedOrderIdJson(
             mapOf("order" to mapOf("order_id" to "ORD_FINAL_900"))
         )
@@ -438,7 +244,7 @@ class PruebasPerfilPedidosYSoporteTest {
                     mapOf(
                         "id" to "ORD_FINAL_900",
                         "customer_name" to "Carlos Méndez",
-                        "payment_method" to "PayPal",
+                        "payment_method" to "Transferencia bancaria",
                         "total" to 371.0,
                         "item_count" to 2,
                         "status" to "pagado"
@@ -449,7 +255,7 @@ class PruebasPerfilPedidosYSoporteTest {
         )
         assertEquals(1, orders.size)
         assertEquals("ORD_FINAL_900", orders.first().id)
-        assertEquals("PayPal", orders.first().paymentMethod)
+        assertEquals("Transferencia bancaria", orders.first().paymentMethod)
         assertEquals(371.0, orders.first().total, 0.01)
 
         val messages = extractMessagesJson(
@@ -586,8 +392,6 @@ private open class OrdersFakeEleganAuthApi : EleganAuthApi {
     override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
     override suspend fun validateCoupon(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun createPayPalOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun capturePayPalOrder(authorization: String, paypalOrderId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun getMessages(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun sendMessage(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun uploadMedia(authorization: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
