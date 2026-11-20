@@ -160,7 +160,10 @@ class EleganRepository(context: Context) {
     ) = mensajesRepo.sendSupportMessage(text, mediaUri, mediaType, scope)
 
     suspend fun uploadMedia(mediaUri: Uri): String = mediaRepo.uploadMedia(mediaUri)
-\n    suspend fun uploadSupportAttachment(mediaUri: Uri): String =\n        mediaRepo.uploadSupportAttachment(mediaUri)\n
+
+    suspend fun uploadSupportAttachment(mediaUri: Uri): String =
+        mediaRepo.uploadSupportAttachment(mediaUri)
+
     fun observeUserProfile(): Flow<UserProfile?> = perfilYCuentaRepo.observeUserProfile()
 
     suspend fun refreshUserProfile() = perfilYCuentaRepo.refreshUserProfile()
