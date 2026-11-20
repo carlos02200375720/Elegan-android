@@ -55,6 +55,8 @@ fun CarritoScreen(
     onRetrySync: () -> Unit = {},
     onUpdateQuantity: (String, Long) -> Unit,
     onRemoveItem: (String) -> Unit,
+    onValidateCoupon: (String, Double, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
+    onCouponCodeApplied: (String) -> Unit = {},
     onNavigateToVerificasion: (Double, Double, Double, Double) -> Unit,
     onExploreCatalog: () -> Unit,
     onBack: () -> Unit = {}
@@ -62,7 +64,9 @@ fun CarritoScreen(
     BackHandler(onBack = onBack)
 
     var couponCode by remember { mutableStateOf("") }
-    var discountPercent by remember { mutableDoubleStateOf(0.0) }
+    var discountAmount by remember { mutableDoubleStateOf(0.0) }
+    var isApplyingCoupon by remember { mutableStateOf(false) }
+    var appliedCouponCode by remember { mutableStateOf("") }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -74,9 +78,6 @@ fun CarritoScreen(
 
     val subtotal by remember(cartItems) {
         derivedStateOf { cartItems.sumOf { it.price * it.quantity } }
-    }
-    val discountAmount by remember(subtotal, discountPercent) {
-        derivedStateOf { subtotal * discountPercent }
     }
     val shippingCost by remember(cartItems) {
         derivedStateOf { cartItems.sumOf { it.shippingPrice } }
@@ -203,18 +204,47 @@ fun CarritoScreen(
                         item {
                             TarjetaCuponCarrito(
                                 couponCode = couponCode,
-                                onCouponCodeChange = { couponCode = it },
-                                discountPercent = discountPercent,
+                                onCouponCodeChange = {
+                                    couponCode = it
+                                    discountAmount = 0.0
+                                    appliedCouponCode = ""
+                                    onCouponCodeApplied("")
+                                },
+                                discountAmount = discountAmount,
+                                isApplying = isApplyingCoupon,
                                 isCompact = isCompact,
                                 onApplyCoupon = {
-                                    if (couponCode == "ELEGAN10" || couponCode == "VIP") {
-                                        discountPercent = 0.10
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("¡Cupón aplicado: 10% de descuento!")
-                                        }
+                                    if (couponCode.isBlank()) {
+                                        scope.launch { snackbarHostState.showSnackbar("Escribe un código de cupón.") }
                                     } else {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Cupón inválido. Prueba con ELEGAN10")
+                                        isApplyingCoupon = true
+                                        onValidateCoupon(couponCode, subtotal) { result ->
+                                            isApplyingCoupon = false
+                                            result.onSuccess { response ->
+                                                val amount = (response["discountAmountDOP"] as? Number)?.toDouble()
+                                                    ?: (response["discountAmountDOP"] as? String)?.toDoubleOrNull()
+                                                    ?: 0.0
+                                                if (response["valid"] == true && amount > 0.0) {
+                                                    discountAmount = amount.coerceAtMost(subtotal)
+                                                    appliedCouponCode = (response["code"] as? String).orEmpty()
+                                                    onCouponCodeApplied(appliedCouponCode)
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("Cupón ${appliedCouponCode} aplicado correctamente.")
+                                                    }
+                                                } else {
+                                                    discountAmount = 0.0
+                                                    appliedCouponCode = ""
+                                                    onCouponCodeApplied("")
+                                                    scope.launch { snackbarHostState.showSnackbar("El servidor no pudo validar este cupón.") }
+                                                }
+                                            }.onFailure { error ->
+                                                discountAmount = 0.0
+                                                appliedCouponCode = ""
+                                                onCouponCodeApplied("")
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar(error.localizedMessage ?: "Cupón inválido o inactivo.")
+                                                }
+                                            }
                                         }
                                     }
                                 }
