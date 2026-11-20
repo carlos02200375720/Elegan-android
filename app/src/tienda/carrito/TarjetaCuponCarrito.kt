@@ -37,8 +37,9 @@ import com.example.ui.theme.EleganGold
 fun TarjetaCuponCarrito(
     couponCode: String,
     onCouponCodeChange: (String) -> Unit,
-    discountPercent: Double,
+    discountAmount: Double,
     isCompact: Boolean,
+    isApplying: Boolean = false,
     onApplyCoupon: () -> Unit
 ) {
     Card(
@@ -89,6 +90,7 @@ fun TarjetaCuponCarrito(
                 Spacer(modifier = Modifier.width(if (isCompact) 6.dp else 8.dp))
                 Button(
                     onClick = onApplyCoupon,
+                    enabled = !isApplying,
                     colors = ButtonDefaults.buttonColors(containerColor = EleganBurgundy),
                     shape = RoundedCornerShape(8.dp),
                     contentPadding = PaddingValues(
@@ -97,14 +99,14 @@ fun TarjetaCuponCarrito(
                     ),
                     modifier = Modifier.testTag("apply_coupon_btn")
                 ) {
-                    Text("Aplicar", fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(if (isApplying) "Validando..." else "Aplicar", fontWeight = FontWeight.Bold, maxLines = 1)
                 }
             }
 
-            if (discountPercent > 0.0) {
+            if (discountAmount > 0.0) {
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "✓ 10% de descuento activado",
+                    text = "✓ Descuento de RD$ ${String.format("%.2f", discountAmount)} aplicado",
                     color = Color(0xFF1E7E34),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold
