@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,29 +28,122 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.UserProfile
+import com.example.data.remote.MobileSession
+import java.io.File
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun VerificasionScreen(
     cartItems: List<CartItem>, subtotal: Double, discount: Double, shipping: Double, total: Double,
     userProfile: UserProfile?, bankAccounts: List<BankAccountInfo> = emptyList(),
     isSubmittingPayment: Boolean = false, paymentError: String? = null,
+    couponCode: String = "",
+    pendingTransferOrderId: String? = null,
+    restoredTransferLock: EstadoBloqueoTransferencia? = null,
+    onTransferLockChanged: (EstadoBloqueoTransferencia) -> Unit = {},
+    onTransferLockExitByHeaderBack: () -> Unit = {},
     onLoadBankAccounts: () -> Unit = {},
     onSubmitBankTransfer: (String, Uri, String, String, String, String, String) -> Unit,
     onSubmitCashOnDelivery: (String, String, String, String, String) -> Unit,
     onBack: () -> Unit
 ) {
-    val estado = rememberEstadoFormularioVerificacion(userProfile)
+    val context = LocalContext.current
+    val estado = rememberEstadoFormularioVerificacion(userProfile, restoredTransferLock)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var proofUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedAccountId by remember { mutableStateOf("") }
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { proofUri = it }
+    var paymentProofFilePath by remember { mutableStateOf(restoredTransferLock?.paymentProofFilePath) }
+    var proofUri by remember {
+        mutableStateOf<Uri?>(
+            restoredTransferLock?.paymentProofFilePath
+                ?.let { path -> File(path).takeIf { it.isFile && it.length() > 0L }?.let { Uri.fromFile(it) } }
+        )
+    }
+    var selectedAccountId by remember { mutableStateOf(restoredTransferLock?.selectedAccountId.orEmpty()) }
+
+    fun buildTransferLockState(
+        accountId: String = selectedAccountId,
+        proofPath: String? = paymentProofFilePath,
+        accounts: List<BankAccountInfo> = bankAccounts,
+        orderId: String? = pendingTransferOrderId
+    ): EstadoBloqueoTransferencia = EstadoBloqueoTransferencia(
+        userId = MobileSession.userId(context).orEmpty(),
+        subtotal = subtotal,
+        discount = discount,
+        shipping = shipping,
+        total = total,
+        couponCode = couponCode,
+        customerName = estado.customerName,
+        email = estado.email,
+        phone = estado.phone,
+        address = estado.address,
+        city = estado.city,
+        selectedAccountId = accountId,
+        pendingTransferOrderId = orderId,
+        paymentProofFilePath = proofPath,
+        bankAccounts = accounts
+    )
+
+    fun persistTransferLock(
+        accountId: String = selectedAccountId,
+        proofPath: String? = paymentProofFilePath
+    ) {
+        val lockState = buildTransferLockState(accountId = accountId, proofPath = proofPath)
+        AlmacenBloqueoTransferencia.guardar(context, lockState)
+        onTransferLockChanged(lockState)
+    }
+
+    fun abrirPantallaTransferencia(resetDraft: Boolean) {
+        if (resetDraft) {
+            AlmacenBloqueoTransferencia.eliminarCopiaComprobante(context)
+            proofUri = null
+            paymentProofFilePath = null
+            selectedAccountId = ""
+        }
+        onLoadBankAccounts()
+        estado.showTransferPage = true
+        persistTransferLock(
+            accountId = if (resetDraft) "" else selectedAccountId,
+            proofPath = if (resetDraft) null else paymentProofFilePath
+        )
+    }
+
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { pickedUri ->
+        if (pickedUri != null) {
+            proofUri = pickedUri
+            scope.launch {
+                val copiedPath = withContext(Dispatchers.IO) {
+                    AlmacenBloqueoTransferencia.guardarCopiaComprobante(context, pickedUri)
+                }
+                if (copiedPath != null) {
+                    paymentProofFilePath = copiedPath
+                    proofUri = Uri.fromFile(File(copiedPath))
+                }
+                if (estado.showTransferPage && AlmacenBloqueoTransferencia.tieneBloqueoActivo(context)) {
+                    persistTransferLock(proofPath = copiedPath ?: paymentProofFilePath)
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(estado.showTransferPage) {
+        if (estado.showTransferPage) {
+            onLoadBankAccounts()
+        }
+    }
+
+    LaunchedEffect(estado.showTransferPage, bankAccounts, pendingTransferOrderId) {
+        if (estado.showTransferPage && AlmacenBloqueoTransferencia.tieneBloqueoActivo(context)) {
+            persistTransferLock()
+        }
+    }
 
     fun validateDelivery(): Boolean {
         if (!estado.isDeliveryFormValid() || estado.phone.isBlank()) {
@@ -59,8 +153,9 @@ fun VerificasionScreen(
         return true
     }
 
-    BackHandler(enabled = estado.showTransferPage || estado.showCashOnDeliveryPage) {
-        estado.showTransferPage = false
+    // Solo contra entrega permite regresar con el botón atrás del sistema.
+    // Transferencia bloquea el botón atrás del sistema dentro de TranfereciaScreen.
+    BackHandler(enabled = estado.showCashOnDeliveryPage && !estado.showTransferPage) {
         estado.showCashOnDeliveryPage = false
     }
 
@@ -69,10 +164,27 @@ fun VerificasionScreen(
             estado.showTransferPage -> TranfereciaScreen(
                 total = total, bankAccounts = bankAccounts, paymentProofUri = proofUri,
                 selectedAccountId = selectedAccountId, isSubmitting = isSubmittingPayment,
-                onBack = { estado.showTransferPage = false },
+                onBack = {
+                    if (!isSubmittingPayment) {
+                        estado.showTransferPage = false
+                        proofUri = null
+                        paymentProofFilePath = null
+                        selectedAccountId = ""
+                        AlmacenBloqueoTransferencia.limpiar(context)
+                        onTransferLockExitByHeaderBack()
+                    }
+                },
                 onPickPaymentProof = { imagePicker.launch("image/*") },
-                onRemovePaymentProof = { proofUri = null },
-                onSelectAccount = { selectedAccountId = it },
+                onRemovePaymentProof = {
+                    proofUri = null
+                    paymentProofFilePath = null
+                    AlmacenBloqueoTransferencia.eliminarCopiaComprobante(context)
+                    persistTransferLock(proofPath = null)
+                },
+                onSelectAccount = { accountId ->
+                    selectedAccountId = accountId
+                    persistTransferLock(accountId = accountId)
+                },
                 onConfirmPayment = {
                     val uri = proofUri
                     if (!validateDelivery()) return@TranfereciaScreen
@@ -102,7 +214,7 @@ fun VerificasionScreen(
                     BarraInferiorConfirmarPago(total = total, isSubmitting = isSubmittingPayment, onConfirmClick = {
                         if (validateDelivery()) {
                             if (estado.selectedPayment == OPCION_PAGO_TRANSFERENCIA) {
-                                proofUri = null; selectedAccountId = ""; onLoadBankAccounts(); estado.showTransferPage = true
+                                abrirPantallaTransferencia(resetDraft = true)
                             } else {
                                 estado.showCashOnDeliveryPage = true
                             }
@@ -130,7 +242,7 @@ fun VerificasionScreen(
                                 onSelectOption = { estado.selectedPayment = it },
                                 onOpenSelectedAction = { selected ->
                                     if (!validateDelivery()) return@SeccionMetodoPago
-                                    if (selected == OPCION_PAGO_TRANSFERENCIA) { onLoadBankAccounts(); estado.showTransferPage = true }
+                                    if (selected == OPCION_PAGO_TRANSFERENCIA) abrirPantallaTransferencia(resetDraft = false)
                                     else estado.showCashOnDeliveryPage = true
                                 }
                             )

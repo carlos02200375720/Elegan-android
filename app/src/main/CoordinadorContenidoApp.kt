@@ -17,8 +17,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.remote.MobileSession
+import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.auth.VentanaEmergenteRegistro
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
@@ -33,18 +36,44 @@ fun AppContent(
     onSignOut: () -> Unit,
     onAccountDeleted: () -> Unit = onSignOut
 ) {
+    val context = LocalContext.current
+    val currentUserId = remember(isAuthenticated) { MobileSession.userId(context) }
+    val initialTransferLock = remember(currentUserId) {
+        AlmacenBloqueoTransferencia.cargar(context, currentUserId)
+    }
+    var activeTransferLock by remember(currentUserId) { mutableStateOf(initialTransferLock) }
+
     LaunchedEffect(isAuthenticated) {
         viewModel.syncAccountData()
     }
 
-    var currentScreen by remember { mutableStateOf(Screen.INICIO) }
-    var previousScreen by remember { mutableStateOf(Screen.INICIO) }
+    var currentScreen by remember {
+        mutableStateOf(if (initialTransferLock != null) Screen.VERIFICASION else Screen.INICIO)
+    }
+    var previousScreen by remember {
+        mutableStateOf(if (initialTransferLock != null) Screen.CARRITO else Screen.INICIO)
+    }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }
 
-    var checkoutSubtotal by remember { mutableDoubleStateOf(0.0) }
-    var checkoutDiscount by remember { mutableDoubleStateOf(0.0) }
-    var checkoutShipping by remember { mutableDoubleStateOf(0.0) }
-    var checkoutTotal by remember { mutableDoubleStateOf(0.0) }
+    var checkoutSubtotal by remember { mutableDoubleStateOf(initialTransferLock?.subtotal ?: 0.0) }
+    var checkoutDiscount by remember { mutableDoubleStateOf(initialTransferLock?.discount ?: 0.0) }
+    var checkoutShipping by remember { mutableDoubleStateOf(initialTransferLock?.shipping ?: 0.0) }
+    var checkoutTotal by remember { mutableDoubleStateOf(initialTransferLock?.total ?: 0.0) }
+
+    LaunchedEffect(initialTransferLock) {
+        initialTransferLock?.let { lock ->
+            activeTransferLock = lock
+            checkoutSubtotal = lock.subtotal
+            checkoutDiscount = lock.discount
+            checkoutShipping = lock.shipping
+            checkoutTotal = lock.total
+            if (lock.couponCode.isNotBlank()) {
+                viewModel.setCouponCode(lock.couponCode)
+            }
+            previousScreen = Screen.CARRITO
+            currentScreen = Screen.VERIFICASION
+        }
+    }
 
     var showRegisterPopup by remember { mutableStateOf(false) }
     var registerPromptReason by remember { mutableStateOf<String?>(null) }
@@ -65,6 +94,10 @@ fun AppContent(
     }
 
     fun navigateTo(screen: Screen) {
+        // Mientras el bloqueo de transferencia esté activo, no se permite navegar fuera de la pantalla de transferencia.
+        if (activeTransferLock != null && screen != Screen.VERIFICASION) {
+            return
+        }
         if (screen == Screen.CHATS && currentScreen != Screen.CARRITO && currentScreen != Screen.CHATS) {
             chatsReturnScreen = currentScreen
         }
@@ -114,10 +147,21 @@ fun AppContent(
                         checkoutDiscount = checkoutDiscount,
                         checkoutShipping = checkoutShipping,
                         checkoutTotal = checkoutTotal,
+                        activeTransferLock = activeTransferLock,
                         viewModel = viewModel,
                         isAuthenticated = isAuthenticated,
                         onRequireAuth = ::requireRegisteredUser,
                         onNavigateTo = ::navigateTo,
+                        onTransferLockChanged = { activeTransferLock = it },
+                        onTransferLockCleared = {
+                            AlmacenBloqueoTransferencia.limpiar(context)
+                            activeTransferLock = null
+                        },
+                        onTransferPaymentConfirmed = {
+                            AlmacenBloqueoTransferencia.limpiar(context)
+                            activeTransferLock = null
+                            navigateTo(Screen.GRACIA)
+                        },
                         onUpdateCheckoutTotals = { sub, disc, ship, tot ->
                             checkoutSubtotal = sub
                             checkoutDiscount = disc

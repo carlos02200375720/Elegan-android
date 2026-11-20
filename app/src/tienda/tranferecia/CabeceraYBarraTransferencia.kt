@@ -42,6 +42,7 @@ import com.example.ui.theme.EleganCharcoal
 @Composable
 fun CabeceraTransferencia(
     total: Double,
+    isSubmitting: Boolean = false,
     onBack: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -61,6 +62,7 @@ fun CabeceraTransferencia(
             ) {
                 IconButton(
                     onClick = onBack,
+                    enabled = !isSubmitting,
                     modifier = Modifier.testTag("tranferecia_back_btn")
                 ) {
                     Icon(

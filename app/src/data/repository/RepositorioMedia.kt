@@ -62,7 +62,18 @@ internal class RepositorioMedia(
         val token = MobileSession.token(appContext)
             ?: throw IllegalStateException("Debes iniciar sesión para enviar el comprobante.")
         val resolver = appContext.contentResolver
-        val mimeType = resolver.getType(mediaUri)?.lowercase().orEmpty()
+        val detectedMime = resolver.getType(mediaUri)?.lowercase().orEmpty()
+        val mimeType = if (detectedMime.isNotBlank()) {
+            detectedMime
+        } else {
+            val fileNameHint = (resolveFileName(mediaUri) ?: mediaUri.path.orEmpty()).lowercase()
+            when {
+                fileNameHint.endsWith(".jpg") || fileNameHint.endsWith(".jpeg") -> "image/jpeg"
+                fileNameHint.endsWith(".png") -> "image/png"
+                fileNameHint.endsWith(".webp") -> "image/webp"
+                else -> ""
+            }
+        }
         if (mimeType !in setOf("image/jpeg", "image/png", "image/webp")) {
             throw IllegalArgumentException("Selecciona una imagen JPG, PNG o WEBP.")
         }

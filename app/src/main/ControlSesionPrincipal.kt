@@ -1,6 +1,7 @@
 package com.example
 
 import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
+import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.attemptAutoSignIn
 import com.example.ui.auth.signOutUser
@@ -39,6 +41,7 @@ enum class Screen {
 fun MainApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val hasPendingTransferLock = remember { AlmacenBloqueoTransferencia.tieneBloqueoActivo(context) }
     var currentUser by remember { mutableStateOf<AuthUser?>(null) }
     var isSessionReady by remember { mutableStateOf(false) }
     var isGuest by remember { mutableStateOf(false) }
@@ -48,10 +51,15 @@ fun MainApp() {
         if (cachedUser == null) {
             isSessionReady = true
         } else {
+            val userHasTransferLock = AlmacenBloqueoTransferencia.tieneBloqueoActivo(context, cachedUser.id)
+            if (userHasTransferLock) {
+                currentUser = cachedUser
+                isSessionReady = true
+            }
             attemptAutoSignIn(
                 context = context,
                 onAuthSuccess = {
-                    currentUser = MobileSession.user(context)
+                    currentUser = MobileSession.user(context) ?: cachedUser
                     isSessionReady = true
                 },
                 onUnauthenticated = {
@@ -74,6 +82,9 @@ fun MainApp() {
 
     when {
         !isSessionReady -> {
+            if (hasPendingTransferLock) {
+                BackHandler(enabled = true) { }
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -108,6 +119,7 @@ fun MainApp() {
                     }
                 },
                 onAccountDeleted = {
+                    AlmacenBloqueoTransferencia.limpiar(context)
                     currentUser = null
                     isGuest = false
                 }

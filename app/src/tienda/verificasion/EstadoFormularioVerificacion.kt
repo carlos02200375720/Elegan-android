@@ -17,7 +17,8 @@ internal class EstadoFormularioVerificacion(
     initialEmail: String,
     initialPhone: String,
     initialAddress: String,
-    initialCity: String
+    initialCity: String,
+    initialShowTransferPage: Boolean = false
 ) {
     var customerName by mutableStateOf(initialName)
     var email by mutableStateOf(initialEmail)
@@ -27,7 +28,7 @@ internal class EstadoFormularioVerificacion(
 
     val paymentOptions = listOf(OPCION_PAGO_TRANSFERENCIA, OPCION_PAGO_CONTRA_ENTREGA)
     var selectedPayment by mutableStateOf(paymentOptions[0])
-    var showTransferPage by mutableStateOf(false)
+    var showTransferPage by mutableStateOf(initialShowTransferPage)
     var showCashOnDeliveryPage by mutableStateOf(false)
 
     fun isDeliveryFormValid(): Boolean =
@@ -39,17 +40,24 @@ internal class EstadoFormularioVerificacion(
 
 @Composable
 internal fun rememberEstadoFormularioVerificacion(
-    userProfile: UserProfile?
+    userProfile: UserProfile?,
+    restoredTransferLock: EstadoBloqueoTransferencia? = null
 ): EstadoFormularioVerificacion {
     val context = LocalContext.current
     val user = MobileSession.user(context)
     val estado = remember {
         EstadoFormularioVerificacion(
-            initialName = user?.name ?: userProfile?.displayName ?: "",
-            initialEmail = user?.email ?: userProfile?.email ?: "",
-            initialPhone = userProfile?.phone ?: "",
-            initialAddress = userProfile?.address ?: "",
-            initialCity = userProfile?.city ?: ""
+            initialName = restoredTransferLock?.customerName?.takeIf { it.isNotBlank() }
+                ?: user?.name ?: userProfile?.displayName ?: "",
+            initialEmail = restoredTransferLock?.email?.takeIf { it.isNotBlank() }
+                ?: user?.email ?: userProfile?.email ?: "",
+            initialPhone = restoredTransferLock?.phone?.takeIf { it.isNotBlank() }
+                ?: userProfile?.phone ?: "",
+            initialAddress = restoredTransferLock?.address?.takeIf { it.isNotBlank() }
+                ?: userProfile?.address ?: "",
+            initialCity = restoredTransferLock?.city?.takeIf { it.isNotBlank() }
+                ?: userProfile?.city ?: "",
+            initialShowTransferPage = restoredTransferLock != null
         )
     }
 

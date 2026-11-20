@@ -46,10 +46,12 @@ fun TranfereciaScreen(
     onSelectAccount: (String) -> Unit,
     onConfirmPayment: () -> Unit
 ) {
-    BackHandler { onBack() }
+    // Regla de bloqueo: el botón o gesto atrás del sistema NO puede salir de esta pantalla.
+    // Solo se puede salir confirmando el pago o haciendo clic en la flecha de regreso en la cabecera.
+    BackHandler(enabled = true) { }
 
     val clipboardManager = LocalClipboardManager.current
-    var copiedAccountId by remember { mutableStateOf<String?>(null) }
+    var copiedFieldKey by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = Modifier
@@ -60,6 +62,7 @@ fun TranfereciaScreen(
         topBar = {
             CabeceraTransferencia(
                 total = total,
+                isSubmitting = isSubmitting,
                 onBack = onBack
             )
         },
@@ -104,6 +107,9 @@ fun TranfereciaScreen(
 
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     bankAccounts.forEach { account ->
+                        val accountKey = "${account.id}:account"
+                        val holderNameKey = "${account.id}:holderName"
+                        val holderDocKey = "${account.id}:holderDocument"
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 RadioButton(selected = selectedAccountId == account.id, onClick = { onSelectAccount(account.id) })
@@ -111,10 +117,20 @@ fun TranfereciaScreen(
                             }
                             TarjetaCuentaBancaria(
                                 account = account,
-                                isCopied = copiedAccountId == account.id,
+                                isCopied = copiedFieldKey == accountKey,
                                 onCopyAccount = {
                                     clipboardManager.setText(AnnotatedString(account.accountNumber))
-                                    copiedAccountId = account.id
+                                    copiedFieldKey = accountKey
+                                },
+                                isHolderNameCopied = copiedFieldKey == holderNameKey,
+                                onCopyHolderName = {
+                                    clipboardManager.setText(AnnotatedString(account.holderName))
+                                    copiedFieldKey = holderNameKey
+                                },
+                                isHolderDocumentCopied = copiedFieldKey == holderDocKey,
+                                onCopyHolderDocument = {
+                                    clipboardManager.setText(AnnotatedString(account.holderDocument))
+                                    copiedFieldKey = holderDocKey
                                 }
                             )
                         }

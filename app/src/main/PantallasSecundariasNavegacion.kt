@@ -20,6 +20,7 @@ import com.example.data.model.productId
 import com.example.ui.CarritoScreen
 import com.example.ui.CategoriaScreen
 import com.example.ui.ChatsScreen
+import com.example.ui.EstadoBloqueoTransferencia
 import com.example.ui.GraciaScreen
 import com.example.ui.ProductoScreen
 import com.example.ui.VerificasionScreen
@@ -34,10 +35,14 @@ internal fun PantallasSecundariasNavegacion(
     checkoutDiscount: Double,
     checkoutShipping: Double,
     checkoutTotal: Double,
+    activeTransferLock: EstadoBloqueoTransferencia? = null,
     viewModel: EleganViewModel,
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateTo: (Screen) -> Unit,
+    onTransferLockChanged: (EstadoBloqueoTransferencia) -> Unit = {},
+    onTransferLockCleared: () -> Unit = {},
+    onTransferPaymentConfirmed: () -> Unit = { onNavigateTo(Screen.GRACIA) },
     onUpdateCheckoutTotals: (Double, Double, Double, Double) -> Unit,
     onAccountDeleted: () -> Unit
 ) {
@@ -52,10 +57,10 @@ internal fun PantallasSecundariasNavegacion(
     val lastOrderId by viewModel.lastCreatedOrderId.collectAsState()
     val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsState()
     val lastOrderDetails by viewModel.lastOrderDetails.collectAsState()
-    var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(emptyList()) }
+    var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(activeTransferLock?.bankAccounts.orEmpty()) }
     var isSubmittingPayment by remember { mutableStateOf(false) }
     var paymentError by remember { mutableStateOf<String?>(null) }
-    var pendingTransferOrderId by remember { mutableStateOf<String?>(null) }
+    var pendingTransferOrderId by remember { mutableStateOf<String?>(activeTransferLock?.pendingTransferOrderId) }
 
     LaunchedEffect(screen) {
         when (screen) {
@@ -167,8 +172,6 @@ internal fun PantallasSecundariasNavegacion(
             }
 
             Screen.VERIFICASION -> {
-                val itemsSummary = cartItems.joinToString(", ") { "${it.quantity}x ${it.name}" }
-                val totalItemCount = cartItems.sumOf { it.quantity }
                 VerificasionScreen(
                     cartItems = cartItems,
                     subtotal = checkoutSubtotal,
@@ -179,6 +182,15 @@ internal fun PantallasSecundariasNavegacion(
                     bankAccounts = bankAccounts,
                     isSubmittingPayment = isSubmittingPayment,
                     paymentError = paymentError,
+                    couponCode = viewModel.currentCouponCode(),
+                    pendingTransferOrderId = pendingTransferOrderId,
+                    restoredTransferLock = activeTransferLock,
+                    onTransferLockChanged = onTransferLockChanged,
+                    onTransferLockExitByHeaderBack = {
+                        pendingTransferOrderId = null
+                        paymentError = null
+                        onTransferLockCleared()
+                    },
                     onLoadBankAccounts = {
                         viewModel.loadBankAccounts { result ->
                             result.onSuccess { bankAccounts = it; paymentError = null }
@@ -192,8 +204,12 @@ internal fun PantallasSecundariasNavegacion(
                             pendingTransferOrderId = orderId
                             viewModel.uploadPaymentProof(orderId, proofUri) { upload ->
                                 isSubmittingPayment = false
-                                upload.onSuccess { pendingTransferOrderId = null; onNavigateTo(Screen.GRACIA) }
-                                    .onFailure { paymentError = it.localizedMessage ?: "No se pudo subir el comprobante. Puedes volver a intentarlo sin crear otro pedido." }
+                                upload.onSuccess {
+                                    pendingTransferOrderId = null
+                                    onTransferPaymentConfirmed()
+                                }.onFailure {
+                                    paymentError = it.localizedMessage ?: "No se pudo subir el comprobante. Puedes volver a intentarlo sin crear otro pedido."
+                                }
                             }
                         }
                         val existingOrderId = pendingTransferOrderId

@@ -99,6 +99,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setCouponCode(code: String) = pedidosCtrl.setCouponCode(code)
 
+    fun currentCouponCode(): String = pedidosCtrl.currentCouponCode()
+
     fun validateCoupon(
         code: String,
         onResult: (Result<Map<String, Any?>>) -> Unit

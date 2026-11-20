@@ -38,6 +38,7 @@ internal class ControladorCarritoYPedidos(
 
     fun clearCartError() = repository.clearCartError()
     fun setCouponCode(code: String) { selectedCouponCode = code.trim().uppercase() }
+    fun currentCouponCode(): String = selectedCouponCode
 
     fun validateCoupon(code: String, onResult: (Result<Map<String, Any?>>) -> Unit) {
         scope.launch {

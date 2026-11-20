@@ -42,7 +42,11 @@ import com.example.ui.theme.EleganGold
 fun TarjetaCuentaBancaria(
     account: BankAccountInfo,
     isCopied: Boolean,
-    onCopyAccount: () -> Unit
+    onCopyAccount: () -> Unit,
+    isHolderNameCopied: Boolean = false,
+    onCopyHolderName: () -> Unit = {},
+    isHolderDocumentCopied: Boolean = false,
+    onCopyHolderDocument: () -> Unit = {}
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
@@ -101,86 +105,98 @@ fun TarjetaCuentaBancaria(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White)
-                    .border(1.dp, Color(0xFFEAE3DC), RoundedCornerShape(8.dp))
-                    .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Número de cuenta",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.Gray,
-                            fontSize = 10.sp
-                        )
-                    )
-                    Text(
-                        text = account.accountNumber,
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = EleganCharcoal,
-                            letterSpacing = 0.6.sp
-                        )
-                    )
-                }
-                IconButton(
-                    onClick = onCopyAccount,
-                    modifier = Modifier.testTag("copy_account_${account.id}")
-                ) {
-                    Icon(
-                        imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
-                        contentDescription = "Copiar número de cuenta",
-                        tint = if (isCopied) Color(0xFF2E7D32) else EleganBurgundy,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            CampoCopiableCuenta(
+                label = "Número de cuenta",
+                value = account.accountNumber,
+                isCopied = isCopied,
+                copyContentDescription = "Copiar número de cuenta",
+                buttonTestTag = "copy_account_${account.id}",
+                isPrimaryValue = true,
+                onCopy = onCopyAccount
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1.2f)) {
-                    Text(
-                        text = "Dueño de la cuenta",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.Gray,
-                            fontSize = 10.sp
-                        )
+            CampoCopiableCuenta(
+                label = "Dueño de la cuenta",
+                value = account.holderName,
+                isCopied = isHolderNameCopied,
+                copyContentDescription = "Copiar dueño de la cuenta",
+                buttonTestTag = "copy_holder_name_${account.id}",
+                isPrimaryValue = false,
+                onCopy = onCopyHolderName
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            CampoCopiableCuenta(
+                label = "No. de documento",
+                value = account.holderDocument,
+                isCopied = isHolderDocumentCopied,
+                copyContentDescription = "Copiar número de documento",
+                buttonTestTag = "copy_holder_document_${account.id}",
+                isPrimaryValue = false,
+                onCopy = onCopyHolderDocument
+            )
+        }
+    }
+}
+
+@Composable
+private fun CampoCopiableCuenta(
+    label: String,
+    value: String,
+    isCopied: Boolean,
+    copyContentDescription: String,
+    buttonTestTag: String,
+    isPrimaryValue: Boolean,
+    onCopy: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.White)
+            .border(1.dp, Color(0xFFEAE3DC), RoundedCornerShape(8.dp))
+            .padding(start = 12.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    color = Color.Gray,
+                    fontSize = 10.sp
+                )
+            )
+            Text(
+                text = value,
+                style = if (isPrimaryValue) {
+                    MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = EleganCharcoal,
+                        letterSpacing = 0.6.sp
                     )
-                    Text(
-                        text = account.holderName,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = EleganCharcoal
-                        )
+                } else {
+                    MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        color = EleganCharcoal
                     )
                 }
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "No. de documento",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.Gray,
-                            fontSize = 10.sp
-                        )
-                    )
-                    Text(
-                        text = account.holderDocument,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontWeight = FontWeight.SemiBold,
-                            color = EleganCharcoal
-                        )
-                    )
-                }
-            }
+            )
+        }
+        IconButton(
+            onClick = onCopy,
+            enabled = value.isNotBlank(),
+            modifier = Modifier.testTag(buttonTestTag)
+        ) {
+            Icon(
+                imageVector = if (isCopied) Icons.Default.Check else Icons.Default.ContentCopy,
+                contentDescription = copyContentDescription,
+                tint = if (isCopied) Color(0xFF2E7D32) else EleganBurgundy,
+                modifier = Modifier.size(18.dp)
+            )
         }
     }
 }
