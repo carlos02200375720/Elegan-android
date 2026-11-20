@@ -29,24 +29,53 @@ internal object AlmacenCifradoSesion {
                 val prefs = if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
                     appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 } else {
-                    try {
-                        EncryptedSharedPreferences.create(
-                            appContext,
-                            PREFS,
-                            MasterKey.Builder(appContext)
-                                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                                .build(),
-                            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-                            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-                        )
-                    } catch (e: Exception) {
-                        Log.e("MobileSession", "No se pudo inicializar el almacenamiento cifrado de sesión.", e)
-                        throw IllegalStateException("No se pudo proteger la sesión en este dispositivo.", e)
-                    }
+                    crearPreferenciasCifradasConRecuperacion(appContext)
                 }
                 cachedPreferences = prefs
                 prefs
             }
+        }
+    }
+
+    private fun crearPreferenciasCifradasConRecuperacion(context: Context): SharedPreferences {
+        fun crear(): SharedPreferences {
+            val prefs = EncryptedSharedPreferences.create(
+                context,
+                PREFS,
+                MasterKey.Builder(context)
+                    .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                    .build(),
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+            // Fuerza la lectura de los valores ahora; el descifrado puede fallar al acceder a ellos.
+            prefs.all
+            return prefs
+        }
+
+        return try {
+            crear()
+        } catch (firstError: Exception) {
+            Log.e("MobileSession", "Almacenamiento cifrado inválido; se eliminará la sesión local y se recreará.", firstError)
+            try {
+                context.deleteSharedPreferences(PREFS)
+                eliminarClaveMaestraInvalida()
+                crear()
+            } catch (recoveryError: Exception) {
+                Log.e("MobileSession", "No se pudo recuperar el almacenamiento cifrado de sesión.", recoveryError)
+                throw IllegalStateException("No se pudo recuperar el almacenamiento seguro de sesión.", recoveryError)
+            }
+        }
+    }
+
+    private fun eliminarClaveMaestraInvalida() {
+        try {
+            val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore")
+            keyStore.load(null)
+            val alias = "_androidx_security_master_key_"
+            if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
+        } catch (e: Exception) {
+            Log.w("MobileSession", "No se pudo eliminar la clave maestra anterior; se intentará recrear.", e)
         }
     }
 
