@@ -1,9 +1,9 @@
 package com.example.data.repository
 
-import android.util.Log
 import com.example.data.model.ProductJson
 import com.example.data.model.productId
 import com.example.data.model.productName
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +34,7 @@ internal class RepositorioCatalogo {
             productsFlow.value = remoteProducts
             remoteProducts
         } catch (e: Exception) {
-            Log.e("EleganCatalog", "Error al obtener productos desde el backend.", e)
+            MonitorErrores.registrarError("EleganCatalog", "Error al obtener productos desde el backend.", e)
             errorFlow.value = e.localizedMessage ?: "No se pudo cargar el catálogo desde el servidor."
             emptyList()
         } finally {
@@ -62,7 +62,7 @@ internal class RepositorioCatalogo {
                 .toMap()
             typed.takeIf { it.productId().isNotBlank() && it.productName().isNotBlank() }
         } catch (e: Exception) {
-            Log.w("EleganCatalog", "No se pudo consultar el producto $productId desde el backend.", e)
+            MonitorErrores.registrarAdvertencia("EleganCatalog", "No se pudo consultar el producto $productId desde el backend.", e)
             productsFlow.value.find { it.productId() == productId }
         }
     }

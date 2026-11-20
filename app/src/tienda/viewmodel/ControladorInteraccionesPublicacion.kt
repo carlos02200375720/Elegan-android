@@ -1,10 +1,10 @@
 package com.example.ui.viewmodel
 
-import android.util.Log
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.productId
+import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +28,7 @@ internal class ControladorInteraccionesPublicacion(
 ) {
     val savedProductIds: StateFlow<Set<String>> = repository.observeSavedProductIds()
         .catch { error ->
-            Log.e("EleganViewModel", "No se pudieron cargar las publicaciones guardadas.", error)
+            MonitorErrores.registrarError("EleganViewModel", "No se pudieron cargar las publicaciones guardadas.", error)
             emit(emptySet())
         }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptySet())
@@ -42,7 +42,7 @@ internal class ControladorInteraccionesPublicacion(
 
     val likedPublicationIds: StateFlow<Set<String>> = repository.observeLikedPublicationIds()
         .catch { error ->
-            Log.e("EleganViewModel", "No se pudieron cargar los likes de publicaciones.", error)
+            MonitorErrores.registrarError("EleganViewModel", "No se pudieron cargar los likes de publicaciones.", error)
             emit(emptySet())
         }
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptySet())
@@ -67,7 +67,7 @@ internal class ControladorInteraccionesPublicacion(
             adjusted
         }
     }.catch { error ->
-        Log.e("EleganViewModel", "No se pudieron cargar las estadísticas de publicaciones.", error)
+        MonitorErrores.registrarError("EleganViewModel", "No se pudieron cargar las estadísticas de publicaciones.", error)
         emit(emptyMap())
     }.stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyMap())
 
@@ -102,7 +102,7 @@ internal class ControladorInteraccionesPublicacion(
             else repository.observePublicationComments(productId)
         }
         .catch { error ->
-            Log.e("EleganViewModel", "No se pudieron cargar los comentarios de la publicación.", error)
+            MonitorErrores.registrarError("EleganViewModel", "No se pudieron cargar los comentarios de la publicación.", error)
             emit(emptyList())
         }
         .stateIn(scope = scope, started = SharingStarted.WhileSubscribed(5000L), initialValue = emptyList())
@@ -119,7 +119,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudieron sincronizar los guardados.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudieron sincronizar los guardados.", e)
             }
         }
     }
@@ -136,7 +136,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.w("EleganViewModel", "No se pudieron sincronizar los conteos de interacciones.", e)
+                MonitorErrores.registrarAdvertencia("EleganViewModel", "No se pudieron sincronizar los conteos de interacciones.", e)
             }
         }
     }
@@ -150,7 +150,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudo actualizar la publicación guardada.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudo actualizar la publicación guardada.", e)
                 onResult(Result.failure(e))
             }
         }
@@ -163,7 +163,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudo actualizar el like de la publicación.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudo actualizar el like de la publicación.", e)
                 onResult(Result.failure(e))
             }
         }
@@ -186,7 +186,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudo publicar el comentario.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudo publicar el comentario.", e)
                 onResult(Result.failure(e))
             }
         }
@@ -200,7 +200,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudo registrar el compartido de la publicación.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudo registrar el compartido de la publicación.", e)
                 onResult(Result.failure(e))
             }
         }
@@ -214,7 +214,7 @@ internal class ControladorInteraccionesPublicacion(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "No se pudo actualizar la publicación guardada.", e)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudo actualizar la publicación guardada.", e)
                 onResult(Result.failure(e))
             }
         }

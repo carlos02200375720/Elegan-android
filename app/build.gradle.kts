@@ -18,6 +18,10 @@ android {
     versionName = "1.0"
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     buildConfigField("String", "ELEGAN_API_BASE_URL", "\"https://elegan-backend-587849039182.us-east1.run.app/\"")
+    val sentryDsn = resolveConfigValue("SENTRY_DSN")
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+    buildConfigField("String", "SENTRY_DSN", "\"$sentryDsn\"")
   }
   signingConfigs {
     create("release") {
@@ -106,6 +110,7 @@ dependencies {
   implementation(libs.media3.exoplayer)
   implementation(libs.media3.datasource)
   implementation(libs.media3.database)
+  implementation(libs.sentry.android)
   testImplementation(libs.androidx.compose.ui.test.junit4)
   testImplementation(libs.androidx.core)
   testImplementation(libs.androidx.junit)
@@ -125,4 +130,23 @@ tasks.withType<Test> {
   failFast = true
   timeout.set(Duration.ofMinutes(2))
   testLogging { events("passed", "failed", "skipped") }
+}
+
+fun resolveConfigValue(key: String): String {
+  val envFile = rootProject.file(".env")
+  if (envFile.isFile) {
+    val fromFile = envFile.readLines()
+      .asSequence()
+      .map { it.trim() }
+      .filter { it.isNotEmpty() && !it.startsWith("#") && it.contains("=") }
+      .mapNotNull { line ->
+        val idx = line.indexOf('=')
+        val k = line.substring(0, idx).trim()
+        val v = line.substring(idx + 1).trim().trim('"', '\'')
+        if (k == key) v else null
+      }
+      .firstOrNull()
+    if (!fromFile.isNullOrBlank()) return fromFile
+  }
+  return System.getenv(key)?.trim().orEmpty()
 }

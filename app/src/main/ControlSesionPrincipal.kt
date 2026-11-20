@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
 import com.example.ui.AlmacenBloqueoTransferencia
@@ -73,6 +74,7 @@ fun MainApp() {
 
     val activity = context as? Activity
     LaunchedEffect(currentUser) {
+        MonitorErrores.actualizarUsuario(currentUser?.id, currentUser?.role)
         activity?.window?.let { window ->
             val controller = WindowCompat.getInsetsController(window, window.decorView)
             controller.isAppearanceLightStatusBars = true

@@ -12,9 +12,9 @@
 #   public *;
 #}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Preserva nombres de archivo y números de línea para stack traces legibles en monitoreo de crashes
+-keepattributes SourceFile,LineNumberTable
+-keepattributes *Annotation*
 
 # If you keep the line number information, uncomment this to
 # hide the original source file name.

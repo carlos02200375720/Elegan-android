@@ -145,7 +145,7 @@ internal fun BarraInferiorConfirmarPago(
                                 Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Confirmar y Pagar $${String.format("%.2f", total)}",
+                                    text = "Confirmar y Pagar RD$ ${String.format("%.2f", total)}",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = if (isCompactBar) 14.sp else 15.sp,
                                     maxLines = 1,

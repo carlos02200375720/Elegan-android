@@ -8,17 +8,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
-import androidx.lifecycle.lifecycleScope
 import coil.Coil
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.example.ui.theme.EleganTheme
-import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -32,29 +26,6 @@ class MainActivity : ComponentActivity() {
         val insetsController = WindowCompat.getInsetsController(window, window.decorView)
         insetsController.isAppearanceLightStatusBars = true
         insetsController.isAppearanceLightNavigationBars = true
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                listOf("product_media", "elegan_local_media", "support_media").forEach { dirName ->
-                    val dir = File(filesDir, dirName)
-                    if (dir.exists()) dir.deleteRecursively()
-                }
-                listOf(
-                    "elegan_publication_states",
-                    "elegan_catalog_store",
-                    "elegan_cart_cache",
-                    "elegan_orders_cache",
-                    "elegan_profile_cache",
-                    "elegan_comments_cache",
-                    "elegan_stats_cache",
-                    "elegan_saved_cache",
-                    "elegan_likes_cache",
-                    "elegan_support_messages"
-                ).forEach { prefsName ->
-                    deleteSharedPreferences(prefsName)
-                }
-            } catch (_: Exception) {}
-        }
 
         configureCoilImageLoader()
 

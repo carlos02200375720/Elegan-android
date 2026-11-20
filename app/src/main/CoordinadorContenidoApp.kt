@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.MobileSession
 import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.auth.VentanaEmergenteRegistro
@@ -54,6 +55,10 @@ fun AppContent(
         mutableStateOf(if (initialTransferLock != null) Screen.CARRITO else Screen.INICIO)
     }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }
+
+    LaunchedEffect(currentScreen) {
+        MonitorErrores.registrarNavegacion(currentScreen.name)
+    }
 
     var checkoutSubtotal by remember { mutableDoubleStateOf(initialTransferLock?.subtotal ?: 0.0) }
     var checkoutDiscount by remember { mutableDoubleStateOf(initialTransferLock?.discount ?: 0.0) }

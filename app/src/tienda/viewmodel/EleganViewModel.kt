@@ -14,6 +14,7 @@ import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
+import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -77,7 +78,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
                 pedidosCtrl.clearOrderState()
                 onComplete()
             } catch (error: Exception) {
-                android.util.Log.e("EleganViewModel", "No se pudieron limpiar los datos de la sesión.", error)
+                MonitorErrores.registrarError("EleganViewModel", "No se pudieron limpiar los datos de la sesión.", error)
                 onComplete()
             }
         }

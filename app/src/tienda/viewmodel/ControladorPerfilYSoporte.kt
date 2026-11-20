@@ -2,10 +2,9 @@ package com.example.ui.viewmodel
 
 import android.content.Context
 import android.net.Uri
-import android.util.Log
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
-import com.example.data.remote.MobileSession
+import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -35,7 +34,7 @@ internal class ControladorPerfilYSoporte(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al sincronizar el perfil del usuario: ${e.message}", e)
+                MonitorErrores.registrarError("EleganViewModel", "Error al sincronizar el perfil del usuario: ${e.message}", e)
             }
         }
     }
@@ -47,7 +46,7 @@ internal class ControladorPerfilYSoporte(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al sincronizar mensajes: ${e.message}")
+                MonitorErrores.registrarError("EleganViewModel", "Error al sincronizar mensajes: ${e.message}", e)
             }
         }
     }
@@ -63,7 +62,7 @@ internal class ControladorPerfilYSoporte(
                     try {
                         resolvedMediaUrl = repository.uploadSupportAttachment(Uri.parse(resolvedMediaUrl))
                     } catch (uploadError: Exception) {
-                        Log.e(
+                        MonitorErrores.registrarError(
                             "EleganViewModel",
                             "No se pudo subir el adjunto del chat de soporte. El mensaje no será enviado.",
                             uploadError
@@ -75,14 +74,14 @@ internal class ControladorPerfilYSoporte(
                     !resolvedMediaUrl.startsWith("https://", ignoreCase = true) &&
                     !resolvedMediaUrl.startsWith("http://", ignoreCase = true)
                 ) {
-                    Log.e("EleganViewModel", "Se bloqueó el envío de una URI local como adjunto de soporte.")
+                    MonitorErrores.registrarError("EleganViewModel", "Se bloqueó el envío de una URI local como adjunto de soporte.")
                     return@launch
                 }
                 repository.sendSupportMessage(text, resolvedMediaUrl, mediaType, scope)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al enviar mensaje: ${e.message}")
+                MonitorErrores.registrarError("EleganViewModel", "Error al enviar mensaje: ${e.message}", e)
             }
         }
     }
@@ -102,7 +101,7 @@ internal class ControladorPerfilYSoporte(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al guardar perfil en el backend.", e)
+                MonitorErrores.registrarError("EleganViewModel", "Error al guardar perfil en el backend.", e)
                 onResult(Result.failure(e))
             }
         }
@@ -121,7 +120,7 @@ internal class ControladorPerfilYSoporte(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                Log.e("EleganViewModel", "Error al eliminar la cuenta.", e)
+                MonitorErrores.registrarError("EleganViewModel", "Error al eliminar la cuenta.", e)
                 onFailure(e.localizedMessage ?: "No se pudo eliminar la cuenta. Inténtalo de nuevo.")
             }
         }

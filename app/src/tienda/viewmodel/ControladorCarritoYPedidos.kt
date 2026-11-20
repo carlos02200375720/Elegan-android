@@ -1,11 +1,11 @@
 package com.example.ui.viewmodel
 
 import android.net.Uri
-import android.util.Log
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.ProductJson
+import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -52,7 +52,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.refreshCart(); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al sincronizar el carrito.", e); onResult(Result.failure(e)) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al sincronizar el carrito.", e); onResult(Result.failure(e)) }
         }
     }
 
@@ -60,7 +60,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.refreshOrders() }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al sincronizar las órdenes.", e) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al sincronizar las órdenes.", e) }
         }
     }
 
@@ -68,7 +68,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.addToCart(product, size, quantity, color); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al agregar al carrito.", e); onResult(Result.failure(e)) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al agregar al carrito.", e); onResult(Result.failure(e)) }
         }
     }
 
@@ -76,7 +76,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.updateCartQuantity(cartItemId, quantity); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al actualizar cantidad.", e); onResult(Result.failure(e)) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al actualizar cantidad.", e); onResult(Result.failure(e)) }
         }
     }
 
@@ -84,7 +84,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.removeFromCart(cartItemId); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al eliminar del carrito.", e); onResult(Result.failure(e)) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al eliminar del carrito.", e); onResult(Result.failure(e)) }
         }
     }
 
@@ -92,7 +92,7 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.clearCart(); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { Log.e("EleganViewModel", "Error al vaciar el carrito.", e); onResult(Result.failure(e)) }
+            catch (e: Exception) { MonitorErrores.registrarError("EleganViewModel", "Error al vaciar el carrito.", e); onResult(Result.failure(e)) }
         }
     }
 
@@ -100,7 +100,10 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { onResult(Result.success(repository.getBankAccounts())) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { onResult(Result.failure(e)) }
+            catch (e: Exception) {
+                MonitorErrores.registrarError("EleganCheckout", "Error al cargar cuentas bancarias.", e)
+                onResult(Result.failure(e))
+            }
         }
     }
 
@@ -126,7 +129,15 @@ internal class ControladorCarritoYPedidos(
                 _lastCreatedOrderId.value = id
                 onResult(Result.success(id))
             } catch (e: CancellationException) { throw e }
-            catch (e: Exception) { onResult(Result.failure(e)) }
+            catch (e: Exception) {
+                MonitorErrores.registrarError(
+                    tag = "EleganCheckout",
+                    mensaje = "Error al crear pedido manual.",
+                    error = e,
+                    extras = mapOf("payment_method" to paymentMethod)
+                )
+                onResult(Result.failure(e))
+            }
         }
     }
 
@@ -134,7 +145,15 @@ internal class ControladorCarritoYPedidos(
         scope.launch {
             try { repository.uploadPaymentProof(orderId, uri); refreshOrders(); onResult(Result.success(Unit)) }
             catch (e: CancellationException) { throw e }
-            catch (e: Exception) { onResult(Result.failure(e)) }
+            catch (e: Exception) {
+                MonitorErrores.registrarError(
+                    tag = "EleganCheckout",
+                    mensaje = "Error al subir comprobante de pago.",
+                    error = e,
+                    extras = mapOf("order_id" to orderId)
+                )
+                onResult(Result.failure(e))
+            }
         }
     }
 

@@ -3,6 +3,7 @@ package com.example.ui
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -115,7 +116,7 @@ fun VerificasionScreen(
         )
     }
 
-    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { pickedUri ->
+    val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { pickedUri ->
         if (pickedUri != null) {
             proofUri = pickedUri
             scope.launch {
@@ -174,7 +175,11 @@ fun VerificasionScreen(
                         onTransferLockExitByHeaderBack()
                     }
                 },
-                onPickPaymentProof = { imagePicker.launch("image/*") },
+                onPickPaymentProof = {
+                    imagePicker.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                    )
+                },
                 onRemovePaymentProof = {
                     proofUri = null
                     paymentProofFilePath = null

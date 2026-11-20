@@ -1,7 +1,7 @@
 package com.example.ui.auth
 
 import android.content.Context
-import android.util.Log
+import com.example.data.observability.MonitorErrores
 import com.example.data.remote.MobileSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -59,7 +59,7 @@ internal fun validarYEjecutarAutenticacion(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Log.e("Auth", "Error de autenticación con Elegan Backend", e)
+            MonitorErrores.registrarError("Auth", "Error de autenticación con Elegan Backend", e)
             onError(mapAuthError(e))
         } finally {
             onLoadingChange(false)
@@ -87,7 +87,7 @@ fun attemptAutoSignIn(
             }
             onUnauthenticated()
         } catch (e: Exception) {
-            Log.w("Auth", "No se pudo validar la sesión con el backend.", e)
+            MonitorErrores.registrarAdvertencia("Auth", "No se pudo validar la sesión con el backend.", e)
             if (MobileSession.user(context) != null) onAuthSuccess() else onUnauthenticated()
         }
     }
@@ -102,7 +102,7 @@ fun signOutUser(
         try {
             withContext(Dispatchers.IO) { MobileSession.logout(context) }
         } catch (e: Exception) {
-            Log.w("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
+            MonitorErrores.registrarAdvertencia("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
             MobileSession.clear(context)
         } finally {
             onSignOutComplete()

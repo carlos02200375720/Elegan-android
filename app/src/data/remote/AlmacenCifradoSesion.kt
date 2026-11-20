@@ -3,9 +3,9 @@ package com.example.data.remote
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Build
-import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.example.data.observability.MonitorErrores
 
 internal object AlmacenCifradoSesion {
     private const val PREFS = "elegan_mobile_session"
@@ -56,13 +56,13 @@ internal object AlmacenCifradoSesion {
         return try {
             crear()
         } catch (firstError: Exception) {
-            Log.e("MobileSession", "Almacenamiento cifrado inválido; se eliminará la sesión local y se recreará.", firstError)
+            MonitorErrores.registrarError("MobileSession", "Almacenamiento cifrado inválido; se eliminará la sesión local y se recreará.", firstError)
             try {
                 context.deleteSharedPreferences(PREFS)
                 eliminarClaveMaestraInvalida()
                 crear()
             } catch (recoveryError: Exception) {
-                Log.e("MobileSession", "No se pudo recuperar el almacenamiento cifrado de sesión.", recoveryError)
+                MonitorErrores.registrarError("MobileSession", "No se pudo recuperar el almacenamiento cifrado de sesión.", recoveryError)
                 throw IllegalStateException("No se pudo recuperar el almacenamiento seguro de sesión.", recoveryError)
             }
         }
@@ -75,7 +75,7 @@ internal object AlmacenCifradoSesion {
             val alias = "_androidx_security_master_key_"
             if (keyStore.containsAlias(alias)) keyStore.deleteEntry(alias)
         } catch (e: Exception) {
-            Log.w("MobileSession", "No se pudo eliminar la clave maestra anterior; se intentará recrear.", e)
+            MonitorErrores.registrarAdvertencia("MobileSession", "No se pudo eliminar la clave maestra anterior; se intentará recrear.", e)
         }
     }
 

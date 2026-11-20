@@ -107,10 +107,13 @@ jobs:
           KEYSTORE_PATH: ${{ runner.temp }}/upload-key.jks
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: gradle --no-daemon :app:assembleRelease
 
       - name: Compilar APK de prueba (sin firma de distribución)
         if: steps.signing.outputs.available != 'true'
+        env:
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Inspeccionar firma del APK generado
@@ -135,6 +138,7 @@ jobs:
           KEYSTORE_PATH: ${{ runner.temp }}/upload-key.jks
           STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: gradle --no-daemon :app:bundleRelease
 
       - name: Publicar AAB para Google Play Store
