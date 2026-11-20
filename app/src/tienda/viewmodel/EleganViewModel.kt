@@ -171,10 +171,10 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun createManualPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
         customerName: String, email: String, phone: String, address: String, city: String,
-        total: Double, couponCode: String, onResult: (Result<String>) -> Unit
+        total: Double, onResult: (Result<String>) -> Unit
     ) = pedidosCtrl.createManualPaymentOrder(
         paymentMethod, bankAccountId, cashOnDeliveryAccepted, customerName, email,
-        phone, address, city, total, couponCode, onResult
+        phone, address, city, total, onResult
     )
 
     fun uploadPaymentProof(orderId: String, uri: Uri, onResult: (Result<Unit>) -> Unit) =
