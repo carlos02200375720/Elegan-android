@@ -921,8 +921,6 @@ private open class StubEleganAuthApi : EleganAuthApi {
     override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
     override suspend fun validateCoupon(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
-    override suspend fun createPayPalOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
-    override suspend fun capturePayPalOrder(authorization: String, paypalOrderId: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun getMessages(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun sendMessage(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun uploadMedia(authorization: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
