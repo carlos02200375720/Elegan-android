@@ -127,6 +127,12 @@ internal class RepositorioPerfilYCuenta(
 
     suspend fun deleteUserAccountData() {
         withContext(Dispatchers.IO) {
+            val token = MobileSession.token(appContext)
+                ?: throw IllegalStateException("Debes iniciar sesión para eliminar tu cuenta.")
+
+            // El servidor confirma la eliminación antes de borrar la sesión local.
+            ApiAutenticacionMovil.service.deleteAccount("Bearer $token")
+
             carritoRepo.clearCart(syncRemote = false)
             guardadosYLikesRepo.clearUserData()
             pedidosRepo.clearUserData()
@@ -134,8 +140,6 @@ internal class RepositorioPerfilYCuenta(
 
             profileFlow.value = null
             loadedToken = null
-
             MobileSession.deleteAccount(appContext)
         }
-    }
-}
+    }}
