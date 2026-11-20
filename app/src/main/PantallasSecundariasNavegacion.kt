@@ -55,6 +55,7 @@ internal fun PantallasSecundariasNavegacion(
     var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(emptyList()) }
     var isSubmittingPayment by remember { mutableStateOf(false) }
     var paymentError by remember { mutableStateOf<String?>(null) }
+    var pendingTransferOrderId by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(screen) {
         when (screen) {
@@ -187,20 +188,28 @@ internal fun PantallasSecundariasNavegacion(
                     onSubmitBankTransfer = { accountId, proofUri, name, email, phone, address, city ->
                         isSubmittingPayment = true
                         paymentError = null
-                        viewModel.createManualPaymentOrder(
-                            paymentMethod = "bank_transfer", bankAccountId = accountId, cashOnDeliveryAccepted = false,
-                            customerName = name, email = email, phone = phone, address = address, city = city,
-                            total = checkoutTotal
-                        ) { result ->
-                            result.onSuccess { orderId ->
-                                viewModel.uploadPaymentProof(orderId, proofUri) { upload ->
-                                    isSubmittingPayment = false
-                                    upload.onSuccess { onNavigateTo(Screen.GRACIA) }
-                                        .onFailure { paymentError = it.localizedMessage ?: "El pedido se creó, pero no se pudo subir el comprobante. Vuelve a intentarlo desde soporte." }
-                                }
-                            }.onFailure {
+                        fun uploadForOrder(orderId: String) {
+                            pendingTransferOrderId = orderId
+                            viewModel.uploadPaymentProof(orderId, proofUri) { upload ->
                                 isSubmittingPayment = false
-                                paymentError = it.localizedMessage ?: "No se pudo registrar el pedido."
+                                upload.onSuccess { pendingTransferOrderId = null; onNavigateTo(Screen.GRACIA) }
+                                    .onFailure { paymentError = it.localizedMessage ?: "No se pudo subir el comprobante. Puedes volver a intentarlo sin crear otro pedido." }
+                            }
+                        }
+                        val existingOrderId = pendingTransferOrderId
+                        if (!existingOrderId.isNullOrBlank()) {
+                            uploadForOrder(existingOrderId)
+                        } else {
+                            viewModel.createManualPaymentOrder(
+                                paymentMethod = "bank_transfer", bankAccountId = accountId, cashOnDeliveryAccepted = false,
+                                customerName = name, email = email, phone = phone, address = address, city = city,
+                                total = checkoutTotal
+                            ) { result ->
+                                result.onSuccess { orderId -> uploadForOrder(orderId) }
+                                    .onFailure {
+                                        isSubmittingPayment = false
+                                        paymentError = it.localizedMessage ?: "No se pudo registrar el pedido."
+                                    }
                             }
                         }
                     },
