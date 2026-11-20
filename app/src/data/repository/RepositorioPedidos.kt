@@ -57,6 +57,15 @@ internal class RepositorioPedidos(
         }
     }
 
+    suspend fun validateCoupon(code: String, subtotalDOP: Double): Map<String, Any?> = withContext(Dispatchers.IO) {
+        val token = activeBackendToken()
+            ?: throw IllegalStateException("Debes iniciar sesión para validar un cupón.")
+        apiProvider().validateCoupon(
+            authorization = "Bearer $token",
+            request = mapOf("code" to code.trim().uppercase(), "subtotalDOP" to subtotalDOP)
+        )
+    }
+
     /**
      * Inicia una orden de pago PayPal en el backend (`POST /api/movil/payments/paypal/orders`).
      * Nota: `POST /api/movil/orders` devuelve HTTP 410 en el backend y fue reemplazado por PayPal.
@@ -70,7 +79,8 @@ internal class RepositorioPedidos(
         total: Double,
         itemCount: Long,
         itemsSummary: String,
-        cartItems: List<CartItem>
+        cartItems: List<CartItem>,
+        couponCode: String = ""
     ): PayPalOrderSession = withContext(Dispatchers.IO) {
         val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para realizar un pago con PayPal.")
@@ -101,6 +111,7 @@ internal class RepositorioPedidos(
             "currency" to "USD",
             "itemCount" to if (carritoRepo.hasBackendSession()) effectiveItemCount else itemCount.coerceAtLeast(1L),
             "itemsSummary" to effectiveSummary,
+            "couponCode" to couponCode.trim().uppercase(),
             "returnUrl" to "elegan://paypal/return",
             "return_url" to "elegan://paypal/return",
             "cancelUrl" to "elegan://paypal/cancel",
