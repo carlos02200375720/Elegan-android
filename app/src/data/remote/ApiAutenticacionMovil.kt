@@ -169,6 +169,22 @@ internal interface EleganAuthApi {
         @retrofit2.http.Query("productIds") productIds: List<String>
     ): Map<String, Any?>
 
+    @GET("api/movil/legal-documents")
+    suspend fun getLegalDocuments(): Map<String, Any?>
+
+    @POST("api/movil/comments/{comment_id}/report")
+    suspend fun reportComment(
+        @Header("Authorization") authorization: String,
+        @Path("comment_id") commentId: String,
+        @Body request: Map<String, @JvmSuppressWildcards Any?>
+    ): Map<String, Any?>
+
+    @POST("api/movil/users/{user_id}/block")
+    suspend fun blockUser(
+        @Header("Authorization") authorization: String,
+        @Path("user_id") userId: String
+    ): Map<String, Any?>
+
     @GET("api/movil/comments/{product_id}")
     suspend fun getPublicationComments(
         @Header("Authorization") authorization: String,
