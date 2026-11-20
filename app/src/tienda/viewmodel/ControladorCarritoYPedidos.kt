@@ -5,7 +5,6 @@ import android.util.Log
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
-import com.example.data.model.PayPalOrderSession
 import com.example.data.model.ProductJson
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
@@ -32,15 +31,6 @@ internal class ControladorCarritoYPedidos(
 
     private val _lastOrderDetails = MutableStateFlow<OrderConfirmationDetails?>(null)
     val lastOrderDetails: StateFlow<OrderConfirmationDetails?> = _lastOrderDetails.asStateFlow()
-
-    private val _payPalOrderSession = MutableStateFlow<PayPalOrderSession?>(null)
-    val payPalOrderSession: StateFlow<PayPalOrderSession?> = _payPalOrderSession.asStateFlow()
-
-    private val _isProcessingPayPal = MutableStateFlow(false)
-    val isProcessingPayPal: StateFlow<Boolean> = _isProcessingPayPal.asStateFlow()
-
-    private val _payPalError = MutableStateFlow<String?>(null)
-    val payPalError: StateFlow<String?> = _payPalError.asStateFlow()
 
     val cartItems: StateFlow<List<CartItem>> = repository.observeCart()
         .catch { emit(emptyList()) }
@@ -72,18 +62,11 @@ internal class ControladorCarritoYPedidos(
         }
     }
 
-    fun clearPayPalState() {
-        _payPalOrderSession.value = null
-        _isProcessingPayPal.value = false
-        _payPalError.value = null
-    }
-
     fun clearOrderState() {
         selectedCouponCode = ""
         _lastCreatedOrderId.value = null
         _lastOrderPaymentMethod.value = ""
         _lastOrderDetails.value = null
-        clearPayPalState()
     }
 
     fun refreshCart(onResult: (Result<Unit>) -> Unit = {}) {
