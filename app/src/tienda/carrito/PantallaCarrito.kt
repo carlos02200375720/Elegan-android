@@ -55,7 +55,7 @@ fun CarritoScreen(
     onRetrySync: () -> Unit = {},
     onUpdateQuantity: (String, Long) -> Unit,
     onRemoveItem: (String) -> Unit,
-    onValidateCoupon: (String, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
+    onValidateCoupon: (String, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
     onCouponCodeApplied: (String) -> Unit = {},
     onNavigateToVerificasion: (Double, Double, Double, Double) -> Unit,
     onExploreCatalog: () -> Unit,
@@ -76,6 +76,10 @@ fun CarritoScreen(
         }
     }
 
+    val subtotal by remember(cartItems) {
+        derivedStateOf { cartItems.sumOf { it.price * it.quantity } }
+    }
+
     LaunchedEffect(subtotal) {
         if (appliedCouponCode.isNotBlank()) {
             couponCode = ""
@@ -85,9 +89,6 @@ fun CarritoScreen(
         }
     }
 
-    val subtotal by remember(cartItems) {
-        derivedStateOf { cartItems.sumOf { it.price * it.quantity } }
-    }
     val shippingCost by remember(cartItems) {
         derivedStateOf { cartItems.sumOf { it.shippingPrice } }
     }
