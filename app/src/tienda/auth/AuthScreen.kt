@@ -22,6 +22,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,7 +49,7 @@ fun AuthScreen(
     var acceptedTerms by remember { mutableStateOf(false) }
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }\n    var showPasswordRecovery by remember { mutableStateOf(false) }
 
     val submitAuth: () -> Unit = {
         validarYEjecutarAutenticacion(
@@ -147,6 +149,15 @@ fun AuthScreen(
                     onSubmit = submitAuth
                 )
 
+                if (selectedTab == 0) {
+                    TextButton(
+                        onClick = { showPasswordRecovery = true },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("¿Olvidaste tu contraseña?", color = com.example.ui.theme.EleganBurgundy)
+                    }
+                }
+
                 if (selectedTab == 1) {
                     Spacer(modifier = Modifier.height(if (isCompact || isShortScreen) 10.dp else 12.dp))
                     CasillaConsentimientoLegal(
@@ -178,6 +189,17 @@ fun AuthScreen(
                 Spacer(modifier = Modifier.height(if (isCompact || isShortScreen) 16.dp else 24.dp))
             }
         }
+    }
+
+    if (showPasswordRecovery) {
+        DialogoRecuperacionContrasena(
+            onDismiss = { showPasswordRecovery = false },
+            onPasswordReset = {
+                errorMessage = "Tu contraseña se actualizó. Ya puedes iniciar sesión."
+                selectedTab = 0
+                passwordInput = ""
+            }
+        )
     }
 
     activeLegalDoc?.let { docType ->
