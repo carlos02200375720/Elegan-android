@@ -56,19 +56,27 @@ internal class ControladorPerfilYSoporte(
         if (text.isBlank() && mediaUri.isBlank()) return
         scope.launch {
             try {
-                var resolvedMediaUrl = mediaUri
-                val user = MobileSession.user(appContext)
-                if (
-                    mediaUri.isNotBlank() &&
-                    !mediaUri.startsWith("http://", ignoreCase = true) &&
-                    !mediaUri.startsWith("https://", ignoreCase = true) &&
-                    user?.canUploadMedia == true
-                ) {
+                var resolvedMediaUrl = mediaUri.trim()
+                val isRemoteUrl = resolvedMediaUrl.startsWith("https://", ignoreCase = true) ||
+                    resolvedMediaUrl.startsWith("http://", ignoreCase = true)
+                if (resolvedMediaUrl.isNotBlank() && !isRemoteUrl) {
                     try {
-                        resolvedMediaUrl = repository.uploadMedia(Uri.parse(mediaUri))
+                        resolvedMediaUrl = repository.uploadSupportAttachment(Uri.parse(resolvedMediaUrl))
                     } catch (uploadError: Exception) {
-                        Log.w("EleganViewModel", "No se pudo subir multimedia vía /api/movil/media.", uploadError)
+                        Log.e(
+                            "EleganViewModel",
+                            "No se pudo subir el adjunto del chat de soporte. El mensaje no será enviado.",
+                            uploadError
+                        )
+                        return@launch
                     }
+                }
+                if (resolvedMediaUrl.isNotBlank() &&
+                    !resolvedMediaUrl.startsWith("https://", ignoreCase = true) &&
+                    !resolvedMediaUrl.startsWith("http://", ignoreCase = true)
+                ) {
+                    Log.e("EleganViewModel", "Se bloqueó el envío de una URI local como adjunto de soporte.")
+                    return@launch
                 }
                 repository.sendSupportMessage(text, resolvedMediaUrl, mediaType, scope)
             } catch (e: CancellationException) {
