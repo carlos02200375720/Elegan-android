@@ -3,10 +3,10 @@ package com.example.data.repository
 import android.content.Context
 import android.net.Uri
 import com.example.data.model.AnnouncementJson
+import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.CategoryItem
 import com.example.data.model.Order
-import com.example.data.model.PayPalOrderSession
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
@@ -134,51 +134,19 @@ class EleganRepository(context: Context) {
     suspend fun validateCoupon(code: String): Map<String, Any?> =
         pedidosRepo.validateCoupon(code)
 
-    suspend fun createPayPalOrder(
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String,
-        cartItems: List<CartItem>,
-        couponCode: String = ""
-    ): PayPalOrderSession = pedidosRepo.createPayPalOrder(
-        customerName = customerName,
-        email = email,
-        phone = phone,
-        address = address,
-        city = city,
-        total = total,
-        itemCount = itemCount,
-        itemsSummary = itemsSummary,
-        cartItems = cartItems,
-        couponCode = couponCode
+    suspend fun getBankAccounts(): List<BankAccountInfo> = pedidosRepo.getBankAccounts()
+
+    suspend fun createPaymentOrder(
+        paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
+        customerName: String, email: String, phone: String, address: String, city: String,
+        couponCode: String
+    ): String = pedidosRepo.createPaymentOrder(
+        paymentMethod, bankAccountId, cashOnDeliveryAccepted,
+        customerName, email, phone, address, city, couponCode
     )
 
-    suspend fun capturePayPalOrder(
-        paypalOrderId: String,
-        customerName: String,
-        email: String,
-        phone: String,
-        address: String,
-        city: String,
-        total: Double,
-        itemCount: Long,
-        itemsSummary: String
-    ): String = pedidosRepo.capturePayPalOrder(
-        paypalOrderId = paypalOrderId,
-        customerName = customerName,
-        email = email,
-        phone = phone,
-        address = address,
-        city = city,
-        total = total,
-        itemCount = itemCount,
-        itemsSummary = itemsSummary
-    )
+    suspend fun uploadPaymentProof(orderId: String, mediaUri: Uri): String =
+        mediaRepo.uploadPaymentProof(orderId, mediaUri)
 
     fun observeMessages(): Flow<List<SupportMessage>> = mensajesRepo.observeMessages()
 
