@@ -107,6 +107,7 @@ internal class RepositorioPedidos(
             "paymentMethod" to paymentMethod,
             "bankAccountId" to bankAccountId,
             "cashOnDeliveryAccepted" to cashOnDeliveryAccepted,
+            "cashOnDeliveryTermsVersion" to if (cashOnDeliveryAccepted) "2026-11-19" else "",
             "customerName" to customerName.trim(), "email" to email.trim(),
             "phone" to phone.trim(), "address" to address.trim(), "city" to city.trim(),
             "couponCode" to couponCode.trim().uppercase()
