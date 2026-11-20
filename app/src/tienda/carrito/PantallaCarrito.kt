@@ -76,6 +76,15 @@ fun CarritoScreen(
         }
     }
 
+    LaunchedEffect(subtotal) {
+        if (appliedCouponCode.isNotBlank()) {
+            couponCode = ""
+            discountAmount = 0.0
+            appliedCouponCode = ""
+            onCouponCodeApplied("")
+        }
+    }
+
     val subtotal by remember(cartItems) {
         derivedStateOf { cartItems.sumOf { it.price * it.quantity } }
     }
