@@ -194,11 +194,15 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
         onResult: (Result<Unit>) -> Unit
     ) = perfilCtrl.saveProfile(name, email, phone, address, city, onResult)
 
-    fun deleteAccount(onComplete: () -> Unit) = perfilCtrl.deleteAccount(
+    fun deleteAccount(
+        onComplete: () -> Unit,
+        onFailure: (String) -> Unit
+    ) = perfilCtrl.deleteAccount(
         onCleared = {
             catalogoCtrl.clearSelection()
             pedidosCtrl.clearOrderState()
         },
-        onComplete = onComplete
+        onComplete = onComplete,
+        onFailure = onFailure
     )
 }
