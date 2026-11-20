@@ -60,10 +60,22 @@ internal class RepositorioPedidos(
     suspend fun validateCoupon(code: String): Map<String, Any?> = withContext(Dispatchers.IO) {
         val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para validar un cupón.")
-        apiProvider().validateCoupon(
-            authorization = "Bearer $token",
-            request = mapOf("code" to code.trim().uppercase())
-        )
+        try {
+            apiProvider().validateCoupon(
+                authorization = "Bearer $token",
+                request = mapOf("code" to code.trim().uppercase())
+            )
+        } catch (e: retrofit2.HttpException) {
+            val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
+            val message = when {
+                errorBody.contains("COUPON_INVALID_OR_INACTIVE", ignoreCase = true) ->
+                    "El cupón no existe o está desactivado."
+                errorBody.contains("CART_EMPTY", ignoreCase = true) ->
+                    "Tu carrito está vacío. Agrega productos antes de aplicar un cupón."
+                else -> "No se pudo validar el cupón. Inténtalo de nuevo."
+            }
+            throw IllegalStateException(message, e)
+        }
     }
 
     /**
