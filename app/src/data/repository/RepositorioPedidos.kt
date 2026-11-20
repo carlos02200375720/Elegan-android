@@ -190,7 +190,11 @@ private fun mapOrderFromJsonMap(map: Map<*, *>, fallbackUserId: String): Order? 
         phone = firstOrderString(map, "phone"),
         address = firstOrderString(map, "address"),
         city = firstOrderString(map, "city"),
-        paymentMethod = firstOrderString(map, "paymentMethod", "payment_method").ifBlank { "No especificado" },
+        paymentMethod = when (firstOrderString(map, "paymentMethod", "payment_method")) {
+            "bank_transfer" -> "Transferencia bancaria"
+            "cash_on_delivery" -> "Pago contra entrega"
+            else -> firstOrderString(map, "paymentMethod", "payment_method").ifBlank { "No especificado" }
+        },
         paymentProofUrl = firstOrderString(map, "paymentProofUrl", "payment_proof_url"),
         total = total,
         itemCount = itemCount,
