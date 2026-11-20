@@ -64,7 +64,7 @@ internal fun SeccionResumenArticulos(
         HorizontalDivider(color = Color(0xFFE5DDD5))
         Spacer(modifier = Modifier.height(10.dp))
 
-        SummaryRow(label = "Subtotal", value = "$${String.format("%.2f", subtotal)}")
+        SummaryRow(label = "Subtotal", value = "RD$ ${String.format("%.2f", subtotal)}")
         if (discount > 0.0) {
             SummaryRow(
                 label = "Descuento",
@@ -74,7 +74,7 @@ internal fun SeccionResumenArticulos(
         }
         SummaryRow(
             label = "Envío",
-            value = if (shipping == 0.0) "GRATIS" else "$${String.format("%.2f", shipping)}"
+            value = if (shipping == 0.0) "GRATIS" else "RD$ ${String.format("%.2f", shipping)}"
         )
 
         Spacer(modifier = Modifier.height(6.dp))
@@ -84,7 +84,7 @@ internal fun SeccionResumenArticulos(
         ) {
             Text(text = "Total Final", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
             Text(
-                text = "$${String.format("%.2f", total)}",
+                text = "RD$ ${String.format("%.2f", total)}",
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.ExtraBold,
                     color = EleganBurgundyDark
