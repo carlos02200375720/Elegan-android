@@ -53,7 +53,7 @@ internal class RepositorioMedia(
         } else {
             "upload_${System.currentTimeMillis()}.jpg"
         }
-        val fileName = rawFileName.replace("\\\"", "_").replace("\\r", "_").replace("\\n", "_")
+        val fileName = rawFileName.replace("\"", "_").replace("\r", "_").replace("\n", "_")
         val body = StreamingUriRequestBody(
             contentResolver = resolver,
             uri = mediaUri,
