@@ -20,43 +20,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class PayPalDeepLinkEvent(
-    val orderId: String?,
-    val approved: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-object PayPalCallbackBus {
-    private val _events = MutableStateFlow<PayPalDeepLinkEvent?>(null)
-    val events = _events.asStateFlow()
-
-    fun dispatch(intent: Intent?) {
-        val data = intent?.data ?: return
-        if (!"elegan".equals(data.scheme, ignoreCase = true) || !"paypal".equals(data.host, ignoreCase = true)) {
-            return
-        }
-        val tokenOrderId = data.getQueryParameter("token")
-            ?: data.getQueryParameter("paypal_order_id")
-            ?: data.getQueryParameter("orderId")
-        val path = data.path.orEmpty().lowercase()
-        val approved = !path.contains("cancel")
-        _events.value = PayPalDeepLinkEvent(
-            orderId = tokenOrderId,
-            approved = approved
-        )
-    }
-
-    fun consume() {
-        _events.value = null
-    }
-}
-
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        PayPalCallbackBus.dispatch(intent)
 
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(AndroidColor.WHITE, AndroidColor.WHITE),
@@ -101,7 +68,6 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        PayPalCallbackBus.dispatch(intent)
     }
 
     private fun configureCoilImageLoader() {
