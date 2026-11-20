@@ -205,7 +205,7 @@ internal fun PantallasSecundariasNavegacion(
                         }
                     },
                     onClearPayPalState = { viewModel.clearPayPalState() },
-                    onBack = { onNavigateTo(Screen.CARRITO) }
+                    onBack = { viewModel.setCouponCode(""); onNavigateTo(Screen.CARRITO) }
                 )
             }
 
