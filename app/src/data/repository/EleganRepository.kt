@@ -131,6 +131,9 @@ class EleganRepository(context: Context) {
 
     suspend fun refreshOrders(): List<Order> = pedidosRepo.refreshOrders()
 
+    suspend fun validateCoupon(code: String, subtotalDOP: Double): Map<String, Any?> =
+        pedidosRepo.validateCoupon(code, subtotalDOP)
+
     suspend fun createPayPalOrder(
         customerName: String,
         email: String,
@@ -140,7 +143,8 @@ class EleganRepository(context: Context) {
         total: Double,
         itemCount: Long,
         itemsSummary: String,
-        cartItems: List<CartItem>
+        cartItems: List<CartItem>,
+        couponCode: String = ""
     ): PayPalOrderSession = pedidosRepo.createPayPalOrder(
         customerName = customerName,
         email = email,
@@ -150,7 +154,8 @@ class EleganRepository(context: Context) {
         total = total,
         itemCount = itemCount,
         itemsSummary = itemsSummary,
-        cartItems = cartItems
+        cartItems = cartItems,
+        couponCode = couponCode
     )
 
     suspend fun capturePayPalOrder(
