@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.AnnouncementJson
+import android.net.Uri
+import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.CategoryItem
 import com.example.data.model.Order
@@ -214,6 +216,21 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     )
 
     fun clearPayPalState() = pedidosCtrl.clearPayPalState()
+
+    fun loadBankAccounts(onResult: (Result<List<BankAccountInfo>>) -> Unit) =
+        pedidosCtrl.loadBankAccounts(onResult)
+
+    fun createManualPaymentOrder(
+        paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
+        customerName: String, email: String, phone: String, address: String, city: String,
+        total: Double, couponCode: String, onResult: (Result<String>) -> Unit
+    ) = pedidosCtrl.createManualPaymentOrder(
+        paymentMethod, bankAccountId, cashOnDeliveryAccepted, customerName, email,
+        phone, address, city, total, couponCode, onResult
+    )
+
+    fun uploadPaymentProof(orderId: String, uri: Uri, onResult: (Result<Unit>) -> Unit) =
+        pedidosCtrl.uploadPaymentProof(orderId, uri, onResult)
 
     fun sendSupportMessage(text: String, mediaUri: String = "", mediaType: String = "") =
         perfilCtrl.sendSupportMessage(text, mediaUri, mediaType)
