@@ -20,6 +20,8 @@ internal class ControladorCarritoYPedidos(
     private val repository: EleganRepository,
     private val scope: CoroutineScope
 ) {
+    private var selectedCouponCode: String = ""
+
     private val _lastCreatedOrderId = MutableStateFlow<String?>(null)
     val lastCreatedOrderId: StateFlow<String?> = _lastCreatedOrderId.asStateFlow()
 
@@ -51,6 +53,22 @@ internal class ControladorCarritoYPedidos(
         .stateIn(scope = scope, started = SharingStarted.Eagerly, initialValue = emptyList())
 
     fun clearCartError() = repository.clearCartError()
+
+    fun setCouponCode(code: String) {
+        selectedCouponCode = code.trim().uppercase()
+    }
+
+    fun validateCoupon(code: String, subtotalDOP: Double, onResult: (Result<Map<String, Any?>>) -> Unit) {
+        scope.launch {
+            try {
+                onResult(Result.success(repository.validateCoupon(code, subtotalDOP)))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onResult(Result.failure(e))
+            }
+        }
+    }
 
     fun clearPayPalState() {
         _payPalOrderSession.value = null
@@ -184,7 +202,8 @@ internal class ControladorCarritoYPedidos(
                     total = total,
                     itemCount = itemCount,
                     itemsSummary = itemsSummary,
-                    cartItems = cartItems.value.toList()
+                    cartItems = cartItems.value.toList(),
+                    couponCode = selectedCouponCode
                 )
                 _payPalOrderSession.value = session
                 onSessionReady(session)
@@ -227,6 +246,7 @@ internal class ControladorCarritoYPedidos(
                     itemCount = itemCount,
                     itemsSummary = itemsSummary
                 )
+                selectedCouponCode = ""
                 _lastOrderDetails.value = OrderConfirmationDetails(
                     orderId = orderId,
                     items = purchasedItemsSnapshot,
