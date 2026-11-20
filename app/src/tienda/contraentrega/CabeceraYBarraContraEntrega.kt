@@ -104,7 +104,7 @@ fun CabeceraContraEntrega(
                             )
                         )
                         Text(
-                            text = "$$amountFormatted USD",
+                            text = "RD\$ $amountFormatted",
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundy,
