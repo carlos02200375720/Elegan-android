@@ -31,7 +31,8 @@ import com.example.ui.theme.EleganGold
 @Composable
 fun CabeceraConfirmacionCompra(
     isCompact: Boolean,
-    isBankTransfer: Boolean
+    isBankTransfer: Boolean,
+    isCashOnDelivery: Boolean = false
 ) {
     Spacer(modifier = Modifier.height(if (isCompact) 6.dp else 12.dp))
 
@@ -85,8 +86,10 @@ fun CabeceraConfirmacionCompra(
     Text(
         text = if (isBankTransfer) {
             "Tu pedido ha sido registrado exitosamente. Su pago está siendo verificado con el comprobante de transferencia bancaria enviado."
+        } else if (isCashOnDelivery) {
+            "Tu pedido quedó registrado. Pagarás el monto indicado cuando recibas el paquete en tu domicilio."
         } else {
-            "Tu pedido ha sido confirmado y registrado exitosamente en el sistema de Elegan."
+            "Tu pedido ha sido registrado exitosamente en el sistema de Elegan."
         },
         style = MaterialTheme.typography.bodyMedium.copy(
             color = Color(0xFF555555),
