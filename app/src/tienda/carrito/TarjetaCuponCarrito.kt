@@ -83,8 +83,15 @@ fun TarjetaCuponCarrito(
                     singleLine = true,
                     shape = RoundedCornerShape(8.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        cursorColor = EleganBurgundy,
                         focusedBorderColor = EleganBurgundy,
-                        unfocusedBorderColor = Color(0xFFDDD5CE)
+                        unfocusedBorderColor = Color(0xFFDDD5CE),
+                        focusedPlaceholderColor = Color(0xFF7A746E),
+                        unfocusedPlaceholderColor = Color(0xFF7A746E),
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White
                     )
                 )
                 Spacer(modifier = Modifier.width(if (isCompact) 6.dp else 8.dp))

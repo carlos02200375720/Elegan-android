@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         configureCoilImageLoader()
 
         setContent {
-            EleganTheme {
+            EleganTheme(darkTheme = false) {
                 MainApp()
             }
         }

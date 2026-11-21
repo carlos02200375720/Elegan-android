@@ -112,8 +112,15 @@ private fun CampoEntregaVerificacion(
         singleLine = true,
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black,
+            cursorColor = EleganBurgundy,
             focusedBorderColor = EleganBurgundy,
-            unfocusedBorderColor = Color(0xFFDDD5CE)
+            unfocusedBorderColor = Color(0xFFDDD5CE),
+            focusedLabelColor = EleganBurgundy,
+            unfocusedLabelColor = Color(0xFF5F5A56),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
         )
     )
 }

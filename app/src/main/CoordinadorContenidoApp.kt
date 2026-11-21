@@ -51,12 +51,16 @@ fun AppContent(
     var currentScreen by remember {
         mutableStateOf(if (initialTransferLock != null) Screen.VERIFICASION else Screen.INICIO)
     }
+    var activeTabScreen by remember { mutableStateOf(Screen.INICIO) }
     var previousScreen by remember {
         mutableStateOf(if (initialTransferLock != null) Screen.CARRITO else Screen.INICIO)
     }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }
 
     LaunchedEffect(currentScreen) {
+        if (esPantallaConBarraInferior(currentScreen)) {
+            activeTabScreen = currentScreen
+        }
         MonitorErrores.registrarNavegacion(currentScreen.name)
     }
 
@@ -106,11 +110,19 @@ fun AppContent(
         if (screen == Screen.CHATS && currentScreen != Screen.CARRITO && currentScreen != Screen.CHATS) {
             chatsReturnScreen = currentScreen
         }
+        if (esPantallaConBarraInferior(screen)) {
+            activeTabScreen = screen
+        }
         previousScreen = currentScreen
         currentScreen = screen
     }
 
     val eleganNotifier = remember { EleganNotificationState() }
+    val contenedorDestino = if (esPantallaConBarraInferior(currentScreen)) {
+        DestinoContenedorApp.PestanasPrincipales
+    } else {
+        DestinoContenedorApp.PantallaSecundaria(currentScreen)
+    }
 
     CompositionLocalProvider(LocalEleganNotifier provides eleganNotifier) {
         Box(
@@ -119,62 +131,72 @@ fun AppContent(
                 .background(Color.White)
         ) {
             AnimatedContent(
-                targetState = currentScreen,
+                targetState = contenedorDestino,
                 modifier = Modifier.fillMaxSize(),
-                transitionSpec = { obtenerTransicionPantalla(initialState, targetState) },
+                transitionSpec = {
+                    val origen = when (val estado = initialState) {
+                        DestinoContenedorApp.PestanasPrincipales -> activeTabScreen
+                        is DestinoContenedorApp.PantallaSecundaria -> estado.screen
+                    }
+                    val destino = when (val estado = targetState) {
+                        DestinoContenedorApp.PestanasPrincipales -> activeTabScreen
+                        is DestinoContenedorApp.PantallaSecundaria -> estado.screen
+                    }
+                    obtenerTransicionPantalla(origen, destino)
+                },
                 label = "screen_transition"
-            ) { screen ->
-                val isTabScreen = screen == Screen.INICIO ||
-                    screen == Screen.CATALOGO ||
-                    screen == Screen.PERFIL
-
-                if (isTabScreen) {
-                    PantallasConBarraInferior(
-                        screen = screen,
-                        viewModel = viewModel,
-                        isAuthenticated = isAuthenticated,
-                        onRequireAuth = ::requireRegisteredUser,
-                        onNavigateTo = ::navigateTo,
-                        onSignOut = {
-                            if (isAuthenticated) {
-                                viewModel.clearUserSessionData(onComplete = onSignOut)
-                            } else {
-                                onSignOut()
+            ) { destino ->
+                when (destino) {
+                    DestinoContenedorApp.PestanasPrincipales -> {
+                        PantallasConBarraInferior(
+                            screen = activeTabScreen,
+                            viewModel = viewModel,
+                            isAuthenticated = isAuthenticated,
+                            onRequireAuth = ::requireRegisteredUser,
+                            onNavigateTo = ::navigateTo,
+                            onSignOut = {
+                                if (isAuthenticated) {
+                                    viewModel.clearUserSessionData(onComplete = onSignOut)
+                                } else {
+                                    onSignOut()
+                                }
                             }
-                        }
-                    )
-                } else {
-                    PantallasSecundariasNavegacion(
-                        screen = screen,
-                        previousScreen = previousScreen,
-                        chatsReturnScreen = chatsReturnScreen,
-                        checkoutSubtotal = checkoutSubtotal,
-                        checkoutDiscount = checkoutDiscount,
-                        checkoutShipping = checkoutShipping,
-                        checkoutTotal = checkoutTotal,
-                        activeTransferLock = activeTransferLock,
-                        viewModel = viewModel,
-                        isAuthenticated = isAuthenticated,
-                        onRequireAuth = ::requireRegisteredUser,
-                        onNavigateTo = ::navigateTo,
-                        onTransferLockChanged = { activeTransferLock = it },
-                        onTransferLockCleared = {
-                            AlmacenBloqueoTransferencia.limpiar(context)
-                            activeTransferLock = null
-                        },
-                        onTransferPaymentConfirmed = {
-                            AlmacenBloqueoTransferencia.limpiar(context)
-                            activeTransferLock = null
-                            navigateTo(Screen.GRACIA)
-                        },
-                        onUpdateCheckoutTotals = { sub, disc, ship, tot ->
-                            checkoutSubtotal = sub
-                            checkoutDiscount = disc
-                            checkoutShipping = ship
-                            checkoutTotal = tot
-                        },
-                        onAccountDeleted = onAccountDeleted
-                    )
+                        )
+                    }
+
+                    is DestinoContenedorApp.PantallaSecundaria -> {
+                        PantallasSecundariasNavegacion(
+                            screen = destino.screen,
+                            previousScreen = previousScreen,
+                            chatsReturnScreen = chatsReturnScreen,
+                            checkoutSubtotal = checkoutSubtotal,
+                            checkoutDiscount = checkoutDiscount,
+                            checkoutShipping = checkoutShipping,
+                            checkoutTotal = checkoutTotal,
+                            activeTransferLock = activeTransferLock,
+                            viewModel = viewModel,
+                            isAuthenticated = isAuthenticated,
+                            onRequireAuth = ::requireRegisteredUser,
+                            onNavigateTo = ::navigateTo,
+                            onTransferLockChanged = { activeTransferLock = it },
+                            onTransferLockCleared = {
+                                AlmacenBloqueoTransferencia.limpiar(context)
+                                activeTransferLock = null
+                            },
+                            onTransferPaymentConfirmed = {
+                                AlmacenBloqueoTransferencia.limpiar(context)
+                                activeTransferLock = null
+                                navigateTo(Screen.GRACIA)
+                            },
+                            onUpdateCheckoutTotals = { sub, disc, ship, tot ->
+                                checkoutSubtotal = sub
+                                checkoutDiscount = disc
+                                checkoutShipping = ship
+                                checkoutTotal = tot
+                            },
+                            onAccountDeleted = onAccountDeleted
+                        )
+                    }
                 }
             }
 
@@ -214,3 +236,11 @@ fun AppContent(
         )
     }
 }
+
+private sealed interface DestinoContenedorApp {
+    data object PestanasPrincipales : DestinoContenedorApp
+    data class PantallaSecundaria(val screen: Screen) : DestinoContenedorApp
+}
+
+private fun esPantallaConBarraInferior(screen: Screen): Boolean =
+    screen == Screen.INICIO || screen == Screen.CATALOGO || screen == Screen.PERFIL

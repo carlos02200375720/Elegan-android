@@ -113,8 +113,13 @@ private fun CampoEntregaPerfil(
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = EleganBurgundy,
             unfocusedBorderColor = Color(0xFFDDD5CE),
-            focusedTextColor = EleganCharcoal,
-            unfocusedTextColor = EleganCharcoal
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black,
+            cursorColor = EleganBurgundy,
+            focusedLabelColor = EleganBurgundy,
+            unfocusedLabelColor = Color(0xFF5F5A56),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White
         )
     )
 }

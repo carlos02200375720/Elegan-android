@@ -142,8 +142,19 @@ private fun CampoTextoAutenticacion(
             .testTag(testTag),
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor = Color.Black,
+            unfocusedTextColor = Color.Black,
+            disabledTextColor = Color(0xFF5F5A56),
+            cursorColor = EleganBurgundy,
             focusedBorderColor = EleganBurgundy,
-            unfocusedBorderColor = Color(0xFFDDD5CE)
+            unfocusedBorderColor = Color(0xFFDDD5CE),
+            focusedLabelColor = EleganBurgundy,
+            unfocusedLabelColor = Color(0xFF5F5A56),
+            focusedPlaceholderColor = Color(0xFF7A746E),
+            unfocusedPlaceholderColor = Color(0xFF7A746E),
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color(0xFFF6F4F2)
         )
     )
 }

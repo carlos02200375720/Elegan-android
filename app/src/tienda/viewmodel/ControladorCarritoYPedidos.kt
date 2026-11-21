@@ -132,7 +132,7 @@ internal class ControladorCarritoYPedidos(
             catch (e: Exception) {
                 val errorExtras = mutableMapOf<String, String>("payment_method" to paymentMethod)
                 if (e is com.example.data.repository.ErrorCrearPedidoApi) {
-                    errorExtras["http_status"] = e.statusCode
+                    errorExtras["http_status"] = e.statusCode.toString()
                     errorExtras["backend_detail"] = e.backendDetail ?: "NO_DETAIL"
                 }
                 MonitorErrores.registrarError(

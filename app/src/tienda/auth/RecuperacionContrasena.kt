@@ -21,6 +21,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -42,6 +43,8 @@ import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.RestablecerContrasenaRequest
 import com.example.data.remote.SolicitarRecuperacionRequest
+import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganCharcoal
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -62,8 +65,25 @@ internal fun DialogoRecuperacionContrasena(
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
 
+    val fieldColors = OutlinedTextFieldDefaults.colors(
+        focusedTextColor = Color.Black,
+        unfocusedTextColor = Color.Black,
+        disabledTextColor = Color(0xFF5F5A56),
+        cursorColor = EleganBurgundy,
+        focusedBorderColor = EleganBurgundy,
+        unfocusedBorderColor = Color(0xFFDDD5CE),
+        focusedLabelColor = EleganBurgundy,
+        unfocusedLabelColor = Color(0xFF5F5A56),
+        focusedContainerColor = Color.White,
+        unfocusedContainerColor = Color.White,
+        disabledContainerColor = Color(0xFFF6F4F2)
+    )
+
     AlertDialog(
         onDismissRequest = { if (!loading) onDismiss() },
+        containerColor = Color.White,
+        titleContentColor = EleganCharcoal,
+        textContentColor = EleganCharcoal,
         title = { Text(if (codeSent) "Restablecer contraseña" else "Recuperar contraseña") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -78,7 +98,8 @@ internal fun DialogoRecuperacionContrasena(
                             .fillMaxWidth()
                             .testTag("password_recovery_email_input"),
                         label = { Text("Correo electrónico") },
-                        singleLine = true
+                        singleLine = true,
+                        colors = fieldColors
                     )
                 } else {
                     Text("Introduce el código de 6 dígitos que enviamos a tu correo y crea una contraseña nueva.")
@@ -91,7 +112,8 @@ internal fun DialogoRecuperacionContrasena(
                             .fillMaxWidth()
                             .testTag("password_recovery_code_input"),
                         label = { Text("Código de 6 dígitos") },
-                        singleLine = true
+                        singleLine = true,
+                        colors = fieldColors
                     )
                     OutlinedTextField(
                         value = newPassword,
@@ -103,7 +125,8 @@ internal fun DialogoRecuperacionContrasena(
                             .testTag("password_recovery_new_password_input"),
                         label = { Text("Nueva contraseña (mínimo 8 caracteres)") },
                         visualTransformation = PasswordVisualTransformation(),
-                        singleLine = true
+                        singleLine = true,
+                        colors = fieldColors
                     )
                 }
 
