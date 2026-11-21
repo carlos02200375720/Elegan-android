@@ -130,11 +130,16 @@ internal class ControladorCarritoYPedidos(
                 onResult(Result.success(id))
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
+                val errorExtras = mutableMapOf<String, Any>("payment_method" to paymentMethod)
+                if (e is com.example.data.repository.ErrorCrearPedidoApi) {
+                    errorExtras["http_status"] = e.statusCode
+                    errorExtras["backend_detail"] = e.backendDetail ?: "NO_DETAIL"
+                }
                 MonitorErrores.registrarError(
                     tag = "EleganCheckout",
                     mensaje = "Error al crear pedido manual.",
                     error = e,
-                    extras = mapOf("payment_method" to paymentMethod)
+                    extras = errorExtras
                 )
                 onResult(Result.failure(e))
             }
