@@ -159,7 +159,9 @@ internal fun EfectoFocoYControlesVideo(
             state.isPlaying = false
             state.showOverlayControls = true
             state.pausarSiEsPosible()
-            state.shouldLoadPlayer = false
+            if (autoPlay) {
+                state.shouldLoadPlayer = false
+            }
         }
         wasFocused = isFocused
     }

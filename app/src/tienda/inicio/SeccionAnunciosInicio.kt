@@ -3,6 +3,7 @@ package com.example.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -42,6 +45,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Precision
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementId
@@ -60,6 +65,27 @@ internal fun SeccionAnunciosInicio(
     modifier: Modifier = Modifier
 ) {
     if (announcements.isEmpty()) return
+
+    val context = LocalContext.current
+    val cardShape = remember { RoundedCornerShape(16.dp) }
+    val overlayShadow = remember {
+        Shadow(
+            color = Color.Black.copy(alpha = 0.6f),
+            offset = Offset(0f, 1.5f),
+            blurRadius = 5f
+        )
+    }
+    val fallbackBrush = remember {
+        Brush.verticalGradient(colors = listOf(EleganBurgundyDark, EleganCharcoal))
+    }
+    val scrimBrush = remember {
+        Brush.verticalGradient(
+            0f to Color.Transparent,
+            0.42f to Color.Transparent,
+            0.74f to Color.Black.copy(alpha = 0.44f),
+            1f to Color.Black.copy(alpha = 0.80f)
+        )
+    }
 
     Column(
         modifier = modifier
@@ -97,7 +123,8 @@ internal fun SeccionAnunciosInicio(
         LazyRow(
             modifier = Modifier.testTag("inicio_announcements_row"),
             contentPadding = PaddingValues(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            flingBehavior = ScrollableDefaults.flingBehavior()
         ) {
             itemsIndexed(
                 items = announcements,
@@ -107,12 +134,17 @@ internal fun SeccionAnunciosInicio(
                 val message = item.announcementMessage()
                 val imageUrl = item.announcementImageUrl()
                 val badge = item.announcementBadge().ifBlank { "COMUNICADO" }
-                val cardShape = RoundedCornerShape(16.dp)
-                val overlayShadow = Shadow(
-                    color = Color.Black.copy(alpha = 0.6f),
-                    offset = Offset(0f, 1.5f),
-                    blurRadius = 5f
-                )
+                val imageRequest = remember(imageUrl, context) {
+                    imageUrl.takeIf { it.isNotBlank() }?.let { url ->
+                        ImageRequest.Builder(context)
+                            .data(url)
+                            .size(720, 520)
+                            .precision(Precision.INEXACT)
+                            .allowRgb565(true)
+                            .crossfade(false)
+                            .build()
+                    }
+                }
 
                 Card(
                     modifier = Modifier
@@ -129,15 +161,11 @@ internal fun SeccionAnunciosInicio(
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(
-                                Brush.verticalGradient(
-                                    colors = listOf(EleganBurgundyDark, EleganCharcoal)
-                                )
-                            )
+                            .background(fallbackBrush)
                     ) {
-                        if (imageUrl.isNotBlank()) {
+                        if (imageRequest != null) {
                             AsyncImage(
-                                model = imageUrl,
+                                model = imageRequest,
                                 contentDescription = title.ifBlank { "Anuncio Elegan" },
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
@@ -149,14 +177,7 @@ internal fun SeccionAnunciosInicio(
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        0f to Color.Transparent,
-                                        0.42f to Color.Transparent,
-                                        0.74f to Color.Black.copy(alpha = 0.44f),
-                                        1f to Color.Black.copy(alpha = 0.80f)
-                                    )
-                                )
+                                .background(scrimBrush)
                         )
 
                         Surface(

@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -34,8 +35,11 @@ import com.example.ui.theme.EleganCharcoal
 fun CabeceraPublicacionProducto(
     productName: String,
     categoryLabel: String,
-    onProductClick: () -> Unit
+    onProductClick: () -> Unit,
+    brandLogoPainter: Painter? = null
 ) {
+    val resolvedLogoPainter = brandLogoPainter ?: painterResource(id = R.drawable.icono)
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -43,7 +47,7 @@ fun CabeceraPublicacionProducto(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Image(
-            painter = painterResource(id = R.drawable.icono),
+            painter = resolvedLogoPainter,
             contentDescription = "Logo Elegan",
             contentScale = ContentScale.Crop,
             modifier = Modifier

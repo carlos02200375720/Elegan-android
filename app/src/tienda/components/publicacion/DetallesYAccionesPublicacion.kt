@@ -32,7 +32,8 @@ fun DetallesYAccionesPublicacion(
     description: String,
     commentCount: Int,
     onCommentClick: () -> Unit,
-    onProductClick: () -> Unit
+    onProductClick: () -> Unit,
+    isCompact: Boolean? = null
 ) {
     Column(
         modifier = Modifier
@@ -66,62 +67,87 @@ fun DetallesYAccionesPublicacion(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-        ) {
-            val isCompactPost = maxWidth < 330.dp
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(if (isCompactPost) 6.dp else 8.dp)
+        if (isCompact != null) {
+            FilaBotonesAccionPublicacion(
+                productId = productId,
+                isCompactPost = isCompact,
+                onProductClick = onProductClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            )
+        } else {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
             ) {
-                Button(
-                    onClick = onProductClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = EleganBurgundy,
-                        contentColor = Color.White
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(
-                        horizontal = if (isCompactPost) 10.dp else 16.dp,
-                        vertical = 10.dp
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .testTag("post_buy_btn_$productId")
-                ) {
-                    Text(
-                        text = "Comprar Producto",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = if (isCompactPost) 12.sp else 13.sp,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                OutlinedButton(
-                    onClick = onProductClick,
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(
-                        horizontal = if (isCompactPost) 10.dp else 16.dp,
-                        vertical = 10.dp
-                    ),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = EleganBurgundy
-                    ),
-                    modifier = Modifier.testTag("post_details_btn_$productId")
-                ) {
-                    Text(
-                        text = "Ver Detalle",
-                        fontSize = if (isCompactPost) 12.sp else 13.sp,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                FilaBotonesAccionPublicacion(
+                    productId = productId,
+                    isCompactPost = maxWidth < 330.dp,
+                    onProductClick = onProductClick,
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun FilaBotonesAccionPublicacion(
+    productId: String,
+    isCompactPost: Boolean,
+    onProductClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(if (isCompactPost) 6.dp else 8.dp)
+    ) {
+        Button(
+            onClick = onProductClick,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = EleganBurgundy,
+                contentColor = Color.White
+            ),
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(
+                horizontal = if (isCompactPost) 10.dp else 16.dp,
+                vertical = 10.dp
+            ),
+            modifier = Modifier
+                .weight(1f)
+                .testTag("post_buy_btn_$productId")
+        ) {
+            Text(
+                text = "Comprar Producto",
+                fontWeight = FontWeight.Bold,
+                fontSize = if (isCompactPost) 12.sp else 13.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        OutlinedButton(
+            onClick = onProductClick,
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(
+                horizontal = if (isCompactPost) 10.dp else 16.dp,
+                vertical = 10.dp
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = EleganBurgundy
+            ),
+            modifier = Modifier.testTag("post_details_btn_$productId")
+        ) {
+            Text(
+                text = "Ver Detalle",
+                fontSize = if (isCompactPost) 12.sp else 13.sp,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

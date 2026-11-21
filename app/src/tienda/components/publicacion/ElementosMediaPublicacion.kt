@@ -21,7 +21,7 @@ internal fun ElementoMultimediaPublicacion(
     item: GalleryMediaItem?,
     page: Int,
     ratio: Float,
-    isVideoFocused: Boolean,
+    isVideoFocusedProvider: () -> Boolean,
     onProductClick: () -> Unit
 ) {
     when (item) {
@@ -30,7 +30,7 @@ internal fun ElementoMultimediaPublicacion(
             posterUrl = item.posterUrl,
             aspectRatio = ratio,
             autoPlay = false,
-            isFocused = isVideoFocused,
+            isFocused = isVideoFocusedProvider(),
             showControls = true,
             testTagPrefix = "inicio_video_${product.productId()}_$page",
             modifier = Modifier.fillMaxSize()

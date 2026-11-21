@@ -5,11 +5,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CategoryItem
@@ -43,7 +43,10 @@ fun ProductPublicationPost(
     onShareClick: () -> Unit,
     onProductClick: () -> Unit,
     modifier: Modifier = Modifier,
-    categories: List<CategoryItem> = emptyList()
+    categories: List<CategoryItem> = emptyList(),
+    isCompact: Boolean? = null,
+    brandLogoPainter: Painter? = null,
+    isFocusedProvider: (() -> Boolean)? = null
 ) {
     val productId = product.productId()
     val mediaFormat = product.productMediaFormat()
@@ -90,7 +93,7 @@ fun ProductPublicationPost(
             "Boutique Oficial"
         }
     }
-    val pagerState = rememberPagerState(pageCount = { mediaItems.size })
+    val resolvedFocusProvider = isFocusedProvider ?: { isFocused }
 
     Column(
         modifier = modifier
@@ -101,16 +104,16 @@ fun ProductPublicationPost(
         CabeceraPublicacionProducto(
             productName = productName,
             categoryLabel = categoryLabel,
-            onProductClick = onProductClick
+            onProductClick = onProductClick,
+            brandLogoPainter = brandLogoPainter
         )
 
         CarruselMultimediaPublicacion(
             product = product,
             mediaItems = mediaItems,
-            pagerState = pagerState,
             ratio = ratio,
             priceText = priceText,
-            isFocused = isFocused,
+            isFocusedProvider = resolvedFocusProvider,
             onProductClick = onProductClick
         )
 
@@ -133,7 +136,8 @@ fun ProductPublicationPost(
             description = productDescription,
             commentCount = commentCount,
             onCommentClick = onCommentClick,
-            onProductClick = onProductClick
+            onProductClick = onProductClick,
+            isCompact = isCompact
         )
 
         Spacer(

@@ -1,15 +1,19 @@
 package com.example.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyListPrefetchStrategy
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,9 +26,12 @@ import com.example.data.model.PublicationStats
 import com.example.data.model.UserProfile
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
+import com.example.data.model.productName
+import com.example.data.model.productPrice
 import com.example.data.model.productVideoUrl
+import com.example.ui.components.LocalEleganNotifier
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun InicioScreen(
     featuredProducts: List<ProductJson>,
@@ -54,29 +61,76 @@ fun InicioScreen(
     productsError: String? = null,
     onRefreshProducts: () -> Unit = {}
 ) {
-    val listState = rememberLazyListState()
+    val prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 3) }
+    val listState = rememberLazyListState(prefetchStrategy = prefetchStrategy)
     val context = LocalContext.current
+    val notifier = LocalEleganNotifier.current
     val videoProductIds = remember(featuredProducts) {
         featuredProducts.asSequence()
             .filter { it.productHasVideo() && it.productVideoUrl().isNotBlank() }
             .map { it.productId() }
             .toSet()
     }
-    var focusedProductId by remember { mutableStateOf<String?>(null) }
+    val focusedProductIdState = remember { mutableStateOf<String?>(null) }
     var localSavedProductIds by remember { mutableStateOf(setOf<String>()) }
     var activeCommentProduct by remember { mutableStateOf<ProductJson?>(null) }
+    var pendingShareProductId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingShareRequestId by rememberSaveable { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(onRecordShare, notifier) {
+        DespachadorCompartidoPublicacion.confirmaciones.collect { evento ->
+            if (evento.productId == pendingShareProductId && evento.requestId == pendingShareRequestId) {
+                pendingShareProductId = null
+                pendingShareRequestId = null
+                onRecordShare(evento.productId) { result ->
+                    if (result.isFailure) {
+                        notifier?.show("No se pudo registrar el compartido")
+                    }
+                }
+            }
+        }
+    }
 
     EfectoFocoVideoInicio(
         listState = listState,
         videoProductIds = videoProductIds,
-        onFocusedProductChange = { focusedProductId = it }
+        focusedProductIdState = focusedProductIdState
     )
     EfectoPrecargaImagenesInicio(
         listState = listState,
         featuredProducts = featuredProducts
     )
 
-    val displayName = resolverNombreSaludoInicio(context, userProfile)
+    val displayName = remember(context, userProfile) {
+        resolverNombreSaludoInicio(context, userProfile)
+    }
+    val onToggleLocalSave = remember {
+        { productId: String, willSave: Boolean ->
+            localSavedProductIds = if (willSave) {
+                localSavedProductIds + productId
+            } else {
+                localSavedProductIds - productId
+            }
+        }
+    }
+    val onOpenCommentsForProduct = remember(onOpenComments) {
+        { prod: ProductJson ->
+            activeCommentProduct = prod
+            onOpenComments(prod.productId())
+        }
+    }
+    val onShareProduct = remember(context) {
+        { prod: ProductJson ->
+            val productId = prod.productId()
+            pendingShareProductId = productId
+            pendingShareRequestId = lanzarSelectorCompartirPublicacion(
+                context = context,
+                productId = productId,
+                productName = prod.productName(),
+                productPrice = prod.productPrice()
+            )
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -99,24 +153,15 @@ fun InicioScreen(
             localSavedProductIds = localSavedProductIds,
             publicationStats = publicationStats,
             likedPublicationIds = likedPublicationIds,
-            focusedProductId = focusedProductId,
+            focusedProductIdState = focusedProductIdState,
             isLoadingProducts = isLoadingProducts,
             productsError = productsError,
             onRefreshProducts = onRefreshProducts,
             onToggleSaveProduct = onToggleSaveProduct,
-            onToggleLocalSave = { productId, willSave ->
-                localSavedProductIds = if (willSave) {
-                    localSavedProductIds + productId
-                } else {
-                    localSavedProductIds - productId
-                }
-            },
+            onToggleLocalSave = onToggleLocalSave,
             onToggleLike = onToggleLike,
-            onOpenCommentsForProduct = { prod ->
-                activeCommentProduct = prod
-                onOpenComments(prod.productId())
-            },
-            onRecordShare = onRecordShare,
+            onOpenCommentsForProduct = onOpenCommentsForProduct,
+            onShareProduct = onShareProduct,
             onNavigateToCatalogo = onNavigateToCatalogo,
             onAnnouncementClick = onAnnouncementClick,
             onNavigateToProduct = onNavigateToProduct,

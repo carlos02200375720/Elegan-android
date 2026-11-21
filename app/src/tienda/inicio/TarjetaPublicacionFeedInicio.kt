@@ -1,21 +1,14 @@
 package com.example.ui
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.painter.Painter
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
 import com.example.data.model.PublicationStats
-import com.example.data.model.productId
 import com.example.data.model.productCommentCount
-import com.example.data.model.productName
-import com.example.data.model.productPrice
+import com.example.data.model.productId
 import com.example.ui.components.LocalEleganNotifier
 
 @Composable
@@ -25,17 +18,18 @@ internal fun ElementoPublicacionFeedInicio(
     stats: PublicationStats?,
     isLiked: Boolean,
     isSaved: Boolean,
-    isFocused: Boolean,
+    isFocusedProvider: () -> Boolean,
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)?,
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
     onOpenComments: (ProductJson) -> Unit,
-    onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
+    onShareProduct: (ProductJson) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
+    isCompact: Boolean,
+    brandLogoPainter: Painter,
     modifier: Modifier = Modifier,
     categories: List<CategoryItem> = emptyList()
 ) {
-    val context = LocalContext.current
     val notifier = LocalEleganNotifier.current
 
     val currentLikes = stats?.likesCount?.toInt() ?: 0
@@ -47,22 +41,6 @@ internal fun ElementoPublicacionFeedInicio(
     val currentSaveCount = stats?.savesCount?.toInt() ?: 0
 
     val productId = product.productId()
-    val productName = product.productName()
-    val productPrice = product.productPrice()
-    var pendingShareRequestId by rememberSaveable(productId) { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(productId, onRecordShare, notifier) {
-        DespachadorCompartidoPublicacion.confirmaciones.collect { evento ->
-            if (evento.productId == productId && evento.requestId == pendingShareRequestId) {
-                pendingShareRequestId = null
-                onRecordShare(productId) { result ->
-                    if (result.isFailure) {
-                        notifier?.show("No se pudo registrar el compartido")
-                    }
-                }
-            }
-        }
-    }
 
     val onLikeAction = remember(productId, onToggleLike, notifier) {
         {
@@ -85,6 +63,7 @@ internal fun ElementoPublicacionFeedInicio(
         productId,
         isSaved,
         onToggleSaveProduct,
+        onToggleLocalSave,
         notifier
     ) {
         {
@@ -110,15 +89,8 @@ internal fun ElementoPublicacionFeedInicio(
             }
         }
     }
-    val onShareAction = remember(context, productId, productName, productPrice) {
-        {
-            pendingShareRequestId = lanzarSelectorCompartirPublicacion(
-                context = context,
-                productId = productId,
-                productName = productName,
-                productPrice = productPrice
-            )
-        }
+    val onShareAction = remember(product, onShareProduct) {
+        { onShareProduct(product) }
     }
     val onProductAction = remember(product, onNavigateToProduct) {
         { onNavigateToProduct(product) }
@@ -133,13 +105,15 @@ internal fun ElementoPublicacionFeedInicio(
         commentCount = currentCommentCount,
         shareCount = currentShareCount,
         saveCount = currentSaveCount,
-        isFocused = isFocused,
         onLikeClick = onLikeAction,
         onCommentClick = onCommentAction,
         onSaveClick = onSaveAction,
         onShareClick = onShareAction,
         onProductClick = onProductAction,
         modifier = modifier,
-        categories = categories
+        categories = categories,
+        isCompact = isCompact,
+        brandLogoPainter = brandLogoPainter,
+        isFocusedProvider = isFocusedProvider
     )
 }

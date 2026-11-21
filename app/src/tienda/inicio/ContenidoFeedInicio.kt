@@ -1,7 +1,8 @@
 package com.example.ui
 
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,13 +19,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.example.R
 import com.example.data.model.AnnouncementJson
 import com.example.data.model.CategoryItem
 import com.example.data.model.ProductJson
@@ -44,7 +48,7 @@ internal fun ContenidoFeedInicio(
     localSavedProductIds: Set<String>,
     publicationStats: Map<String, PublicationStats>,
     likedPublicationIds: Set<String>,
-    focusedProductId: String?,
+    focusedProductIdState: State<String?>,
     isLoadingProducts: Boolean = false,
     productsError: String? = null,
     onRefreshProducts: () -> Unit = {},
@@ -52,7 +56,7 @@ internal fun ContenidoFeedInicio(
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
     onOpenCommentsForProduct: (ProductJson) -> Unit,
-    onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
+    onShareProduct: (ProductJson) -> Unit,
     onNavigateToCatalogo: (String?) -> Unit,
     onAnnouncementClick: (AnnouncementJson) -> Unit,
     onNavigateToProduct: (ProductJson) -> Unit,
@@ -60,8 +64,14 @@ internal fun ContenidoFeedInicio(
     onNavigateToChats: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val brandLogoPainter = painterResource(id = R.drawable.icono)
+
     BoxWithConstraints(modifier = modifier) {
-        val isExpanded = maxWidth >= 600.dp
+        val containerWidth = maxWidth
+        val isExpanded = containerWidth >= 600.dp
+        val feedItemWidth = if (isExpanded) minOf(containerWidth, 620.dp) else containerWidth
+        val categoriesWidth = if (isExpanded) minOf(containerWidth, 840.dp) else containerWidth
+        val isCompactPost = (feedItemWidth - 28.dp) < 330.dp
         val feedItemModifier = if (isExpanded) {
             Modifier.fillMaxWidth().widthIn(max = 620.dp)
         } else {
@@ -79,29 +89,32 @@ internal fun ContenidoFeedInicio(
                 .fillMaxSize()
                 .testTag("inicio_screen"),
             horizontalAlignment = Alignment.CenterHorizontally,
-            contentPadding = PaddingValues(bottom = 32.dp)
+            contentPadding = PaddingValues(bottom = 32.dp),
+            flingBehavior = ScrollableDefaults.flingBehavior()
         ) {
-            item(key = "hero_banner") {
+            item(key = "hero_banner", contentType = "hero_banner") {
                 InicioHeroBanner(
                     onNavigateToCatalogo = onNavigateToCatalogo,
-                    onNavigateToMenu = onNavigateToMenu
+                    onNavigateToMenu = onNavigateToMenu,
+                    availableWidth = containerWidth
                 )
             }
 
             if (categories.isNotEmpty()) {
-                item(key = "categories_section") {
+                item(key = "categories_section", contentType = "categories_section") {
                     CategoryStoriesSection(
                         categories = categories,
                         onNavigateToCatalogo = onNavigateToCatalogo,
                         onNavigateToMenu = onNavigateToMenu,
                         products = featuredProducts,
-                        modifier = categoriesModifier
+                        modifier = categoriesModifier,
+                        availableWidth = categoriesWidth
                     )
                 }
             }
 
             if (announcements.isNotEmpty()) {
-                item(key = "announcements_section") {
+                item(key = "announcements_section", contentType = "announcements_section") {
                     SeccionAnunciosInicio(
                         announcements = announcements,
                         onAnnouncementClick = onAnnouncementClick,
@@ -110,12 +123,12 @@ internal fun ContenidoFeedInicio(
                 }
             }
 
-            item(key = "feed_spacer") {
-                Spacer(modifier = Modifier.height(if (maxWidth < 360.dp) 12.dp else 16.dp))
+            item(key = "feed_spacer", contentType = "feed_spacer") {
+                Spacer(modifier = Modifier.height(if (containerWidth < 360.dp) 12.dp else 16.dp))
             }
 
             if (featuredProducts.isEmpty() && (isLoadingProducts || !productsError.isNullOrBlank())) {
-                item(key = "feed_backend_status") {
+                item(key = "feed_backend_status", contentType = "feed_backend_status") {
                     Column(
                         modifier = feedItemModifier.padding(horizontal = 24.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -157,7 +170,7 @@ internal fun ContenidoFeedInicio(
 
             itemsIndexed(
                 items = featuredProducts,
-                key = { _, prod -> prod.productId() },
+                key = { index, prod -> prod.productId().ifBlank { "product_$index" } },
                 contentType = { _, _ -> "product_post" }
             ) { index, prod ->
                 val prodId = prod.productId()
@@ -167,7 +180,7 @@ internal fun ContenidoFeedInicio(
                 } else {
                     localSavedProductIds.contains(prodId)
                 }
-                val isPostFocused = prod.productHasVideo() && (focusedProductId == prodId)
+                val hasVideo = prod.productHasVideo()
 
                 ElementoPublicacionFeedInicio(
                     product = prod,
@@ -175,27 +188,33 @@ internal fun ContenidoFeedInicio(
                     stats = publicationStats[prodId],
                     isLiked = isLiked,
                     isSaved = isSaved,
-                    isFocused = isPostFocused,
+                    isFocusedProvider = { hasVideo && focusedProductIdState.value == prodId },
                     onToggleSaveProduct = onToggleSaveProduct,
                     onToggleLocalSave = onToggleLocalSave,
                     onToggleLike = onToggleLike,
                     onOpenComments = onOpenCommentsForProduct,
-                    onRecordShare = onRecordShare,
+                    onShareProduct = onShareProduct,
                     onNavigateToProduct = onNavigateToProduct,
+                    isCompact = isCompactPost,
+                    brandLogoPainter = brandLogoPainter,
                     modifier = feedItemModifier,
                     categories = categories
                 )
             }
 
-            item(key = "concierge_vip_card") {
+            item(key = "concierge_vip_card", contentType = "concierge_vip_card") {
                 ConciergeVipCard(
                     onNavigateToChats = onNavigateToChats,
-                    modifier = feedItemModifier
+                    modifier = feedItemModifier,
+                    availableWidth = feedItemWidth
                 )
             }
 
-            item(key = "value_props_section") {
-                InicioValuePropsSection(modifier = feedItemModifier)
+            item(key = "value_props_section", contentType = "value_props_section") {
+                InicioValuePropsSection(
+                    modifier = feedItemModifier,
+                    availableWidth = feedItemWidth
+                )
             }
         }
     }

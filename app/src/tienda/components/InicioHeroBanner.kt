@@ -31,6 +31,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,6 +43,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -54,56 +56,91 @@ import com.example.ui.theme.EleganGold
 fun InicioHeroBanner(
     onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToMenu: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    availableWidth: Dp? = null
 ) {
-    BoxWithConstraints(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        EleganBurgundyDark,
-                        EleganBurgundy,
-                        Color(0xFF380710)
-                    )
-                )
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        val isCompact = maxWidth < 350.dp
-        val isExpanded = maxWidth >= 600.dp
-        val minBannerHeight = when {
-            isExpanded -> 312.dp
-            isCompact -> 252.dp
-            maxWidth >= 420.dp -> 296.dp
-            else -> 280.dp
-        }
-        val horizontalPad = when {
-            isExpanded -> 28.dp
-            isCompact -> 16.dp
-            else -> 24.dp
-        }
-        val verticalPad = if (isCompact) 18.dp else 24.dp
-        val logoCircleSize = if (isCompact) 40.dp else 44.dp
-        val headlineFontSize = when {
-            isExpanded -> 31.sp
-            isCompact -> 23.sp
-            else -> 28.sp
-        }
-        val headlineLineHeight = when {
-            isExpanded -> 36.sp
-            isCompact -> 28.sp
-            else -> 32.sp
-        }
+    val backgroundBrush = remember {
+        Brush.verticalGradient(
+            colors = listOf(
+                EleganBurgundyDark,
+                EleganBurgundy,
+                Color(0xFF380710)
+            )
+        )
+    }
 
-        Column(
-            modifier = Modifier
+    if (availableWidth != null) {
+        Box(
+            modifier = modifier
                 .fillMaxWidth()
-                .widthIn(max = 760.dp)
-                .heightIn(min = minBannerHeight)
-                .padding(horizontal = horizontalPad, vertical = verticalPad),
-            verticalArrangement = Arrangement.SpaceBetween
+                .background(backgroundBrush),
+            contentAlignment = Alignment.Center
         ) {
+            InicioHeroBannerContent(
+                maxWidth = availableWidth,
+                onNavigateToCatalogo = onNavigateToCatalogo,
+                onNavigateToMenu = onNavigateToMenu
+            )
+        }
+    } else {
+        BoxWithConstraints(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(backgroundBrush),
+            contentAlignment = Alignment.Center
+        ) {
+            InicioHeroBannerContent(
+                maxWidth = maxWidth,
+                onNavigateToCatalogo = onNavigateToCatalogo,
+                onNavigateToMenu = onNavigateToMenu
+            )
+        }
+    }
+}
+
+@Composable
+private fun InicioHeroBannerContent(
+    maxWidth: Dp,
+    onNavigateToCatalogo: (String?) -> Unit,
+    onNavigateToMenu: () -> Unit
+) {
+    val isCompact = maxWidth < 350.dp
+    val isExpanded = maxWidth >= 600.dp
+    val minBannerHeight = when {
+        isExpanded -> 312.dp
+        isCompact -> 252.dp
+        maxWidth >= 420.dp -> 296.dp
+        else -> 280.dp
+    }
+    val horizontalPad = when {
+        isExpanded -> 28.dp
+        isCompact -> 16.dp
+        else -> 24.dp
+    }
+    val verticalPad = if (isCompact) 18.dp else 24.dp
+    val logoCircleSize = if (isCompact) 40.dp else 44.dp
+    val headlineFontSize = when {
+        isExpanded -> 31.sp
+        isCompact -> 23.sp
+        else -> 28.sp
+    }
+    val headlineLineHeight = when {
+        isExpanded -> 36.sp
+        isCompact -> 28.sp
+        else -> 32.sp
+    }
+    val outlinedBorderBrush = remember {
+        Brush.horizontalGradient(listOf(Color.White, EleganGold))
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .widthIn(max = 760.dp)
+            .heightIn(min = minBannerHeight)
+            .padding(horizontal = horizontalPad, vertical = verticalPad),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
             // Cabecera superior dentro del banner
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -251,7 +288,7 @@ fun InicioHeroBanner(
                             contentColor = Color.White
                         ),
                         border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                            brush = Brush.horizontalGradient(listOf(Color.White, EleganGold))
+                            brush = outlinedBorderBrush
                         )
                     ) {
                         Text(
@@ -266,4 +303,3 @@ fun InicioHeroBanner(
             }
         }
     }
-}

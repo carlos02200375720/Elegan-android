@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ui.theme.EleganBurgundy
@@ -43,70 +44,90 @@ import com.example.ui.theme.EleganGold
 @Composable
 fun ConciergeVipCard(
     onNavigateToChats: () -> Unit,
+    modifier: Modifier = Modifier,
+    availableWidth: Dp? = null
+) {
+    if (availableWidth != null) {
+        ConciergeVipCardContent(
+            isCompact = availableWidth < 350.dp,
+            onNavigateToChats = onNavigateToChats,
+            modifier = modifier.fillMaxWidth()
+        )
+    } else {
+        BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+            ConciergeVipCardContent(
+                isCompact = maxWidth < 350.dp,
+                onNavigateToChats = onNavigateToChats,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConciergeVipCardContent(
+    isCompact: Boolean,
+    onNavigateToChats: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val isCompact = maxWidth < 350.dp
-        val outerPad = if (isCompact) 14.dp else 20.dp
-        val innerPad = if (isCompact) 14.dp else 20.dp
-        val iconCircleSize = if (isCompact) 42.dp else 50.dp
+    val outerPad = if (isCompact) 14.dp else 20.dp
+    val innerPad = if (isCompact) 14.dp else 20.dp
+    val iconCircleSize = if (isCompact) 42.dp else 50.dp
 
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = outerPad, vertical = if (isCompact) 12.dp else 16.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .clickable { onNavigateToChats() }
-                .testTag("concierge_card_home"),
-            colors = CardDefaults.cardColors(
-                containerColor = Color(0xFF2A2E35)
-            )
+    Card(
+        modifier = modifier
+            .padding(horizontal = outerPad, vertical = if (isCompact) 12.dp else 16.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onNavigateToChats() }
+            .testTag("concierge_card_home"),
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFF2A2E35)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(innerPad),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.padding(innerPad),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(iconCircleSize)
+                    .clip(CircleShape)
+                    .background(EleganGold.copy(alpha = 0.2f)),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(iconCircleSize)
-                        .clip(CircleShape)
-                        .background(EleganGold.copy(alpha = 0.2f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SupportAgent,
-                        contentDescription = null,
-                        tint = EleganGold,
-                        modifier = Modifier.size(if (isCompact) 24.dp else 28.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(if (isCompact) 12.dp else 16.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Elegan Concierge VIP",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontSize = if (isCompact) 15.sp else 16.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = "¿Dudas con tu talla o estilo? Chatea en directo con un asesor personal.",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontSize = if (isCompact) 11.sp else 12.sp,
-                            color = Color(0xFFCCCCCC)
-                        )
-                    )
-                }
-                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                    imageVector = Icons.Default.SupportAgent,
                     contentDescription = null,
-                    tint = EleganGold
+                    tint = EleganGold,
+                    modifier = Modifier.size(if (isCompact) 24.dp else 28.dp)
                 )
             }
+            Spacer(modifier = Modifier.width(if (isCompact) 12.dp else 16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Elegan Concierge VIP",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = if (isCompact) 15.sp else 16.sp,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "¿Dudas con tu talla o estilo? Chatea en directo con un asesor personal.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = if (isCompact) 11.sp else 12.sp,
+                        color = Color(0xFFCCCCCC)
+                    )
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = null,
+                tint = EleganGold
+            )
         }
     }
 }
@@ -161,31 +182,48 @@ fun ValuePropRow(
 
 @Composable
 fun InicioValuePropsSection(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    availableWidth: Dp? = null
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val horizontalPad = if (maxWidth < 350.dp) 14.dp else 20.dp
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = horizontalPad, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            ValuePropRow(
-                icon = Icons.Default.LocalShipping,
-                title = "Envío Express de Cortesía",
-                desc = "Gratuito en pedidos superiores a $100 con seguro incluido."
-            )
-            ValuePropRow(
-                icon = Icons.Default.Diamond,
-                title = "Garantía Sartorial 100%",
-                desc = "Materiales nobles y confección de primera categoría."
-            )
-            ValuePropRow(
-                icon = Icons.Default.CheckCircle,
-                title = "Cambios & Devoluciones Sin Coste",
-                desc = "30 días para probar tus prendas con recogida a domicilio."
+    if (availableWidth != null) {
+        InicioValuePropsContent(
+            horizontalPad = if (availableWidth < 350.dp) 14.dp else 20.dp,
+            modifier = modifier.fillMaxWidth()
+        )
+    } else {
+        BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+            InicioValuePropsContent(
+                horizontalPad = if (maxWidth < 350.dp) 14.dp else 20.dp,
+                modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+}
+
+@Composable
+private fun InicioValuePropsContent(
+    horizontalPad: Dp,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .padding(horizontal = horizontalPad, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        ValuePropRow(
+            icon = Icons.Default.LocalShipping,
+            title = "Envío Express de Cortesía",
+            desc = "Gratuito en pedidos superiores a $100 con seguro incluido."
+        )
+        ValuePropRow(
+            icon = Icons.Default.Diamond,
+            title = "Garantía Sartorial 100%",
+            desc = "Materiales nobles y confección de primera categoría."
+        )
+        ValuePropRow(
+            icon = Icons.Default.CheckCircle,
+            title = "Cambios & Devoluciones Sin Coste",
+            desc = "30 días para probar tus prendas con recogida a domicilio."
+        )
     }
 }

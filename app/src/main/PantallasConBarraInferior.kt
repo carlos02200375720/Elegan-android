@@ -11,6 +11,7 @@ import androidx.compose.material3.ScaffoldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -48,6 +49,9 @@ internal fun PantallasConBarraInferior(
     val isLoadingProducts by viewModel.isLoadingProducts.collectAsStateWithLifecycle()
     val productsError by viewModel.productsError.collectAsStateWithLifecycle()
 
+    val inStockProducts = remember(products) { products.filter { it.productInStock() } }
+    val totalCartCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
+
     LaunchedEffect(screen) {
         if (screen == Screen.PERFIL) {
             viewModel.refreshOrders()
@@ -63,7 +67,7 @@ internal fun PantallasConBarraInferior(
         bottomBar = {
             EleganBottomBar(
                 currentScreen = screen,
-                cartItemCount = cartItems.sumOf { it.quantity },
+                cartItemCount = totalCartCount,
                 onNavigateToInicio = { onNavigateTo(Screen.INICIO) },
                 onNavigateToCatalogo = {
                     viewModel.setCategory(null)
@@ -85,11 +89,11 @@ internal fun PantallasConBarraInferior(
             when (screen) {
                 Screen.INICIO -> {
                     InicioScreen(
-                        featuredProducts = products.filter { it.productInStock() },
+                        featuredProducts = inStockProducts,
                         categories = categories,
                         announcements = announcements,
                         userProfile = userProfile,
-                        cartItemCount = cartItems.sumOf { it.quantity },
+                        cartItemCount = totalCartCount,
                         savedProductIds = savedProductIds,
                         publicationStats = publicationStats,
                         likedPublicationIds = likedPublicationIds,
@@ -167,7 +171,7 @@ internal fun PantallasConBarraInferior(
                 Screen.CATALOGO -> {
                     BackHandler { onNavigateTo(Screen.INICIO) }
                     CatalogoScreen(
-                        products = products.filter { it.productInStock() },
+                        products = inStockProducts,
                         categories = categories,
                         selectedCategory = selectedCategory,
                         onCategoryChange = { viewModel.setCategory(it) },
@@ -183,7 +187,7 @@ internal fun PantallasConBarraInferior(
                                 viewModel.addToCart(prod, defaultSize, 1L, defaultColor)
                             }
                         },
-                        cartItemCount = cartItems.sumOf { it.quantity },
+                        cartItemCount = totalCartCount,
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         savedProductIds = savedProductIds,
                         isAuthenticated = isAuthenticated,
@@ -208,7 +212,7 @@ internal fun PantallasConBarraInferior(
                         userProfile = userProfile,
                         orders = orders,
                         savedProducts = savedProducts,
-                        cartItemCount = cartItems.sumOf { it.quantity },
+                        cartItemCount = totalCartCount,
                         isAuthenticated = isAuthenticated,
                         onRequireAuth = onRequireAuth,
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },

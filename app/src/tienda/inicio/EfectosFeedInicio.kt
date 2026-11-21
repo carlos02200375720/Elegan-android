@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
@@ -23,22 +24,20 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 internal fun EfectoFocoVideoInicio(
     listState: LazyListState,
     videoProductIds: Set<String>,
-    onFocusedProductChange: (String?) -> Unit
+    focusedProductIdState: MutableState<String?>
 ) {
-    // Activa el foco de video únicamente cuando el usuario detiene el scroll para evitar bloqueos por tarjeta.
-    LaunchedEffect(listState, videoProductIds) {
+    // Actualiza el foco de video solo cuando el scroll se detiene para no interrumpir la fluidez del desplazamiento.
+    LaunchedEffect(listState, videoProductIds, focusedProductIdState) {
         if (videoProductIds.isEmpty()) {
-            onFocusedProductChange(null)
+            focusedProductIdState.value = null
             return@LaunchedEffect
         }
         snapshotFlow { listState.isScrollInProgress }
             .distinctUntilChanged()
             .collectLatest { scrolling ->
-                if (scrolling) {
-                    onFocusedProductChange(null)
-                } else {
+                if (!scrolling) {
                     delay(220L)
-                    onFocusedProductChange(calcularProductoVideoEnFoco(listState, videoProductIds))
+                    focusedProductIdState.value = calcularProductoVideoEnFoco(listState, videoProductIds)
                 }
             }
     }
@@ -86,24 +85,30 @@ internal fun EfectoPrecargaImagenesInicio(
     listState: LazyListState,
     featuredProducts: List<ProductJson>
 ) {
-    // Precarga las portadas de las próximas tarjetas antes de que entren en pantalla.
+    // Precarga las portadas de las próximas tarjetas sin observar cambios píxel a píxel del layoutInfo.
     val context = LocalContext.current
     val imageLoader = remember(context) { context.imageLoader }
-    LaunchedEffect(listState, featuredProducts, imageLoader) {
-        if (featuredProducts.isEmpty()) return@LaunchedEffect
-        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0 }
+    val coverUrls = remember(featuredProducts) {
+        featuredProducts.map { p ->
+            p.productImageUrl().takeIf {
+                it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
+            } ?: p.productImages().firstOrNull {
+                it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
+            }
+        }
+    }
+    val prefetchedUrls = remember(coverUrls) { HashSet<String>(coverUrls.size) }
+
+    LaunchedEffect(listState, coverUrls, imageLoader) {
+        if (coverUrls.isEmpty()) return@LaunchedEffect
+        snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
-            .collectLatest { lastVisibleIndex ->
-                val startProductIndex = (lastVisibleIndex - 3 + 1).coerceAtLeast(0)
-                val endProductIndex = (startProductIndex + 4).coerceAtMost(featuredProducts.size)
+            .collectLatest { firstVisibleIndex ->
+                val startProductIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
+                val endProductIndex = (startProductIndex + 4).coerceAtMost(coverUrls.size)
                 for (i in startProductIndex until endProductIndex) {
-                    val p = featuredProducts[i]
-                    val coverUrl = p.productImageUrl().takeIf {
-                        it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
-                    } ?: p.productImages().firstOrNull {
-                        it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
-                    }
-                    if (!coverUrl.isNullOrBlank()) {
+                    val coverUrl = coverUrls[i]
+                    if (!coverUrl.isNullOrBlank() && prefetchedUrls.add(coverUrl)) {
                         val request = ImageRequest.Builder(context)
                             .data(coverUrl)
                             .size(900, 900)
