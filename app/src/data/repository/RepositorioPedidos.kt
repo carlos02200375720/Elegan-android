@@ -11,6 +11,8 @@ import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlinx.coroutines.CancellationException
+import org.json.JSONObject
+import retrofit2.HttpException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -117,7 +119,15 @@ internal class RepositorioPedidos(
             "phone" to phone.trim(), "address" to address.trim(), "city" to city.trim(),
             "couponCode" to couponCode.trim().uppercase()
         )
-        val response = apiProvider().createPaymentOrder("Bearer $token", payload)
+        val response = try {
+            apiProvider().createPaymentOrder("Bearer $token", payload)
+        } catch (e: HttpException) {
+            val body = runCatching { e.response()?.errorBody()?.string() }.getOrNull()
+            val detail = runCatching {
+                body?.let { JSONObject(it).optString("detail").takeIf(String::isNotBlank) }
+            }.getOrNull() ?: body?.takeIf { it.isNotBlank() }
+            throw ErrorCrearPedidoApi(e.code(), detail, e)
+        }
         val order = response["order"] as? Map<*, *> ?: response
         val id = (order["id"] as? String) ?: (response["id"] as? String)
             ?: throw IllegalStateException("El servidor no devolvió el número de pedido.")
@@ -216,3 +226,24 @@ private fun firstOrderString(map: Map<*, *>, vararg keys: String): String {
     }
     return ""
 }
+
+
+internal class ErrorCrearPedidoApi(
+    val statusCode: Int,
+    val backendDetail: String?,
+    cause: Throwable
+) : IllegalStateException(
+    when (backendDetail) {
+        "CART_EMPTY" ->
+            "Tu carrito está vacío en el servidor. Vuelve al carrito, actualízalo y vuelve a intentar."
+        "DELIVERY_FIELDS_REQUIRED" ->
+            "Faltan datos de entrega. Revisa tu nombre, teléfono, dirección y ciudad."
+        "INVALID_PAYMENT_METHOD" ->
+            "El método de pago no es válido. Actualiza la aplicación e inténtalo otra vez."
+        "BANK_ACCOUNT_UNAVAILABLE" ->
+            "La cuenta bancaria seleccionada ya no está disponible. Recarga las cuentas bancarias."
+        else ->
+            "El servidor rechazó el pedido (HTTP $statusCode: ${backendDetail ?: "sin detalle"})."
+    },
+    cause
+)
