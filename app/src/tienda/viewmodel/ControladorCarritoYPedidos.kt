@@ -130,7 +130,7 @@ internal class ControladorCarritoYPedidos(
                 onResult(Result.success(id))
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) {
-                val errorExtras = mutableMapOf<String, Any>("payment_method" to paymentMethod)
+                val errorExtras = mutableMapOf<String, String>("payment_method" to paymentMethod)
                 if (e is com.example.data.repository.ErrorCrearPedidoApi) {
                     errorExtras["http_status"] = e.statusCode
                     errorExtras["backend_detail"] = e.backendDetail ?: "NO_DETAIL"
