@@ -140,7 +140,7 @@ internal class ControladorCarritoYPedidos(
                 val snapshot = cartItems.value.filter { it.id in selectedIds }
                 val id = repository.createPaymentOrder(
                     paymentMethod, bankAccountId, cashOnDeliveryAccepted,
-                    customerName, email, phone, address, city, selectedCouponCode, selectedIds
+                    customerName, email, phone, address, city, selectedCouponCode, selectedIds.toList()
                 )
                 selectedCouponCode = ""
                 val label = if (paymentMethod == "bank_transfer") "Transferencia bancaria" else "Pago contra entrega"
