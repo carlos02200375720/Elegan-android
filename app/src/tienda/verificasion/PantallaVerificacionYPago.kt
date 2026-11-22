@@ -52,6 +52,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun VerificasionScreen(
     cartItems: List<CartItem>, subtotal: Double, discount: Double, shipping: Double, total: Double,
+    cashOnDeliveryEnabled: Boolean = false, cashOnDeliveryMessage: String = "",
     userProfile: UserProfile?, bankAccounts: List<BankAccountInfo> = emptyList(),
     isSubmittingPayment: Boolean = false, paymentError: String? = null,
     onDismissPaymentError: () -> Unit = {},
@@ -67,6 +68,14 @@ fun VerificasionScreen(
 ) {
     val context = LocalContext.current
     val estado = rememberEstadoFormularioVerificacion(userProfile, restoredTransferLock)
+    LaunchedEffect(cashOnDeliveryEnabled) {
+        if (!cashOnDeliveryEnabled) {
+            estado.showCashOnDeliveryPage = false
+            if (estado.selectedPayment == OPCION_PAGO_CONTRA_ENTREGA) {
+                estado.selectedPayment = OPCION_PAGO_TRANSFERENCIA
+            }
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var paymentProofFilePath by remember { mutableStateOf(restoredTransferLock?.paymentProofFilePath) }
@@ -287,6 +296,7 @@ fun VerificasionScreen(
             )
                 PasoVerificacion.CONTRA_ENTREGA -> ContraEntregaScreen(
                 total = total,
+                message = cashOnDeliveryMessage,
                 customerName = estado.customerName,
                 phone = estado.phone,
                 address = estado.address,
@@ -313,8 +323,10 @@ fun VerificasionScreen(
                             dismissPaymentError()
                             if (estado.selectedPayment == OPCION_PAGO_TRANSFERENCIA) {
                                 abrirPantallaTransferencia(resetDraft = true)
-                            } else {
+                            } else if (cashOnDeliveryEnabled) {
                                 estado.showCashOnDeliveryPage = true
+                            } else {
+                                scope.launch { snackbarHostState.showSnackbar("El pago contra entrega no está disponible para los productos seleccionados.") }
                             }
                         }
                     })
@@ -335,7 +347,7 @@ fun VerificasionScreen(
                         item { HorizontalDivider(color = Color(0xFFF0EAE4)) }
                         item {
                             SeccionMetodoPago(
-                                paymentOptions = estado.paymentOptions,
+                                paymentOptions = estado.paymentOptions.filter { it != OPCION_PAGO_CONTRA_ENTREGA || cashOnDeliveryEnabled },
                                 selectedPayment = estado.selectedPayment,
                                 onSelectOption = { estado.selectedPayment = it },
                                 onOpenSelectedAction = { selected ->
