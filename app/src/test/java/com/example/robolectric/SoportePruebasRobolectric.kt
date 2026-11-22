@@ -86,6 +86,7 @@ internal open class BaseFakeEleganAuthApi : EleganAuthApi {
     override suspend fun deleteAccount(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun products(): Map<String, Any?> = emptyMap()
     override suspend fun productById(productId: String): Map<String, Any?> = emptyMap()
+    override suspend fun recommendedProducts(productId: String, limit: Int): Map<String, Any?> = emptyMap()
     override suspend fun categories(): Map<String, Any?> = emptyMap()
     override suspend fun announcements(): Map<String, Any?> = emptyMap()
     override suspend fun getCart(authorization: String): Map<String, Any?> = emptyMap()
