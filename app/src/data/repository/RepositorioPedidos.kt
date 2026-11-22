@@ -111,7 +111,7 @@ internal class RepositorioPedidos(
     suspend fun createPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
         customerName: String, email: String, phone: String, address: String, city: String,
-        couponCode: String
+        couponCode: String, selectedCartItemIds: List<String>
     ): String = withContext(Dispatchers.IO) {
         val token = activeBackendToken() ?: throw IllegalStateException("Debes iniciar sesión para realizar tu pedido.")
         val payload = mapOf(
