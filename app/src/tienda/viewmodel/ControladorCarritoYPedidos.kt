@@ -58,9 +58,9 @@ internal class ControladorCarritoYPedidos(
     fun setCouponCode(code: String) { selectedCouponCode = code.trim().uppercase() }
     fun currentCouponCode(): String = selectedCouponCode
 
-    fun validateCoupon(code: String, onResult: (Result<Map<String, Any?>>) -> Unit) {
+    fun validateCoupon(code: String, selectedIds: List<String>, onResult: (Result<Map<String, Any?>>) -> Unit) {
         scope.launch {
-            try { onResult(Result.success(repository.validateCoupon(code))) }
+            try { onResult(Result.success(repository.validateCoupon(code, selectedIds))) }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) { onResult(Result.failure(e)) }
         }
