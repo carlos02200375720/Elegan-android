@@ -111,6 +111,7 @@ internal open class BaseFakeEleganAuthApi : EleganAuthApi {
     override suspend fun updateProfile(authorization: String, request: PerfilActualizarRequest): PerfilActualizadoRespuesta = throw UnsupportedOperationException()
     override suspend fun getOrders(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun validateCoupon(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
+    override suspend fun getCashOnDeliveryConfig(): Map<String, Any?> = mapOf("enabled" to true, "message" to "")
     override suspend fun getBankAccounts(authorization: String): Map<String, Any?> = emptyMap()
     override suspend fun createPaymentOrder(authorization: String, request: Map<String, Any?>): Map<String, Any?> = emptyMap()
     override suspend fun uploadPaymentProof(authorization: String, orderId: String, file: MultipartBody.Part): Map<String, Any?> = emptyMap()
