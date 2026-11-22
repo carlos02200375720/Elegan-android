@@ -52,6 +52,9 @@ class EleganRepository(context: Context) {
 
     suspend fun getProductById(productId: String): ProductJson? = catalogoRepo.getProductById(productId)
 
+    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<ProductJson> =
+        catalogoRepo.getRecommendedProducts(productId, limit)
+
     fun observeAnnouncements(): Flow<List<AnnouncementJson>> = anunciosRepo.observeAnnouncements()
 
     suspend fun refreshAnnouncements(): List<AnnouncementJson> = anunciosRepo.refreshAnnouncements()
