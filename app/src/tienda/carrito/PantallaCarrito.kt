@@ -56,7 +56,7 @@ fun CarritoScreen(
     onRetrySync: () -> Unit = {},
     onUpdateQuantity: (String, Long) -> Unit,
     onRemoveItem: (String) -> Unit,
-    onValidateCoupon: (String, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
+    onValidateCoupon: (String, List<String>, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
     onCouponCodeApplied: (String) -> Unit = {},
     onNavigateToVerificasion: (Double, Double, Double, Double, List<String>) -> Unit,
     onExploreCatalog: () -> Unit,
@@ -256,7 +256,7 @@ fun CarritoScreen(
                                         scope.launch { snackbarHostState.showSnackbar("Escribe un código de cupón.") }
                                     } else {
                                         isApplyingCoupon = true
-                                        onValidateCoupon(couponCode) { result ->
+                                        onValidateCoupon(couponCode, selectedCartItems.map { it.id }) { result ->
                                             isApplyingCoupon = false
                                             result.onSuccess { response ->
                                                 val amount = (response["discountAmountDOP"] as? Number)?.toDouble()
