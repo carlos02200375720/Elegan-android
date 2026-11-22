@@ -23,6 +23,8 @@ internal class ControladorCarritoYPedidos(
     private val scope: CoroutineScope
 ) {
     private var selectedCouponCode = ""
+    private var selectedCartItemIds: Set<String> = emptySet()
+    fun setSelectedCartItemIds(ids: List<String>) { selectedCartItemIds = ids.toSet() }
     private val _lastCreatedOrderId = MutableStateFlow<String?>(null)
     val lastCreatedOrderId: StateFlow<String?> = _lastCreatedOrderId.asStateFlow()
     private val _lastOrderPaymentMethod = MutableStateFlow("")
@@ -121,7 +123,8 @@ internal class ControladorCarritoYPedidos(
     ) {
         scope.launch {
             try {
-                val snapshot = cartItems.value.toList()
+                val selectedIds = selectedCartItemIds.ifEmpty { cartItems.value.map { it.id }.toSet() }
+                val snapshot = cartItems.value.filter { it.id in selectedIds }
                 val id = repository.createPaymentOrder(
                     paymentMethod, bankAccountId, cashOnDeliveryAccepted,
                     customerName, email, phone, address, city, selectedCouponCode
