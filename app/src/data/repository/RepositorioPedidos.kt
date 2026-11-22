@@ -85,6 +85,10 @@ internal class RepositorioPedidos(
         }
     }
 
+    suspend fun getCashOnDeliveryConfig(): Map<String, Any?> = withContext(Dispatchers.IO) {
+        apiProvider().getCashOnDeliveryConfig()
+    }
+
     suspend fun getBankAccounts(): List<BankAccountInfo> = withContext(Dispatchers.IO) {
         val token = activeBackendToken() ?: throw IllegalStateException("Debes iniciar sesión.")
         val response = apiProvider().getBankAccounts("Bearer $token")
