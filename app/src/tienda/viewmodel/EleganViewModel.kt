@@ -105,6 +105,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setCouponCode(code: String) = pedidosCtrl.setCouponCode(code)
 
+    fun setSelectedCartItemIds(ids: List<String>) = pedidosCtrl.setSelectedCartItemIds(ids)
+
     fun currentCouponCode(): String = pedidosCtrl.currentCouponCode()
 
     fun validateCoupon(
