@@ -18,6 +18,7 @@ import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 internal data class RegistroRequest(
     val email: String,
@@ -106,6 +107,12 @@ internal interface EleganAuthApi {
 
     @GET("api/movil/products/{product_id}")
     suspend fun productById(@Path("product_id") productId: String): Map<String, Any?>
+
+    @GET("api/movil/products/{product_id}/recommended")
+    suspend fun recommendedProducts(
+        @Path("product_id") productId: String,
+        @Query("limit") limit: Int = 12
+    ): Map<String, Any?>
 
     @GET("api/movil/categories")
     suspend fun categories(): Map<String, Any?>
