@@ -52,6 +52,9 @@ internal fun PantallasSecundariasNavegacion(
     val recommendedProducts by viewModel.recommendedProducts.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
+    val selectedCartItemIds by viewModel.selectedCartItemIds.collectAsStateWithLifecycle()
+    val cashOnDeliveryConfig by viewModel.cashOnDeliveryConfig.collectAsStateWithLifecycle()
+    val checkoutCartItems = cartItems.filter { it.id in selectedCartItemIds }
     val cartError by viewModel.cartError.collectAsStateWithLifecycle()
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
@@ -72,7 +75,7 @@ internal fun PantallasSecundariasNavegacion(
             Screen.CATEGORIA -> viewModel.loadCategoriesOnce()
             Screen.CARRITO -> viewModel.refreshCart()
             Screen.CHATS -> viewModel.refreshMessages()
-            Screen.VERIFICASION -> paymentError = null
+            Screen.VERIFICASION -> { paymentError = null; viewModel.loadCashOnDeliveryConfig() }
             else -> {}
         }
     }
@@ -199,7 +202,9 @@ internal fun PantallasSecundariasNavegacion(
 
             Screen.VERIFICASION -> {
                 VerificasionScreen(
-                    cartItems = cartItems,
+                    cartItems = checkoutCartItems,
+                    cashOnDeliveryEnabled = cashOnDeliveryConfig["enabled"] as? Boolean == true && checkoutCartItems.isNotEmpty() && checkoutCartItems.all { it.allowCashOnDelivery },
+                    cashOnDeliveryMessage = cashOnDeliveryConfig["message"]?.toString().orEmpty(),
                     subtotal = checkoutSubtotal,
                     discount = checkoutDiscount,
                     shipping = checkoutShipping,
