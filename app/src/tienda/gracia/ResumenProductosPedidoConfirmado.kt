@@ -150,7 +150,8 @@ fun TarjetaComprobantePagoConfirmado(paymentProofUri: String) {
                     .clip(RoundedCornerShape(10.dp))
                     .background(Color.White)
                     .border(1.dp, Color(0xFFEDE6DF), RoundedCornerShape(10.dp))
-                    .clickable { showFullScreenProof = true },
+                    .clickable { showFullScreenProof = true }
+                    .testTag("gracia_payment_proof_image"),
                 contentAlignment = Alignment.Center
             ) {
                 AsyncImage(
@@ -160,7 +161,6 @@ fun TarjetaComprobantePagoConfirmado(paymentProofUri: String) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(min = 160.dp, max = 240.dp)
-                        .testTag("gracia_payment_proof_image")
                 )
             }
 
