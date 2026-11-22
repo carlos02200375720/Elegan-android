@@ -311,6 +311,7 @@ data class CartItem(
     val shippingPrice: Double = 0.0,
     val shippingDeliveryTime: String = "",
     val shippingOrigin: String = "",
+    val allowCashOnDelivery: Boolean = true,
     val quantity: Long = 1L,
     val createdAt: String? = null,
     val updatedAt: String? = null
