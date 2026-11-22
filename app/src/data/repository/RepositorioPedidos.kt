@@ -64,13 +64,13 @@ internal class RepositorioPedidos(
         }
     }
 
-    suspend fun validateCoupon(code: String): Map<String, Any?> = withContext(Dispatchers.IO) {
+    suspend fun validateCoupon(code: String, selectedCartItemIds: List<String>): Map<String, Any?> = withContext(Dispatchers.IO) {
         val token = activeBackendToken()
             ?: throw IllegalStateException("Debes iniciar sesión para validar un cupón.")
         try {
             apiProvider().validateCoupon(
                 authorization = "Bearer $token",
-                request = mapOf("code" to code.trim().uppercase())
+                request = mapOf("code" to code.trim().uppercase(), "selectedCartItemIds" to selectedCartItemIds)
             )
         } catch (e: retrofit2.HttpException) {
             val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
