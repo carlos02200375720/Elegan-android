@@ -32,6 +32,7 @@ fun ContraEntregaScreen(
     address: String,
     city: String,
     itemCount: Long,
+    message: String = "",
     isSubmitting: Boolean,
     onBack: () -> Unit,
     onConfirmOrder: () -> Unit
@@ -89,7 +90,7 @@ fun ContraEntregaScreen(
             ) {
                 TarjetaExplicacionContraEntrega(cardPad = cardPad)
                 TarjetaPasosContraEntrega(amountFormatted = amountFormatted)
-                TarjetaAvisoCompromisoContraEntrega()
+                TarjetaAvisoCompromisoContraEntrega(message = message)
                 TarjetaDatosEntregaContraEntrega(
                     customerName = customerName,
                     phone = phone,
