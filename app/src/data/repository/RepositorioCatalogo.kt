@@ -52,6 +52,13 @@ internal class RepositorioCatalogo {
         items
     }
 
+    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<ProductJson> =
+        withContext(Dispatchers.IO) {
+            if (productId.isBlank()) return@withContext emptyList()
+            val response = ApiAutenticacionMovil.service.recommendedProducts(productId, limit)
+            extractJsonItems(response)
+        }
+
     suspend fun getProductById(productId: String): ProductJson? = withContext(Dispatchers.IO) {
         if (productId.isBlank()) return@withContext null
         try {
