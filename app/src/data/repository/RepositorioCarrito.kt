@@ -159,6 +159,7 @@ internal class RepositorioCarrito(
                                 shippingPrice = selectedShipping?.price ?: 0.0,
                                 shippingDeliveryTime = selectedShipping?.deliveryTime.orEmpty(),
                                 shippingOrigin = selectedShipping?.origin.orEmpty(),
+                                allowCashOnDelivery = product["allowCashOnDelivery"] as? Boolean ?: true,
                                 quantity = quantity
                             )
                         )
@@ -402,6 +403,7 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
                 ?: ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? String)?.toDoubleOrNull() ?: 0.0,
             shippingDeliveryTime = firstString(map, "shippingDeliveryTime"),
             shippingOrigin = firstString(map, "shippingOrigin"),
+            allowCashOnDelivery = map["allowCashOnDelivery"] as? Boolean ?: true,
             quantity = quantity,
             createdAt = firstString(map, "createdAt", "created_at").ifBlank { null },
             updatedAt = firstString(map, "updatedAt", "updated_at").ifBlank { null }
