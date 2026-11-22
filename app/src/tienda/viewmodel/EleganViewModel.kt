@@ -34,6 +34,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     val selectedCategory: StateFlow<String?> = catalogoCtrl.selectedCategory
     val selectedProduct: StateFlow<ProductJson?> = catalogoCtrl.selectedProduct
+    val recommendedProducts: StateFlow<List<ProductJson>> = catalogoCtrl.recommendedProducts
     val searchQuery: StateFlow<String> = catalogoCtrl.searchQuery
     val products: StateFlow<List<ProductJson>> = catalogoCtrl.products
     val announcements: StateFlow<List<AnnouncementJson>> = catalogoCtrl.announcements
@@ -118,6 +119,9 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun setSearchQuery(query: String) = catalogoCtrl.setSearchQuery(query)
 
     fun selectProduct(product: ProductJson) = catalogoCtrl.selectProduct(product)
+
+    fun loadRecommendedProducts(productId: String) =
+        catalogoCtrl.loadRecommendedProducts(productId)
 
     fun selectProductById(
         productId: String,
