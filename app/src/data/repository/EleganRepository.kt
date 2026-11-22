@@ -142,10 +142,10 @@ class EleganRepository(context: Context) {
     suspend fun createPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
         customerName: String, email: String, phone: String, address: String, city: String,
-        couponCode: String
+        couponCode: String, selectedCartItemIds: List<String>
     ): String = pedidosRepo.createPaymentOrder(
         paymentMethod, bankAccountId, cashOnDeliveryAccepted,
-        customerName, email, phone, address, city, couponCode
+        customerName, email, phone, address, city, couponCode, selectedCartItemIds
     )
 
     suspend fun uploadPaymentProof(orderId: String, mediaUri: Uri): String =
