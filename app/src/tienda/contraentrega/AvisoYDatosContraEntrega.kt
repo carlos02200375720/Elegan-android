@@ -31,7 +31,7 @@ import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
 
 @Composable
-fun TarjetaAvisoCompromisoContraEntrega() {
+fun TarjetaAvisoCompromisoContraEntrega(message: String = "") {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = Color(0xFFFFF8EE),
@@ -61,21 +61,13 @@ fun TarjetaAvisoCompromisoContraEntrega() {
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Para que recibas tu pedido sin adelantos, Elegan invierte dinero por adelantado tanto en el producto reservado como en la logística, embalaje de lujo y transporte hasta tu domicilio.",
+                text = message.ifBlank {
+                    "Confirma tu pedido con responsabilidad. Verifica que tu dirección y teléfono estén correctos y asegúrate de estar disponible para recibirlo y pagar al momento de la entrega."
+                },
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = EleganCharcoal,
                     lineHeight = 19.sp,
                     fontWeight = FontWeight.Medium
-                )
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "Por respeto a ese esfuerzo operativo, te pedimos realizar el pedido con total responsabilidad: verifica que tu dirección y teléfono estén correctos, asegúrate de estar disponible para recibirlo y ten el efectivo listo al momento de la entrega.",
-                style = MaterialTheme.typography.bodySmall.copy(
-                    color = Color(0xFF4F4A45),
-                    lineHeight = 19.sp
                 )
             )
         }
