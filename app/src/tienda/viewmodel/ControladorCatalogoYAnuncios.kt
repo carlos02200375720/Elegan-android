@@ -27,6 +27,7 @@ internal class ControladorCatalogoYAnuncios(
 
     private val _recommendedProducts = MutableStateFlow<List<ProductJson>>(emptyList())
     val recommendedProducts: StateFlow<List<ProductJson>> = _recommendedProducts.asStateFlow()
+    private var requestedRecommendationsFor: String = ""
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -99,16 +100,22 @@ internal class ControladorCatalogoYAnuncios(
     }
 
     fun loadRecommendedProducts(productId: String) {
+        requestedRecommendationsFor = productId
         _recommendedProducts.value = emptyList()
         if (productId.isBlank()) return
         scope.launch {
             try {
-                _recommendedProducts.value = repository.getRecommendedProducts(productId)
+                val result = repository.getRecommendedProducts(productId)
                     .filter { it.productId() != productId }
+                if (requestedRecommendationsFor == productId) {
+                    _recommendedProducts.value = result
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _recommendedProducts.value = emptyList()
+                if (requestedRecommendationsFor == productId) {
+                    _recommendedProducts.value = emptyList()
+                }
                 MonitorErrores.registrarAdvertencia(
                     "EleganCatalog",
                     "No se pudieron cargar los productos recomendados desde el backend.",
