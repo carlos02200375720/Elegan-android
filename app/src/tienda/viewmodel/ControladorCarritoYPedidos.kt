@@ -36,8 +36,8 @@ internal class ControladorCarritoYPedidos(
                 .onSuccess { _cashOnDeliveryConfig.value = it }
         }
     }
-    private var selectedCartItemIds: Set<String> = emptySet()
-    fun setSelectedCartItemIds(ids: List<String>) { selectedCartItemIds = ids.toSet(); _selectedCartItemIds.value = ids.toSet() }
+    private var selectedIdsForOrder: Set<String> = emptySet()
+    fun setSelectedCartItemIds(ids: List<String>) { selectedIdsForOrder = ids.toSet(); _selectedCartItemIds.value = ids.toSet() }
     private val _lastCreatedOrderId = MutableStateFlow<String?>(null)
     val lastCreatedOrderId: StateFlow<String?> = _lastCreatedOrderId.asStateFlow()
     private val _lastOrderPaymentMethod = MutableStateFlow("")
@@ -136,7 +136,7 @@ internal class ControladorCarritoYPedidos(
     ) {
         scope.launch {
             try {
-                val selectedIds = selectedCartItemIds.ifEmpty { cartItems.value.map { it.id }.toSet() }
+                val selectedIds = selectedIdsForOrder.ifEmpty { cartItems.value.map { it.id }.toSet() }
                 val snapshot = cartItems.value.filter { it.id in selectedIds }
                 val id = repository.createPaymentOrder(
                     paymentMethod, bankAccountId, cashOnDeliveryAccepted,
