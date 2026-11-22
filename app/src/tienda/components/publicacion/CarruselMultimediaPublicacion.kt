@@ -53,7 +53,7 @@ fun CarruselMultimediaPublicacion(
 ) {
     val productId = product.productId()
     val productName = product.productName()
-    val badgeShape = remember { RoundedCornerShape(14.dp) }
+    val badgeShape = remember { RoundedCornerShape(7.dp) }
 
     Box(
         modifier = Modifier
@@ -137,11 +137,14 @@ fun CarruselMultimediaPublicacion(
         ) {
             Text(
                 text = priceText,
+                maxLines = 1,
                 style = MaterialTheme.typography.titleSmall.copy(
+                    fontSize = 8.sp,
+                    lineHeight = 10.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = EleganBurgundy
                 ),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.5.dp)
             )
         }
     }
@@ -182,22 +185,24 @@ private fun IndicadorContenidoPublicacion(
         modifier = modifier
             .clip(shape)
             .background(Color.Black.copy(alpha = 0.65f))
-            .padding(horizontal = 9.dp, vertical = 4.dp)
+            .padding(horizontal = 4.5.dp, vertical = 2.dp)
             .testTag("post_content_indicator_$productId")
     ) {
         Icon(
             imageVector = if (isVideo) Icons.Default.Videocam else Icons.Default.Collections,
             contentDescription = "Tipo de contenido",
             tint = if (isVideo) EleganGold else Color.White.copy(alpha = 0.95f),
-            modifier = Modifier.size(13.dp)
+            modifier = Modifier.size(7.dp)
         )
-        Spacer(modifier = Modifier.width(4.dp))
+        Spacer(modifier = Modifier.width(2.dp))
         Text(
             text = pageLabel,
+            maxLines = 1,
             color = Color.White,
-            fontSize = 12.sp,
+            fontSize = 7.sp,
+            lineHeight = 9.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 0.5.sp
+            letterSpacing = 0.25.sp
         )
     }
 }
