@@ -134,8 +134,8 @@ class EleganRepository(context: Context) {
 
     suspend fun refreshOrders(): List<Order> = pedidosRepo.refreshOrders()
 
-    suspend fun validateCoupon(code: String): Map<String, Any?> =
-        pedidosRepo.validateCoupon(code)
+    suspend fun validateCoupon(code: String, selectedCartItemIds: List<String>): Map<String, Any?> =
+        pedidosRepo.validateCoupon(code, selectedCartItemIds)
 
     suspend fun getCashOnDeliveryConfig(): Map<String, Any?> = pedidosRepo.getCashOnDeliveryConfig()
 
