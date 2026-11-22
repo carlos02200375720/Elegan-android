@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -57,7 +58,7 @@ fun CarritoScreen(
     onRemoveItem: (String) -> Unit,
     onValidateCoupon: (String, (Result<Map<String, Any?>>) -> Unit) -> Unit = { _, callback -> callback(Result.failure(IllegalStateException("Validación de cupones no disponible."))) },
     onCouponCodeApplied: (String) -> Unit = {},
-    onNavigateToVerificasion: (Double, Double, Double, Double) -> Unit,
+    onNavigateToVerificasion: (Double, Double, Double, Double, List<String>) -> Unit,
     onExploreCatalog: () -> Unit,
     onBack: () -> Unit = {}
 ) {
@@ -67,6 +68,7 @@ fun CarritoScreen(
     var discountAmount by remember { mutableDoubleStateOf(0.0) }
     var isApplyingCoupon by remember { mutableStateOf(false) }
     var appliedCouponCode by remember { mutableStateOf("") }
+    var selectedCartItemIds by remember(cartItems) { mutableStateOf(cartItems.map { it.id }.toSet()) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -76,8 +78,9 @@ fun CarritoScreen(
         }
     }
 
-    val subtotal by remember(cartItems) {
-        derivedStateOf { cartItems.sumOf { it.price * it.quantity } }
+    val selectedCartItems = cartItems.filter { it.id in selectedCartItemIds }
+    val subtotal by remember(selectedCartItems) {
+        derivedStateOf { selectedCartItems.sumOf { it.price * it.quantity } }
     }
 
     LaunchedEffect(subtotal) {
@@ -89,14 +92,14 @@ fun CarritoScreen(
         }
     }
 
-    val shippingCost by remember(cartItems) {
-        derivedStateOf { cartItems.sumOf { it.shippingPrice } }
+    val shippingCost by remember(selectedCartItems) {
+        derivedStateOf { selectedCartItems.sumOf { it.shippingPrice } }
     }
     val total by remember(subtotal, discountAmount, shippingCost) {
         derivedStateOf { (subtotal - discountAmount + shippingCost).coerceAtLeast(0.0) }
     }
-    val totalItems by remember(cartItems) {
-        derivedStateOf { cartItems.sumOf { it.quantity } }
+    val totalItems by remember(selectedCartItems) {
+        derivedStateOf { selectedCartItems.sumOf { it.quantity } }
     }
 
     Scaffold(
@@ -113,7 +116,11 @@ fun CarritoScreen(
                 BarraInferiorTotalCarrito(
                     total = total,
                     onContinue = {
-                        onNavigateToVerificasion(subtotal, discountAmount, shippingCost, total)
+                        if (selectedCartItems.isEmpty()) {
+                            scope.launch { snackbarHostState.showSnackbar("Selecciona al menos un producto para continuar.") }
+                        } else {
+                            onNavigateToVerificasion(subtotal, discountAmount, shippingCost, total, selectedCartItems.map { it.id })
+                        }
                     }
                 )
             }
@@ -194,10 +201,27 @@ fun CarritoScreen(
                         contentPadding = PaddingValues(horizontal = horizontalPad, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(if (isCompact) 10.dp else 12.dp)
                     ) {
-                        item { Spacer(modifier = Modifier.height(2.dp)) }
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = selectedCartItemIds.size == cartItems.size,
+                                    onCheckedChange = { checked ->
+                                        selectedCartItemIds = if (checked) cartItems.map { it.id }.toSet() else emptySet()
+                                    }
+                                )
+                                Text("Seleccionar todos (${selectedCartItemIds.size}/${cartItems.size})", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
 
                         items(cartItems, key = { it.id }) { item ->
-                            CartItemRow(
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(checked = item.id in selectedCartItemIds, onCheckedChange = { checked ->
+                                    selectedCartItemIds = if (checked) selectedCartItemIds + item.id else selectedCartItemIds - item.id
+                                })
+                                CartItemRow(
                                 item = item,
                                 onIncrease = { onUpdateQuantity(item.id, item.quantity + 1) },
                                 onDecrease = {
@@ -208,7 +232,8 @@ fun CarritoScreen(
                                     }
                                 },
                                 onRemove = { onRemoveItem(item.id) }
-                            )
+                                )
+                            }
                         }
 
                         item {
