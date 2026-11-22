@@ -23,8 +23,21 @@ internal class ControladorCarritoYPedidos(
     private val scope: CoroutineScope
 ) {
     private var selectedCouponCode = ""
+    private val _cashOnDeliveryConfig = MutableStateFlow<Map<String, Any?>>(emptyMap())
+    val cashOnDeliveryConfig: StateFlow<Map<String, Any?>> = _cashOnDeliveryConfig.asStateFlow()
+    private val _selectedCartItemIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedCartItemIds: StateFlow<Set<String>> = _selectedCartItemIds.asStateFlow()
+
+    init { loadCashOnDeliveryConfig() }
+
+    fun loadCashOnDeliveryConfig() {
+        scope.launch {
+            runCatching { repository.getCashOnDeliveryConfig() }
+                .onSuccess { _cashOnDeliveryConfig.value = it }
+        }
+    }
     private var selectedCartItemIds: Set<String> = emptySet()
-    fun setSelectedCartItemIds(ids: List<String>) { selectedCartItemIds = ids.toSet() }
+    fun setSelectedCartItemIds(ids: List<String>) { selectedCartItemIds = ids.toSet(); _selectedCartItemIds.value = ids.toSet() }
     private val _lastCreatedOrderId = MutableStateFlow<String?>(null)
     val lastCreatedOrderId: StateFlow<String?> = _lastCreatedOrderId.asStateFlow()
     private val _lastOrderPaymentMethod = MutableStateFlow("")
