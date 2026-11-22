@@ -247,6 +247,14 @@ internal class ErrorCrearPedidoApi(
             "El método de pago no es válido. Actualiza la aplicación e inténtalo otra vez."
         "BANK_ACCOUNT_UNAVAILABLE" ->
             "La cuenta bancaria seleccionada ya no está disponible. Recarga las cuentas bancarias."
+        "COD_DISABLED" ->
+            "El pago contra entrega fue desactivado por la tienda. Selecciona otro método de pago."
+        "COD_PRODUCT_NOT_ALLOWED" ->
+            "Uno de los productos seleccionados no permite pago contra entrega. Selecciona transferencia bancaria."
+        "CART_ITEMS_CHANGED" ->
+            "El carrito cambió. Actualiza los productos seleccionados e inténtalo de nuevo."
+        "CART_ITEMS_SELECTION_REQUIRED" ->
+            "Selecciona al menos un producto antes de confirmar el pedido."
         else ->
             "El servidor rechazó el pedido (HTTP $statusCode: ${backendDetail ?: "sin detalle"})."
     },
