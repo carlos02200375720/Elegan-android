@@ -237,6 +237,9 @@ internal interface EleganAuthApi {
         @Body request: Map<String, @JvmSuppressWildcards Any?>
     ): Map<String, Any?>
 
+    @GET("api/movil/payments/cash-on-delivery")
+    suspend fun getCashOnDeliveryConfig(): Map<String, Any?>
+
     @GET("api/movil/payments/bank-accounts")
     suspend fun getBankAccounts(@Header("Authorization") authorization: String): Map<String, Any?>
 
