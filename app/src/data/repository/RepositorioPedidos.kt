@@ -121,7 +121,8 @@ internal class RepositorioPedidos(
             "cashOnDeliveryTermsVersion" to if (cashOnDeliveryAccepted) "2026-11-19" else "",
             "customerName" to customerName.trim(), "email" to email.trim(),
             "phone" to phone.trim(), "address" to address.trim(), "city" to city.trim(),
-            "couponCode" to couponCode.trim().uppercase(),\n            "selectedCartItemIds" to selectedCartItemIds
+            "couponCode" to couponCode.trim().uppercase(),
+            "selectedCartItemIds" to selectedCartItemIds
         )
         val response = try {
             apiProvider().createPaymentOrder("Bearer $token", payload)
