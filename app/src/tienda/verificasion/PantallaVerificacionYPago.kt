@@ -5,6 +5,14 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -172,9 +180,50 @@ fun VerificasionScreen(
         estado.showCashOnDeliveryPage = false
     }
 
+    val pasoActual = when {
+        estado.showTransferPage -> PasoVerificacion.TRANSFERENCIA
+        estado.showCashOnDeliveryPage -> PasoVerificacion.CONTRA_ENTREGA
+        else -> PasoVerificacion.FORMULARIO
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        when {
-            estado.showTransferPage -> TranfereciaScreen(
+        AnimatedContent(
+            targetState = pasoActual,
+            modifier = Modifier.fillMaxSize(),
+            transitionSpec = {
+                val entrandoSubpantalla = targetState != PasoVerificacion.FORMULARIO
+                if (entrandoSubpantalla) {
+                    ContentTransform(
+                        targetContentEnter = slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(durationMillis = 320)
+                        ),
+                        initialContentExit = fadeOut(
+                            animationSpec = tween(durationMillis = 320),
+                            targetAlpha = 0.99f
+                        ),
+                        targetContentZIndex = 1f,
+                        sizeTransform = SizeTransform(clip = false)
+                    )
+                } else {
+                    ContentTransform(
+                        targetContentEnter = fadeIn(
+                            animationSpec = tween(durationMillis = 280),
+                            initialAlpha = 0.99f
+                        ),
+                        initialContentExit = slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(durationMillis = 280)
+                        ),
+                        targetContentZIndex = -1f,
+                        sizeTransform = SizeTransform(clip = false)
+                    )
+                }
+            },
+            label = "verificasion_subpage_transition"
+        ) { paso ->
+            when (paso) {
+                PasoVerificacion.TRANSFERENCIA -> TranfereciaScreen(
                 total = total, bankAccounts = bankAccounts, paymentProofUri = proofUri,
                 selectedAccountId = selectedAccountId, isSubmitting = isSubmittingPayment,
                 onBack = {
@@ -236,7 +285,7 @@ fun VerificasionScreen(
                     onLoadBankAccounts()
                 }
             )
-            estado.showCashOnDeliveryPage -> ContraEntregaScreen(
+                PasoVerificacion.CONTRA_ENTREGA -> ContraEntregaScreen(
                 total = total,
                 customerName = estado.customerName,
                 phone = estado.phone,
@@ -255,7 +304,7 @@ fun VerificasionScreen(
                     }
                 }
             )
-            else -> Scaffold(
+                PasoVerificacion.FORMULARIO -> Scaffold(
                 contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                 topBar = { CabeceraVerificacion(onBack = onBack) },
                 bottomBar = {
@@ -301,6 +350,7 @@ fun VerificasionScreen(
                 }
             }
         }
+        }
         BannerErrorPago(
             message = paymentError,
             visible = !paymentError.isNullOrBlank() && !isLocalErrorDismissed,
@@ -322,4 +372,10 @@ fun VerificasionScreen(
                 .padding(bottom = 72.dp, start = 12.dp, end = 12.dp)
         )
     }
+}
+
+private enum class PasoVerificacion {
+    FORMULARIO,
+    TRANSFERENCIA,
+    CONTRA_ENTREGA
 }

@@ -56,6 +56,7 @@ fun AppContent(
         mutableStateOf(if (initialTransferLock != null) Screen.CARRITO else Screen.INICIO)
     }
     var chatsReturnScreen by remember { mutableStateOf(Screen.INICIO) }
+    var requestedProfileSection by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(currentScreen) {
         if (esPantallaConBarraInferior(currentScreen)) {
@@ -154,6 +155,8 @@ fun AppContent(
                             isAuthenticated = isAuthenticated,
                             onRequireAuth = ::requireRegisteredUser,
                             onNavigateTo = ::navigateTo,
+                            requestedProfileSection = requestedProfileSection,
+                            onProfileSectionConsumed = { requestedProfileSection = null },
                             onSignOut = {
                                 if (isAuthenticated) {
                                     viewModel.clearUserSessionData(onComplete = onSignOut)
@@ -178,6 +181,10 @@ fun AppContent(
                             isAuthenticated = isAuthenticated,
                             onRequireAuth = ::requireRegisteredUser,
                             onNavigateTo = ::navigateTo,
+                            onNavigateToPerfilOrders = {
+                                requestedProfileSection = "orders"
+                                navigateTo(Screen.PERFIL)
+                            },
                             onTransferLockChanged = { activeTransferLock = it },
                             onTransferLockCleared = {
                                 AlmacenBloqueoTransferencia.limpiar(context)

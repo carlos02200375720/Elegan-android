@@ -27,6 +27,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -100,49 +102,30 @@ fun VisorGaleriaProducto(
             }
         }
 
-        if (categoryLabel.isNotBlank()) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = EleganBurgundyDark.copy(alpha = 0.9f),
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 12.dp, bottom = 12.dp)
-            ) {
-                Text(
-                    text = categoryLabel.uppercase(),
-                    color = Color.White,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
-                    letterSpacing = 0.5.sp
-                )
-            }
-        }
-
         if (mediaItems.isNotEmpty()) {
             val currentItem = mediaItems.getOrNull(pagerState.currentPage)
             val isCurrentVideo = currentItem is GalleryMediaItem.Video
 
             Surface(
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(8.dp),
                 color = Color.Black.copy(alpha = 0.65f),
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 12.dp, bottom = 12.dp)
+                    .align(Alignment.BottomStart)
+                    .padding(start = 10.dp, bottom = 10.dp)
                     .testTag("gallery_content_indicator")
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp)
+                    modifier = Modifier.padding(horizontal = 5.5.dp, vertical = 2.5.dp)
                 ) {
                     Icon(
                         imageVector = if (isCurrentVideo) Icons.Default.Videocam else Icons.Default.Collections,
                         contentDescription = "Contenido multimedia",
                         tint = if (isCurrentVideo) EleganGold else Color.White.copy(alpha = 0.95f),
-                        modifier = Modifier.size(13.dp)
+                        modifier = Modifier.size(9.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = if (isCurrentVideo) {
                             "Video • ${pagerState.currentPage + 1}/${mediaItems.size}"
@@ -150,11 +133,39 @@ fun VisorGaleriaProducto(
                             "${pagerState.currentPage + 1}/${mediaItems.size}"
                         },
                         color = Color.White,
-                        fontSize = 12.sp,
+                        fontSize = 8.sp,
+                        lineHeight = 9.5.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.5.sp
+                        letterSpacing = 0.25.sp,
+                        style = TextStyle(
+                            platformStyle = PlatformTextStyle(includeFontPadding = false)
+                        )
                     )
                 }
+            }
+        }
+
+        if (categoryLabel.isNotBlank()) {
+            Surface(
+                shape = RoundedCornerShape(4.dp),
+                color = EleganBurgundyDark.copy(alpha = 0.9f),
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 10.dp, bottom = 10.dp)
+                    .testTag("gallery_category_badge")
+            ) {
+                Text(
+                    text = categoryLabel.uppercase(),
+                    color = Color.White,
+                    fontSize = 7.5.sp,
+                    lineHeight = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.3.sp,
+                    style = TextStyle(
+                        platformStyle = PlatformTextStyle(includeFontPadding = false)
+                    ),
+                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.5.dp)
+                )
             }
         }
     }

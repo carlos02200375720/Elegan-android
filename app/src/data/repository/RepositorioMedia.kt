@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.res.AssetFileDescriptor
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.webkit.MimeTypeMap
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
@@ -118,6 +119,47 @@ internal class RepositorioMedia(
         response["paymentProofUrl"] as? String ?: response["url"] as? String ?: "uploaded"
     }
 
+    suspend fun saveConfirmedPaymentProofPreview(mediaUri: Uri): String? = withContext(Dispatchers.IO) {
+        try {
+            val resolver = appContext.contentResolver
+            val mimeType = resolver.getType(mediaUri)?.lowercase().orEmpty()
+            val extension = when {
+                mimeType == "image/png" -> "png"
+                mimeType == "image/webp" -> "webp"
+                mimeType == "image/jpeg" || mimeType == "image/jpg" -> "jpg"
+                else -> {
+                    val hint = (resolveFileName(mediaUri) ?: mediaUri.toString()).lowercase()
+                    when (MimeTypeMap.getFileExtensionFromUrl(hint)?.lowercase()) {
+                        "png" -> "png"
+                        "webp" -> "webp"
+                        else -> "jpg"
+                    }
+                }
+            }
+            val dir = File(appContext.cacheDir, CONFIRMED_PROOF_CACHE_DIR)
+            if (dir.exists()) {
+                dir.listFiles()?.forEach { it.delete() }
+            } else {
+                dir.mkdirs()
+            }
+            val destFile = File(dir, "comprobante_confirmado_${System.currentTimeMillis()}.$extension")
+            resolver.openInputStream(mediaUri)?.use { input ->
+                destFile.outputStream().use { output -> input.copyTo(output) }
+            } ?: return@withContext null
+            if (destFile.isFile && destFile.length() > 0L) Uri.fromFile(destFile).toString() else null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun clearConfirmedPaymentProofPreview() {
+        try {
+            val dir = File(appContext.cacheDir, CONFIRMED_PROOF_CACHE_DIR)
+            if (dir.exists()) dir.deleteRecursively()
+        } catch (_: Exception) {
+        }
+    }
+
     private fun resolveFileName(uri: Uri): String? {
         if ("file".equals(uri.scheme, ignoreCase = true)) {
             uri.lastPathSegment?.takeIf { it.isNotBlank() }?.let { return it }
@@ -161,6 +203,10 @@ internal class RepositorioMedia(
         } catch (_: Exception) {
             -1L
         }
+    }
+
+    private companion object {
+        private const val CONFIRMED_PROOF_CACHE_DIR = "confirmed_payment_proof"
     }
 }
 

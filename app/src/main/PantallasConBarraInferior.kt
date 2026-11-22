@@ -36,6 +36,8 @@ internal fun PantallasConBarraInferior(
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateTo: (Screen) -> Unit,
+    requestedProfileSection: String? = null,
+    onProfileSectionConsumed: () -> Unit = {},
     onSignOut: () -> Unit
 ) {
     val products by viewModel.products.collectAsStateWithLifecycle()
@@ -243,6 +245,8 @@ internal fun PantallasConBarraInferior(
                             },
                             onNavigateToChats = { onNavigateTo(Screen.CHATS) },
                             onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
+                            requestedSection = requestedProfileSection,
+                            onRequestedSectionConsumed = onProfileSectionConsumed,
                             onSignOut = onSignOut
                         )
                     }

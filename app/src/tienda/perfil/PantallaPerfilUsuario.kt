@@ -21,6 +21,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,6 +56,8 @@ fun PerfilScreen(
     onSaveProfile: (String, String, String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToChats: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = {},
+    requestedSection: String? = null,
+    onRequestedSectionConsumed: () -> Unit = {},
     onSignOut: () -> Unit
 ) {
     val context = LocalContext.current
@@ -78,7 +81,17 @@ fun PerfilScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
-    var selectedProfileSection by remember { mutableStateOf("saved") }
+    var selectedProfileSection by remember {
+        mutableStateOf(requestedSection?.takeIf { it.isNotBlank() } ?: "saved")
+    }
+
+    LaunchedEffect(requestedSection) {
+        val target = requestedSection?.takeIf { it.isNotBlank() }
+        if (target != null) {
+            selectedProfileSection = target
+            onRequestedSectionConsumed()
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },

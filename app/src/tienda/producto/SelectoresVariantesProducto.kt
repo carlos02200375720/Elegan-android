@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.data.model.ProductShippingMethod
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -89,10 +91,74 @@ fun SelectorOpcionesProducto(
 }
 
 @Composable
+fun SelectorEnvioProducto(
+    shippingMethods: List<ProductShippingMethod>,
+    selectedShippingId: String,
+    onSelectShipping: (String) -> Unit,
+    testTagPrefix: String = "shipping_method_"
+) {
+    if (shippingMethods.isEmpty()) return
+
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "Selecciona el método de envío",
+        style = MaterialTheme.typography.titleSmall.copy(
+            fontWeight = FontWeight.Bold,
+            color = EleganCharcoal
+        )
+    )
+    Spacer(modifier = Modifier.height(10.dp))
+    shippingMethods.forEach { method ->
+        val selected = method.id == selectedShippingId
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(if (selected) Color(0xFFFFF7F7) else Color.White)
+                .border(
+                    width = if (selected) 2.dp else 1.dp,
+                    color = if (selected) EleganBurgundy else Color(0xFFE5DDD5),
+                    shape = RoundedCornerShape(10.dp)
+                )
+                .clickable { onSelectShipping(method.id) }
+                .padding(12.dp)
+                .testTag("$testTagPrefix${method.id}")
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = method.name,
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Bold,
+                    color = EleganCharcoal
+                )
+                Text(
+                    text = formatearEnvioRd(method.price),
+                    fontWeight = FontWeight.Bold,
+                    color = EleganBurgundy
+                )
+            }
+            Text(
+                text = "Entrega: ${method.deliveryTime}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF666666)
+            )
+            Text(
+                text = "Origen: ${method.origin}",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF666666)
+            )
+        }
+    }
+    Spacer(modifier = Modifier.height(12.dp))
+}
+
+@Composable
 fun SelectorCantidadProducto(
     quantity: Long,
     onDecrease: () -> Unit,
-    onIncrease: () -> Unit
+    onIncrease: () -> Unit,
+    testTagPrefix: String = "quantity_"
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +183,9 @@ fun SelectorCantidadProducto(
         ) {
             IconButton(
                 onClick = onDecrease,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("${testTagPrefix}decrease_btn")
             ) {
                 Icon(Icons.Default.Remove, contentDescription = "Menos", tint = EleganBurgundy)
             }
@@ -127,11 +195,15 @@ fun SelectorCantidadProducto(
                     fontWeight = FontWeight.Bold,
                     color = EleganCharcoal
                 ),
-                modifier = Modifier.padding(horizontal = 12.dp)
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .testTag("${testTagPrefix}value_text")
             )
             IconButton(
                 onClick = onIncrease,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier
+                    .size(36.dp)
+                    .testTag("${testTagPrefix}increase_btn")
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Más", tint = EleganBurgundy)
             }

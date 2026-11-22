@@ -38,7 +38,12 @@ fun TarjetaReciboPedidoConfirmado(
     displayPaymentMethod: String,
     recipientLine: String,
     displayAddress: String,
-    isCompact: Boolean
+    isCompact: Boolean,
+    subtotal: Double = purchasedItems.sumOf { it.price * it.quantity },
+    discount: Double = 0.0,
+    shippingCost: Double = purchasedItems.sumOf { it.shippingPrice },
+    hasOrderDetails: Boolean = purchasedItems.isNotEmpty(),
+    paymentProofUri: String? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -85,9 +90,17 @@ fun TarjetaReciboPedidoConfirmado(
                 BannerEstadoTransferencia()
             }
 
+            if (!paymentProofUri.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(14.dp))
+                TarjetaComprobantePagoConfirmado(paymentProofUri = paymentProofUri)
+            }
+
             if (purchasedItems.isNotEmpty()) {
                 ResumenProductosPedidoConfirmado(
                     purchasedItems = purchasedItems,
+                    subtotal = subtotal,
+                    discount = discount,
+                    shippingCost = shippingCost,
                     totalPaid = totalPaid
                 )
             }
@@ -99,7 +112,10 @@ fun TarjetaReciboPedidoConfirmado(
             DatosEntregaYEnvioConfirmado(
                 displayPaymentMethod = displayPaymentMethod,
                 recipientLine = recipientLine,
-                displayAddress = displayAddress
+                displayAddress = displayAddress,
+                purchasedItems = purchasedItems,
+                shippingCost = shippingCost,
+                hasOrderDetails = hasOrderDetails
             )
         }
     }

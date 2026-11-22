@@ -5,6 +5,7 @@ import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.ProductJson
+import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
@@ -28,6 +29,8 @@ internal class ControladorCarritoYPedidos(
     val lastOrderPaymentMethod: StateFlow<String> = _lastOrderPaymentMethod.asStateFlow()
     private val _lastOrderDetails = MutableStateFlow<OrderConfirmationDetails?>(null)
     val lastOrderDetails: StateFlow<OrderConfirmationDetails?> = _lastOrderDetails.asStateFlow()
+    private val _lastPaymentProofUri = MutableStateFlow<String?>(null)
+    val lastPaymentProofUri: StateFlow<String?> = _lastPaymentProofUri.asStateFlow()
 
     val cartItems: StateFlow<List<CartItem>> = repository.observeCart()
         .catch { emit(emptyList()) }.stateIn(scope, SharingStarted.Eagerly, emptyList())
@@ -110,7 +113,11 @@ internal class ControladorCarritoYPedidos(
     fun createManualPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
         customerName: String, email: String, phone: String, address: String, city: String,
-        total: Double, onResult: (Result<String>) -> Unit
+        total: Double,
+        subtotal: Double = 0.0,
+        discount: Double = 0.0,
+        shipping: Double = 0.0,
+        onResult: (Result<String>) -> Unit
     ) {
         scope.launch {
             try {
@@ -121,9 +128,16 @@ internal class ControladorCarritoYPedidos(
                 )
                 selectedCouponCode = ""
                 val label = if (paymentMethod == "bank_transfer") "Transferencia bancaria" else "Pago contra entrega"
+                val effectiveSubtotal = if (subtotal > 0.0) subtotal else snapshot.sumOf { it.price * it.quantity }
+                val effectiveShipping = if (shipping > 0.0 || snapshot.isEmpty()) shipping else snapshot.sumOf { it.shippingPrice }
+                _lastPaymentProofUri.value = null
+                repository.clearConfirmedPaymentProofPreview()
                 _lastOrderDetails.value = OrderConfirmationDetails(
                     orderId = id, items = snapshot, total = total, paymentMethod = label,
-                    customerName = customerName, phone = phone, address = address, city = city
+                    customerName = customerName, phone = phone, address = address, city = city,
+                    subtotal = effectiveSubtotal,
+                    discount = discount.coerceAtLeast(0.0),
+                    shippingCost = effectiveShipping.coerceAtLeast(0.0)
                 )
                 _lastOrderPaymentMethod.value = label
                 _lastCreatedOrderId.value = id
@@ -148,7 +162,21 @@ internal class ControladorCarritoYPedidos(
 
     fun uploadPaymentProof(orderId: String, uri: Uri, onResult: (Result<Unit>) -> Unit) {
         scope.launch {
-            try { repository.uploadPaymentProof(orderId, uri); refreshOrders(); onResult(Result.success(Unit)) }
+            try {
+                val uploadedUrl = repository.uploadPaymentProof(orderId, uri)
+                val localPreviewUri = repository.saveConfirmedPaymentProofPreview(uri)
+                val resolvedProofImage = localPreviewUri
+                    ?: uploadedUrl.trim()
+                        .takeIf { it.isNotBlank() && !it.equals("uploaded", ignoreCase = true) }
+                        ?.let(::resolveBackendMediaUrl)
+                    ?: uri.toString()
+                _lastPaymentProofUri.value = resolvedProofImage
+                _lastOrderDetails.value = _lastOrderDetails.value?.copy(
+                    paymentProofUri = resolvedProofImage
+                )
+                refreshOrders()
+                onResult(Result.success(Unit))
+            }
             catch (e: CancellationException) { throw e }
             catch (e: Exception) {
                 MonitorErrores.registrarError(
@@ -167,6 +195,8 @@ internal class ControladorCarritoYPedidos(
         _lastCreatedOrderId.value = null
         _lastOrderPaymentMethod.value = ""
         _lastOrderDetails.value = null
+        _lastPaymentProofUri.value = null
+        repository.clearConfirmedPaymentProofPreview()
     }
 
     fun clearUserData() {

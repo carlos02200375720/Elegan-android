@@ -148,6 +148,12 @@ class EleganRepository(context: Context) {
     suspend fun uploadPaymentProof(orderId: String, mediaUri: Uri): String =
         mediaRepo.uploadPaymentProof(orderId, mediaUri)
 
+    suspend fun saveConfirmedPaymentProofPreview(mediaUri: Uri): String? =
+        mediaRepo.saveConfirmedPaymentProofPreview(mediaUri)
+
+    fun clearConfirmedPaymentProofPreview() =
+        mediaRepo.clearConfirmedPaymentProofPreview()
+
     fun observeMessages(): Flow<List<SupportMessage>> = mensajesRepo.observeMessages()
 
     suspend fun refreshMessages(): List<SupportMessage> = mensajesRepo.refreshMessages()

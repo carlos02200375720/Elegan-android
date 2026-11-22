@@ -51,8 +51,23 @@
     <string name="gracia_order_code_label">Código de Pedido:</string>
     <string name="gracia_payment_method_label">Método de Pago</string>
     <string name="gracia_delivery_address_label">Dirección de Entrega</string>
-    <string name="gracia_estimated_delivery_label">Entrega Estimada</string>
-    <string name="gracia_estimated_delivery_value">2 a 3 días hábiles (Express)</string>
+    <string name="gracia_shipping_summary_label">Resumen del Envío</string>
+    <string name="gracia_shipping_delivery_time">Entrega estimada: %1$s</string>
+    <string name="gracia_shipping_origin">Origen: %1$s</string>
+    <string name="gracia_shipping_cost_line">Costo de envío: %1$s</string>
+    <string name="gracia_shipping_total_line">Total de envío: %1$s</string>
     <string name="gracia_packaging_label">Embalaje Exclusivo</string>
     <string name="gracia_packaging_value">Caja rígida protegida con sello de lacre</string>
+    <string name="gracia_payment_proof_title">Comprobante de Pago Enviado</string>
+    <string name="gracia_payment_proof_tap_hint">Toca la imagen para ampliar</string>
+    <string name="gracia_payment_proof_cd">Foto del comprobante de pago cargado</string>
+    <string name="gracia_payment_proof_close_cd">Cerrar vista ampliada del comprobante</string>
+
+    <!-- Detalle de producto y panel de variantes -->
+    <string name="producto_choose_option_cta">Elige una opción</string>
+    <string name="producto_panel_close_cd">Cerrar panel de opciones</string>
+    <string name="producto_panel_add_to_cart">Añadir</string>
+    <string name="producto_panel_buy_now">Comprar Ahora</string>
+    <string name="producto_panel_estimated_total">Total: %1$s</string>
+    <string name="producto_recommended_title">Productos recomendados</string>
 </resources>

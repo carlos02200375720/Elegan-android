@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.BankAccountInfo
+import com.example.data.model.productCategory
 import com.example.data.model.productId
 import com.example.ui.CarritoScreen
 import com.example.ui.CategoriaScreen
@@ -40,6 +41,7 @@ internal fun PantallasSecundariasNavegacion(
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateTo: (Screen) -> Unit,
+    onNavigateToPerfilOrders: () -> Unit = { onNavigateTo(Screen.PERFIL) },
     onTransferLockChanged: (EstadoBloqueoTransferencia) -> Unit = {},
     onTransferLockCleared: () -> Unit = {},
     onTransferPaymentConfirmed: () -> Unit = { onNavigateTo(Screen.GRACIA) },
@@ -57,6 +59,7 @@ internal fun PantallasSecundariasNavegacion(
     val lastOrderId by viewModel.lastCreatedOrderId.collectAsStateWithLifecycle()
     val lastOrderPaymentMethod by viewModel.lastOrderPaymentMethod.collectAsStateWithLifecycle()
     val lastOrderDetails by viewModel.lastOrderDetails.collectAsStateWithLifecycle()
+    val lastPaymentProofUri by viewModel.lastPaymentProofUri.collectAsStateWithLifecycle()
     var bankAccounts by remember { mutableStateOf<List<BankAccountInfo>>(activeTransferLock?.bankAccounts.orEmpty()) }
     var isSubmittingPayment by remember { mutableStateOf(false) }
     var paymentError by remember { mutableStateOf<String?>(null) }
@@ -111,6 +114,17 @@ internal fun PantallasSecundariasNavegacion(
                     ?: products.firstOrNull()
                 if (prod != null) {
                     val prodId = prod.productId()
+                    val prodCategory = prod.productCategory()
+                    val recommendedProducts = remember(products, prodId, prodCategory) {
+                        val others = products.filter { it.productId() != prodId }
+                        val sameCategory = others.filter {
+                            prodCategory.isNotBlank() && it.productCategory() == prodCategory
+                        }
+                        val otherCategories = others.filterNot {
+                            prodCategory.isNotBlank() && it.productCategory() == prodCategory
+                        }
+                        (sameCategory + otherCategories).take(12)
+                    }
                     ProductoScreen(
                         product = prod,
                         cartItemCount = cartItems.sumOf { it.quantity },
@@ -137,7 +151,17 @@ internal fun PantallasSecundariasNavegacion(
                         },
                         onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
                         onBack = { onNavigateTo(Screen.CATALOGO) },
-                        categories = categories
+                        categories = categories,
+                        recommendedProducts = recommendedProducts,
+                        savedProductIds = savedProductIds,
+                        onSelectRecommendedProduct = { recommended ->
+                            viewModel.selectProduct(recommended)
+                        },
+                        onToggleSaveRecommended = { recommendedId, onResult ->
+                            onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                                viewModel.toggleSaveProduct(recommendedId, onResult)
+                            }
+                        }
                     )
                 } else {
                     LaunchedEffect(Unit) { onNavigateTo(Screen.CATALOGO) }
@@ -228,7 +252,10 @@ internal fun PantallasSecundariasNavegacion(
                             viewModel.createManualPaymentOrder(
                                 paymentMethod = "bank_transfer", bankAccountId = accountId, cashOnDeliveryAccepted = false,
                                 customerName = name, email = email, phone = phone, address = address, city = city,
-                                total = checkoutTotal
+                                total = checkoutTotal,
+                                subtotal = checkoutSubtotal,
+                                discount = checkoutDiscount,
+                                shipping = checkoutShipping
                             ) { result ->
                                 result.onSuccess { orderId -> uploadForOrder(orderId) }
                                     .onFailure {
@@ -244,7 +271,10 @@ internal fun PantallasSecundariasNavegacion(
                         viewModel.createManualPaymentOrder(
                             paymentMethod = "cash_on_delivery", bankAccountId = "", cashOnDeliveryAccepted = true,
                             customerName = name, email = email, phone = phone, address = address, city = city,
-                            total = checkoutTotal
+                            total = checkoutTotal,
+                            subtotal = checkoutSubtotal,
+                            discount = checkoutDiscount,
+                            shipping = checkoutShipping
                         ) { result ->
                             isSubmittingPayment = false
                             result.onSuccess { onNavigateTo(Screen.GRACIA) }
@@ -265,8 +295,9 @@ internal fun PantallasSecundariasNavegacion(
                     isBankTransfer = lastOrderPaymentMethod.contains("Transferencia", ignoreCase = true),
                     isCashOnDelivery = lastOrderPaymentMethod.contains("contra entrega", ignoreCase = true),
                     orderDetails = lastOrderDetails,
+                    paymentProofUri = lastOrderDetails?.paymentProofUri ?: lastPaymentProofUri,
                     onNavigateToInicio = { onNavigateTo(Screen.INICIO) },
-                    onNavigateToPerfil = { onNavigateTo(Screen.PERFIL) },
+                    onNavigateToPerfil = onNavigateToPerfilOrders,
                     onNavigateToChats = { onNavigateTo(Screen.CHATS) }
                 )
             }

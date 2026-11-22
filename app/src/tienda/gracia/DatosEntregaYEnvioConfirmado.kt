@@ -1,5 +1,6 @@
 package com.example.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,16 +26,45 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.data.model.CartItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 import com.example.ui.theme.EleganGold
+
+private data class ResumenEnvioSeleccionado(
+    val name: String,
+    val price: Double,
+    val deliveryTime: String,
+    val origin: String
+)
 
 @Composable
 fun DatosEntregaYEnvioConfirmado(
     displayPaymentMethod: String,
     recipientLine: String,
-    displayAddress: String
+    displayAddress: String,
+    purchasedItems: List<CartItem> = emptyList(),
+    shippingCost: Double = purchasedItems.sumOf { it.shippingPrice },
+    hasOrderDetails: Boolean = purchasedItems.isNotEmpty()
 ) {
+    val selectedShippings = purchasedItems
+        .mapNotNull { item ->
+            val name = item.shippingMethodName.trim()
+            val deliveryTime = item.shippingDeliveryTime.trim()
+            val origin = item.shippingOrigin.trim()
+            if (name.isBlank() && deliveryTime.isBlank() && origin.isBlank()) {
+                null
+            } else {
+                ResumenEnvioSeleccionado(
+                    name = name,
+                    price = item.shippingPrice,
+                    deliveryTime = deliveryTime,
+                    origin = origin
+                )
+            }
+        }
+        .distinct()
+
     FilaDetalleConfirmacion(
         icon = Icons.Default.Payments,
         tint = EleganBurgundy,
@@ -81,15 +111,81 @@ fun DatosEntregaYEnvioConfirmado(
         }
     }
 
-    Spacer(modifier = Modifier.height(14.dp))
-
-    FilaDetalleConfirmacion(
-        icon = Icons.Default.LocalShipping,
-        tint = EleganBurgundy,
-        label = stringResource(R.string.gracia_estimated_delivery_label),
-        primaryValue = stringResource(R.string.gracia_estimated_delivery_value),
-        verticalAlignment = Alignment.CenterVertically
-    )
+    if (selectedShippings.isNotEmpty() || hasOrderDetails) {
+        Spacer(modifier = Modifier.height(14.dp))
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.testTag("gracia_shipping_summary")
+        ) {
+            Icon(
+                imageVector = Icons.Default.LocalShipping,
+                contentDescription = null,
+                tint = EleganBurgundy,
+                modifier = Modifier.size(20.dp)
+            )
+            Spacer(modifier = Modifier.width(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = stringResource(R.string.gracia_shipping_summary_label),
+                    style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray)
+                )
+                if (selectedShippings.isNotEmpty()) {
+                    selectedShippings.forEachIndexed { index, shipping ->
+                        val titleLine = if (shipping.name.isNotBlank()) {
+                            "${shipping.name} • ${formatearEnvioRd(shipping.price)}"
+                        } else {
+                            stringResource(R.string.gracia_shipping_cost_line, formatearEnvioRd(shipping.price))
+                        }
+                        Text(
+                            text = titleLine,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = EleganCharcoal
+                            ),
+                            modifier = if (index == 0) Modifier.testTag("gracia_shipping_method") else Modifier
+                        )
+                        if (shipping.deliveryTime.isNotBlank()) {
+                            Text(
+                                text = stringResource(R.string.gracia_shipping_delivery_time, shipping.deliveryTime),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF555555),
+                                    lineHeight = 18.sp
+                                ),
+                                modifier = if (index == 0) Modifier.testTag("gracia_delivery_time") else Modifier
+                            )
+                        }
+                        if (shipping.origin.isNotBlank()) {
+                            Text(
+                                text = stringResource(R.string.gracia_shipping_origin, shipping.origin),
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = Color(0xFF555555),
+                                    lineHeight = 18.sp
+                                )
+                            )
+                        }
+                    }
+                    if (selectedShippings.size > 1 || (purchasedItems.size > 1 && shippingCost != selectedShippings.first().price)) {
+                        Text(
+                            text = stringResource(R.string.gracia_shipping_total_line, formatearEnvioRd(shippingCost)),
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontWeight = FontWeight.SemiBold,
+                                color = EleganCharcoal
+                            )
+                        )
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.gracia_shipping_cost_line, formatearEnvioRd(shippingCost)),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = EleganCharcoal
+                        ),
+                        modifier = Modifier.testTag("gracia_shipping_method")
+                    )
+                }
+            }
+        }
+    }
 
     Spacer(modifier = Modifier.height(14.dp))
 

@@ -27,6 +27,7 @@ fun GraciaScreen(
     isBankTransfer: Boolean = false,
     isCashOnDelivery: Boolean = false,
     orderDetails: OrderConfirmationDetails? = null,
+    paymentProofUri: String? = null,
     onNavigateToInicio: () -> Unit,
     onNavigateToPerfil: () -> Unit,
     onNavigateToChats: () -> Unit
@@ -86,11 +87,23 @@ fun GraciaScreen(
 
             Spacer(modifier = Modifier.height(if (isCompact) 16.dp else 20.dp))
 
+            val subtotal = orderDetails?.subtotal ?: purchasedItems.sumOf { it.price * it.quantity }
+            val discount = orderDetails?.discount ?: 0.0
+            val shippingCost = orderDetails?.shippingCost ?: purchasedItems.sumOf { it.shippingPrice }
+            val displayPaymentProofUri = (orderDetails?.paymentProofUri ?: paymentProofUri)
+                ?.trim()
+                ?.takeIf { it.isNotBlank() && !it.equals("uploaded", ignoreCase = true) }
+
             TarjetaReciboPedidoConfirmado(
                 displayOrderId = displayOrderId,
                 isBankTransfer = isBankTransfer,
                 purchasedItems = purchasedItems,
+                subtotal = subtotal,
+                discount = discount,
+                shippingCost = shippingCost,
                 totalPaid = orderDetails?.total ?: 0.0,
+                hasOrderDetails = orderDetails != null,
+                paymentProofUri = displayPaymentProofUri,
                 displayPaymentMethod = displayPaymentMethod,
                 recipientLine = recipientLine,
                 displayAddress = displayAddress,

@@ -56,19 +56,23 @@ fun ProductGridCard(
     isSaved: Boolean,
     onClick: () -> Unit,
     onToggleSave: () -> Unit,
-    categoryLabel: String = product.productCategoryDisplayName()
+    categoryLabel: String = product.productCategoryDisplayName(),
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    cardTestTag: String? = null,
+    saveTestTag: String? = null
 ) {
     val productId = product.productId()
     val productName = product.productName()
     val productImageUrl = product.productImageUrl()
     val productPrice = product.productPrice()
+    val resolvedCardTag = cardTestTag ?: "catalog_item_$productId"
+    val resolvedSaveTag = saveTestTag ?: "catalog_save_$productId"
 
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .testTag("catalog_item_$productId"),
+            .testTag(resolvedCardTag),
         colors = CardDefaults.elevatedCardColors(
             containerColor = Color.White
         ),
@@ -153,7 +157,7 @@ fun ProductGridCard(
                             onClick = onToggleSave,
                             modifier = Modifier
                                 .size(if (isCompactCard) 28.dp else 32.dp)
-                                .testTag("catalog_save_$productId")
+                                .testTag(resolvedSaveTag)
                         ) {
                             Icon(
                                 imageVector = if (isSaved) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,

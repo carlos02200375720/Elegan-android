@@ -21,6 +21,7 @@ import com.example.ui.EstadoBloqueoTransferencia
 import com.example.ui.GraciaScreen
 import com.example.ui.VerificasionScreen
 import com.example.ui.theme.EleganTheme
+import com.example.ui.viewmodel.OrderConfirmationDetails
 import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -354,5 +355,73 @@ class PruebasBloqueoTransferenciaTest {
         composeTestRule.onNodeWithTag("gracia_payment_method")
             .assertIsDisplayed()
             .assertTextEquals("Pago Contra Entrega")
+        composeTestRule.onNodeWithText("2 a 3 días hábiles (Express)").assertDoesNotExist()
+    }
+
+    @Test
+    fun `gracia screen displays selected shipping summary and real delivery time without fake placeholder`() {
+        val details = OrderConfirmationDetails(
+            orderId = "ORD-REAL-901",
+            items = listOf(
+                CartItem(
+                    id = "ci-1",
+                    productId = "p-1",
+                    name = "Camisa Sastrería Blanca",
+                    price = 2500.0,
+                    selectedSize = "M",
+                    selectedColor = "Blanco",
+                    shippingMethodId = "ship-local",
+                    shippingMethodName = "Envío Mensajería Local",
+                    shippingPrice = 250.0,
+                    shippingDeliveryTime = "Mismo día (4 a 6 horas)",
+                    shippingOrigin = "Santo Domingo",
+                    quantity = 1L
+                )
+            ),
+            subtotal = 2500.0,
+            discount = 0.0,
+            shippingCost = 250.0,
+            total = 2750.0,
+            paymentMethod = "Transferencia bancaria",
+            customerName = "Carlos García",
+            phone = "809-555-0101",
+            address = "Calle El Conde 12",
+            city = "Santo Domingo",
+            paymentProofUri = "file:///tmp/comprobante_confirmado_demo.jpg"
+        )
+
+        composeTestRule.setContent {
+            EleganTheme(darkTheme = false) {
+                GraciaScreen(
+                    orderId = "ORD-REAL-901",
+                    isBankTransfer = true,
+                    orderDetails = details,
+                    onNavigateToInicio = {},
+                    onNavigateToPerfil = {},
+                    onNavigateToChats = {}
+                )
+            }
+        }
+
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("2 a 3 días hábiles (Express)").assertDoesNotExist()
+        composeTestRule.onNodeWithText("file:///tmp/comprobante_confirmado_demo.jpg").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("gracia_payment_proof_card")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("gracia_payment_proof_image")
+            .performScrollTo()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithTag("gracia_shipping_method")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextEquals("Envío Mensajería Local • RD$ 250.00")
+        composeTestRule.onNodeWithTag("gracia_delivery_time")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertTextEquals("Entrega estimada: Mismo día (4 a 6 horas)")
+        composeTestRule.onNodeWithText("Origen: Santo Domingo")
+            .performScrollTo()
+            .assertIsDisplayed()
     }
 }

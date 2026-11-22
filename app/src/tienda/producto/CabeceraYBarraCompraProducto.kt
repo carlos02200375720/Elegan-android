@@ -1,7 +1,6 @@
 package com.example.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,18 +26,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganGold
 
@@ -125,8 +124,7 @@ fun CabeceraFlotanteProducto(
 
 @Composable
 fun BarraInferiorCompraProducto(
-    onAddToCart: () -> Unit,
-    onBuyNow: () -> Unit
+    onChooseOption: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         EleganBottomBarShadow()
@@ -136,59 +134,36 @@ fun BarraInferiorCompraProducto(
             shadowElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp)
+                .height(60.dp)
         ) {
-            Row(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
             ) {
-                OutlinedButton(
-                    onClick = onAddToCart,
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .testTag("add_to_cart_btn"),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = EleganBurgundy
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                        brush = SolidColor(EleganBurgundy)
-                    )
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ShoppingBag,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Añadir",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
                 Button(
-                    onClick = onBuyNow,
+                    onClick = onChooseOption,
                     modifier = Modifier
-                        .weight(1.2f)
+                        .fillMaxWidth()
                         .fillMaxHeight()
-                        .testTag("buy_now_btn"),
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        .testTag("choose_option_btn"),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = EleganBurgundy,
                         contentColor = Color.White
                     )
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingBag,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Comprar Ahora",
-                        fontSize = 13.sp,
+                        text = stringResource(R.string.producto_choose_option_cta),
+                        fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
                 }

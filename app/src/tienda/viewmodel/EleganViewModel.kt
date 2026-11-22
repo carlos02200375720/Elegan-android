@@ -53,6 +53,7 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val lastCreatedOrderId: StateFlow<String?> = pedidosCtrl.lastCreatedOrderId
     val lastOrderPaymentMethod: StateFlow<String> = pedidosCtrl.lastOrderPaymentMethod
     val lastOrderDetails: StateFlow<OrderConfirmationDetails?> = pedidosCtrl.lastOrderDetails
+    val lastPaymentProofUri: StateFlow<String?> = pedidosCtrl.lastPaymentProofUri
 
     val messages: StateFlow<List<SupportMessage>> = perfilCtrl.messages
     val userProfile: StateFlow<UserProfile?> = perfilCtrl.userProfile
@@ -177,10 +178,14 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     fun createManualPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
         customerName: String, email: String, phone: String, address: String, city: String,
-        total: Double, onResult: (Result<String>) -> Unit
+        total: Double,
+        subtotal: Double = 0.0,
+        discount: Double = 0.0,
+        shipping: Double = 0.0,
+        onResult: (Result<String>) -> Unit
     ) = pedidosCtrl.createManualPaymentOrder(
         paymentMethod, bankAccountId, cashOnDeliveryAccepted, customerName, email,
-        phone, address, city, total, onResult
+        phone, address, city, total, subtotal, discount, shipping, onResult
     )
 
     fun uploadPaymentProof(orderId: String, uri: Uri, onResult: (Result<Unit>) -> Unit) =
