@@ -49,6 +49,7 @@ internal fun PantallasSecundariasNavegacion(
     onAccountDeleted: () -> Unit
 ) {
     val products by viewModel.products.collectAsStateWithLifecycle()
+    val recommendedProducts by viewModel.recommendedProducts.collectAsStateWithLifecycle()
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
     val cartError by viewModel.cartError.collectAsStateWithLifecycle()
@@ -114,16 +115,8 @@ internal fun PantallasSecundariasNavegacion(
                     ?: products.firstOrNull()
                 if (prod != null) {
                     val prodId = prod.productId()
-                    val prodCategory = prod.productCategory()
-                    val recommendedProducts = remember(products, prodId, prodCategory) {
-                        val others = products.filter { it.productId() != prodId }
-                        val sameCategory = others.filter {
-                            prodCategory.isNotBlank() && it.productCategory() == prodCategory
-                        }
-                        val otherCategories = others.filterNot {
-                            prodCategory.isNotBlank() && it.productCategory() == prodCategory
-                        }
-                        (sameCategory + otherCategories).take(12)
+                    LaunchedEffect(prodId) {
+                        viewModel.loadRecommendedProducts(prodId)
                     }
                     ProductoScreen(
                         product = prod,
