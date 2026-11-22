@@ -182,8 +182,9 @@ internal fun PantallasSecundariasNavegacion(
                         }
                     },
                     onCouponCodeApplied = { code -> viewModel.setCouponCode(code) },
-                    onNavigateToVerificasion = { sub, disc, ship, tot ->
+                    onNavigateToVerificasion = { sub, disc, ship, tot, selectedIds ->
                         onRequireAuth("Regístrate para continuar con tu compra.") {
+                            viewModel.setSelectedCartItemIds(selectedIds)
                             onUpdateCheckoutTotals(sub, disc, ship, tot)
                             onNavigateTo(Screen.VERIFICASION)
                         }
