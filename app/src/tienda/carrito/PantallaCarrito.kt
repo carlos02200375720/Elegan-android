@@ -68,7 +68,10 @@ fun CarritoScreen(
     var discountAmount by remember { mutableDoubleStateOf(0.0) }
     var isApplyingCoupon by remember { mutableStateOf(false) }
     var appliedCouponCode by remember { mutableStateOf("") }
-    var selectedCartItemIds by remember(cartItems) { mutableStateOf(cartItems.map { it.id }.toSet()) }
+    var selectedCartItemIds by remember { mutableStateOf(cartItems.map { it.id }.toSet()) }
+    LaunchedEffect(cartItems.map { it.id }) {
+        selectedCartItemIds = cartItems.map { it.id }.toSet()
+    }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
