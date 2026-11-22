@@ -48,6 +48,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
     val publicationStats: StateFlow<Map<String, PublicationStats>> = interaccionesCtrl.publicationStats
     val publicationComments: StateFlow<List<PublicationComment>> = interaccionesCtrl.publicationComments
 
+    val cashOnDeliveryConfig: StateFlow<Map<String, Any?>> = pedidosCtrl.cashOnDeliveryConfig
+    val selectedCartItemIds: StateFlow<Set<String>> = pedidosCtrl.selectedCartItemIds
     val cartItems: StateFlow<List<CartItem>> = pedidosCtrl.cartItems
     val cartError: StateFlow<String?> = pedidosCtrl.cartError
     val orders: StateFlow<List<Order>> = pedidosCtrl.orders
@@ -177,6 +179,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setProductSaved(productId: String, isSaved: Boolean, onResult: (Result<Unit>) -> Unit = {}) =
         interaccionesCtrl.setProductSaved(productId, isSaved, onResult)
+
+    fun loadCashOnDeliveryConfig() = pedidosCtrl.loadCashOnDeliveryConfig()
 
     fun loadBankAccounts(onResult: (Result<List<BankAccountInfo>>) -> Unit) =
         pedidosCtrl.loadBankAccounts(onResult)
