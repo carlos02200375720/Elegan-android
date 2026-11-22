@@ -136,8 +136,14 @@ internal class ControladorCarritoYPedidos(
     ) {
         scope.launch {
             try {
-                val selectedIds = selectedIdsForOrder.ifEmpty { cartItems.value.map { it.id }.toSet() }
+                val selectedIds = selectedIdsForOrder
+                if (selectedIds.isEmpty()) {
+                    throw IllegalStateException("Selecciona al menos un producto antes de confirmar el pedido.")
+                }
                 val snapshot = cartItems.value.filter { it.id in selectedIds }
+                if (snapshot.size != selectedIds.size) {
+                    throw IllegalStateException("El carrito cambió. Regresa al carrito y vuelve a seleccionar los productos.")
+                }
                 val id = repository.createPaymentOrder(
                     paymentMethod, bankAccountId, cashOnDeliveryAccepted,
                     customerName, email, phone, address, city, selectedCouponCode, selectedIds.toList()
