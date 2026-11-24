@@ -67,9 +67,12 @@ fun InicioScreen(
     val notifier = LocalEleganNotifier.current
     val videoProductIds = remember(featuredProducts) {
         featuredProducts.asSequence()
-            .filter { it.productHasVideo() && it.productVideoUrl().isNotBlank() }
+            .filter { it.productHasVideo() }
             .map { it.productId() }
             .toSet()
+    }
+    val headerItemCount = remember(categories.isNotEmpty(), announcements.isNotEmpty()) {
+        2 + (if (categories.isNotEmpty()) 1 else 0) + (if (announcements.isNotEmpty()) 1 else 0)
     }
     val focusedProductIdState = remember { mutableStateOf<String?>(null) }
     var localSavedProductIds by remember { mutableStateOf(setOf<String>()) }
@@ -98,7 +101,8 @@ fun InicioScreen(
     )
     EfectoPrecargaImagenesInicio(
         listState = listState,
-        featuredProducts = featuredProducts
+        featuredProducts = featuredProducts,
+        headerItemCount = headerItemCount
     )
 
     val displayName = remember(context, userProfile) {

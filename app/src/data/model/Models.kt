@@ -118,36 +118,85 @@ fun ProductJson.productSavesCount(): Long =
 fun ProductJson.productSharesCount(): Long =
     readLongMetric("sharesCount", "shares_count")
 
+private val videoFileExtensions = setOf("mp4", "mov", "webm", "m4v", "mkv", "3gp", "m3u8")
+
+fun esUrlDeVideo(url: String): Boolean {
+    val cleanPath = url.trim().substringBefore('?').substringBefore('#')
+    val ext = cleanPath.substringAfterLast('.', missingDelimiterValue = "").lowercase()
+    return ext in videoFileExtensions
+}
+
+private fun looksLikeMediaPathOrUrl(value: String): Boolean =
+    value.startsWith("https://", ignoreCase = true) ||
+        value.startsWith("//") ||
+        value.contains('/') ||
+        value.substringAfterLast('.', missingDelimiterValue = "").length in 2..5
+
 fun ProductJson.productImages(): List<String> {
     val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
     val directUrl = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
         .let(::resolveBackendMediaUrl)
     val parsed = rawList.mapNotNull { entry ->
-        when (entry) {
-            is String -> entry.trim().takeIf { it.isNotBlank() }?.let(::resolveBackendMediaUrl)
+        val rawUrl = when (entry) {
+            is String -> entry.trim().takeIf { it.isNotBlank() }
             is Map<*, *> -> {
-                val url = listOf("url", "imageUrl", "image_url", "name")
+                val primary = listOf("url", "imageUrl", "image_url", "mediaUrl", "media_url", "src", "path")
                     .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
-                url?.let(::resolveBackendMediaUrl)
+                primary ?: (entry["name"] as? String)?.trim()?.takeIf { it.isNotBlank() && looksLikeMediaPathOrUrl(it) }
             }
             else -> null
         }
+        rawUrl?.let(::resolveBackendMediaUrl)?.takeIf { it.isNotBlank() }
     }
     return if (directUrl.isNotBlank()) (listOf(directUrl) + parsed).distinct() else parsed.distinct()
+}
+
+fun ProductJson.productGalleryVideoUrls(): List<String> {
+    val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
+    val videos = mutableListOf<String>()
+    val directVideo = productVideoUrl()
+    if (directVideo.isNotBlank()) {
+        videos.add(directVideo)
+    }
+    rawList.forEach { entry ->
+        when (entry) {
+            is String -> {
+                val resolved = resolveBackendMediaUrl(entry)
+                if (resolved.isNotBlank() && esUrlDeVideo(resolved)) {
+                    videos.add(resolved)
+                }
+            }
+            is Map<*, *> -> {
+                val typeHint = listOf("type", "mediaType", "media_type", "mimeType", "mime_type", "kind")
+                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.lowercase() }
+                    .orEmpty()
+                val rawUrl = listOf("videoUrl", "video_url", "url", "mediaUrl", "media_url", "src", "path")
+                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
+                    .orEmpty()
+                val resolved = resolveBackendMediaUrl(rawUrl)
+                if (resolved.isNotBlank() && (typeHint.contains("video") || esUrlDeVideo(resolved))) {
+                    videos.add(resolved)
+                }
+            }
+        }
+    }
+    return videos.distinct()
 }
 
 fun ProductJson.productImageUrl(): String {
     val direct = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
         .let(::resolveBackendMediaUrl)
-    if (direct.isNotBlank()) return direct
-    return productImages().firstOrNull { !it.endsWith(".mp4", ignoreCase = true) }.orEmpty()
+    if (direct.isNotBlank() && !esUrlDeVideo(direct)) return direct
+    return productImages().firstOrNull { !esUrlDeVideo(it) }.orEmpty()
 }
 
 fun ProductJson.productVideoUrl(): String =
     firstNonBlankString("videoUrl", "video_url", "video").let(::resolveBackendMediaUrl)
 
 fun ProductJson.productHasVideo(): Boolean =
-    readBoolean("isVideo", "is_video", defaultValue = false) || productVideoUrl().isNotBlank()
+    readBoolean("isVideo", "is_video", defaultValue = false) ||
+        productVideoUrl().isNotBlank() ||
+        productGalleryVideoUrls().isNotEmpty()
 
 fun ProductJson.productInStock(): Boolean =
     readBoolean("inStock", "in_stock", defaultValue = true)
@@ -196,20 +245,21 @@ private fun ProductJson.readStringArray(key: String): List<String> {
 internal fun resolveBackendMediaUrl(rawUrl: String): String {
     val clean = rawUrl.trim()
     if (clean.isBlank()) return ""
-    if (clean.startsWith("https://", ignoreCase = true)) {
-        return clean
+    val encoded = if (clean.contains(' ')) clean.replace(" ", "%20") else clean
+    if (encoded.startsWith("https://", ignoreCase = true)) {
+        return encoded
     }
-    if (clean.startsWith("//")) {
-        val candidate = "https:$clean"
+    if (encoded.startsWith("//")) {
+        val candidate = "https:$encoded"
         return if (candidate.length > "https://".length) candidate else ""
     }
     // Bloquea esquemas en texto plano o no permitidos (http://, javascript:, data:, file:, etc.)
-    if (clean.contains("://") || clean.substringBefore('/').contains(':')) {
+    if (encoded.contains("://") || encoded.substringBefore('/').contains(':')) {
         return ""
     }
     val cleanBase = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
     if (!cleanBase.startsWith("https://", ignoreCase = true)) return ""
-    return if (clean.startsWith("/")) "$cleanBase$clean" else "$cleanBase/$clean"
+    return if (encoded.startsWith("/")) "$cleanBase$encoded" else "$cleanBase/$encoded"
 }
 
 typealias AnnouncementJson = Map<String, Any?>

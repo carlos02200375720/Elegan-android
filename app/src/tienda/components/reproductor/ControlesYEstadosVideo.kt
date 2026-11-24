@@ -92,7 +92,10 @@ internal fun BotonesControlVideo(
 }
 
 @Composable
-internal fun VistaErrorVideo(modifier: Modifier = Modifier) {
+internal fun VistaErrorVideo(
+    onRetry: (() -> Unit)? = null,
+    modifier: Modifier = Modifier
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -115,9 +118,24 @@ internal fun VistaErrorVideo(modifier: Modifier = Modifier) {
             fontSize = 13.sp
         )
         Text(
-            text = "El archivo de video local se está procesando.",
+            text = "No se pudo cargar este video en este momento.",
             color = Color.Gray,
             fontSize = 11.sp
         )
+        if (onRetry != null) {
+            Spacer(modifier = Modifier.padding(top = 10.dp))
+            androidx.compose.material3.FilledTonalButton(
+                onClick = onRetry,
+                modifier = Modifier.testTag("video_retry_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reintentar video",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.padding(start = 6.dp))
+                Text(text = "Reintentar", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
     }
 }

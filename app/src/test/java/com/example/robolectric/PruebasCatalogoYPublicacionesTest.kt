@@ -973,6 +973,49 @@ class PruebasCatalogoYPublicacionesTest {
         assertTrue("CancellationException debe propagarse en togglePublicationLike", likeCancelled)
         assertFalse("prod_cancel_1" in repo.observeLikedPublicationIds().first())
     }
+
+    @Test
+    fun `test gallery classifies signed video urls and non-mp4 videos properly and encodes spaces`() {
+        assertTrue(com.example.data.model.esUrlDeVideo("https://cdn.elegan.com/clip.mp4?Expires=9999&Signature=abc"))
+        assertTrue(com.example.data.model.esUrlDeVideo("https://cdn.elegan.com/clip.MOV?alt=media"))
+        assertTrue(com.example.data.model.esUrlDeVideo("https://cdn.elegan.com/clip.webm#t=2"))
+        assertFalse(com.example.data.model.esUrlDeVideo("https://cdn.elegan.com/camisa.jpg?v=2"))
+
+        assertEquals(
+            "https://cdn.elegan.com/uploads/mi%20camisa%201.jpg",
+            com.example.data.model.resolveBackendMediaUrl("https://cdn.elegan.com/uploads/mi camisa 1.jpg")
+        )
+
+        val productWithMixedGallery: ProductJson = mapOf(
+            "id" to "prod_mixed_media",
+            "name" to "Camisa Oxford",
+            "imageUrl" to "https://cdn.elegan.com/cover.jpg",
+            "images" to listOf(
+                "https://cdn.elegan.com/cover.jpg",
+                "https://cdn.elegan.com/slide 2.jpg",
+                "https://cdn.elegan.com/runway.mp4?token=signed123",
+                mapOf("name" to "Etiqueta sin URL"),
+                mapOf("url" to "https://cdn.elegan.com/clip.mov?alt=media", "type" to "video")
+            )
+        )
+
+        val galleryImages = com.example.ui.getProductGalleryImages(productWithMixedGallery)
+        assertEquals(
+            listOf(
+                "https://cdn.elegan.com/cover.jpg",
+                "https://cdn.elegan.com/slide%202.jpg"
+            ),
+            galleryImages
+        )
+
+        val mediaItems = com.example.ui.getProductMediaItems(productWithMixedGallery)
+        val imageItems = mediaItems.filterIsInstance<com.example.ui.GalleryMediaItem.Image>()
+        val videoItems = mediaItems.filterIsInstance<com.example.ui.GalleryMediaItem.Video>()
+        assertEquals(2, imageItems.size)
+        assertEquals(2, videoItems.size)
+        assertEquals("https://cdn.elegan.com/runway.mp4?token=signed123", videoItems[0].videoUrl)
+        assertEquals("https://cdn.elegan.com/clip.mov?alt=media", videoItems[1].videoUrl)
+    }
 }
 
 private open class StubEleganAuthApi : BaseFakeEleganAuthApi()

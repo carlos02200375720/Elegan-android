@@ -22,17 +22,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
+import coil.imageLoader
 import com.example.data.model.ProductJson
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
@@ -40,6 +43,8 @@ import com.example.data.model.productName
 import com.example.ui.components.EleganVideoPlayer
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganGold
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun VisorGaleriaProducto(
@@ -50,6 +55,30 @@ fun VisorGaleriaProducto(
 ) {
     val productId = product.productId()
     val productName = product.productName()
+    val context = LocalContext.current
+    val imageLoader = remember(context) { context.imageLoader }
+    val prefetchedSlides = remember(productId, mediaItems) { HashSet<String>(mediaItems.size) }
+
+    LaunchedEffect(pagerState, mediaItems, imageLoader) {
+        if (mediaItems.size <= 1) return@LaunchedEffect
+        snapshotFlow { pagerState.currentPage }
+            .distinctUntilChanged()
+            .collectLatest { currentPage ->
+                listOf(currentPage + 1, currentPage + 2, currentPage - 1).forEach { targetIndex ->
+                    val url = when (val slide = mediaItems.getOrNull(targetIndex)) {
+                        is GalleryMediaItem.Image -> slide.imageUrl
+                        is GalleryMediaItem.Video -> slide.posterUrl
+                        null -> ""
+                    }
+                    if (url.isNotBlank() && prefetchedSlides.add(url)) {
+                        imageLoader.enqueue(
+                            construirPeticionImagenPublicacion(context, url)
+                        )
+                    }
+                }
+            }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -71,6 +100,8 @@ fun VisorGaleriaProducto(
         } else {
             HorizontalPager(
                 state = pagerState,
+                beyondViewportPageCount = 1,
+                key = { page -> "${productId}_gallery_$page" },
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 when (val item = mediaItems.getOrNull(page)) {
@@ -89,11 +120,9 @@ fun VisorGaleriaProducto(
                     }
 
                     is GalleryMediaItem.Image -> {
-                        AsyncImage(
-                            model = item.imageUrl,
-                            contentDescription = "$productName - Imagen ${page + 1}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                        ImagenPublicacionProducto(
+                            imageUrl = item.imageUrl,
+                            contentDescription = "$productName - Imagen ${page + 1}"
                         )
                     }
 

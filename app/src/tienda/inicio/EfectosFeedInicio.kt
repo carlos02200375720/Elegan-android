@@ -9,10 +9,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import coil.imageLoader
-import coil.request.ImageRequest
-import coil.size.Precision
 import com.example.data.model.ProductJson
 import com.example.data.model.UserProfile
+import com.example.data.model.esUrlDeVideo
 import com.example.data.model.productImageUrl
 import com.example.data.model.productImages
 import com.example.data.remote.MobileSession
@@ -83,39 +82,35 @@ private fun calcularProductoVideoEnFoco(
 @Composable
 internal fun EfectoPrecargaImagenesInicio(
     listState: LazyListState,
-    featuredProducts: List<ProductJson>
+    featuredProducts: List<ProductJson>,
+    headerItemCount: Int = 2
 ) {
-    // Precarga las portadas de las próximas tarjetas sin observar cambios píxel a píxel del layoutInfo.
+    // Precarga las primeras imágenes de las próximas tarjetas compensando las secciones fijas del feed.
     val context = LocalContext.current
     val imageLoader = remember(context) { context.imageLoader }
-    val coverUrls = remember(featuredProducts) {
-        featuredProducts.map { p ->
-            p.productImageUrl().takeIf {
-                it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
-            } ?: p.productImages().firstOrNull {
-                it.isNotBlank() && !it.endsWith(".mp4", ignoreCase = true)
-            }
+    val productPreviewUrls = remember(featuredProducts) {
+        featuredProducts.map { product ->
+            val cover = product.productImageUrl().takeIf { it.isNotBlank() && !esUrlDeVideo(it) }
+            val gallery = product.productImages().filter { it.isNotBlank() && !esUrlDeVideo(it) }
+            (listOfNotNull(cover) + gallery).distinct().take(2)
         }
     }
-    val prefetchedUrls = remember(coverUrls) { HashSet<String>(coverUrls.size) }
+    val prefetchedUrls = remember(productPreviewUrls) { HashSet<String>(productPreviewUrls.size * 2) }
 
-    LaunchedEffect(listState, coverUrls, imageLoader) {
-        if (coverUrls.isEmpty()) return@LaunchedEffect
+    LaunchedEffect(listState, productPreviewUrls, headerItemCount, imageLoader) {
+        if (productPreviewUrls.isEmpty()) return@LaunchedEffect
         snapshotFlow { listState.firstVisibleItemIndex }
             .distinctUntilChanged()
             .collectLatest { firstVisibleIndex ->
-                val startProductIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
-                val endProductIndex = (startProductIndex + 4).coerceAtMost(coverUrls.size)
+                val startProductIndex = (firstVisibleIndex - headerItemCount).coerceAtLeast(0)
+                val endProductIndex = (startProductIndex + 5).coerceAtMost(productPreviewUrls.size)
                 for (i in startProductIndex until endProductIndex) {
-                    val coverUrl = coverUrls[i]
-                    if (!coverUrl.isNullOrBlank() && prefetchedUrls.add(coverUrl)) {
-                        val request = ImageRequest.Builder(context)
-                            .data(coverUrl)
-                            .size(900, 900)
-                            .precision(Precision.INEXACT)
-                            .allowRgb565(true)
-                            .build()
-                        imageLoader.enqueue(request)
+                    productPreviewUrls[i].forEach { url ->
+                        if (url.isNotBlank() && prefetchedUrls.add(url)) {
+                            imageLoader.enqueue(
+                                construirPeticionImagenPublicacion(context, url)
+                            )
+                        }
                     }
                 }
             }

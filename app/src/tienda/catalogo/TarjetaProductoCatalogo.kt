@@ -28,11 +28,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -61,12 +63,18 @@ fun ProductGridCard(
     cardTestTag: String? = null,
     saveTestTag: String? = null
 ) {
+    val context = LocalContext.current
     val productId = product.productId()
     val productName = product.productName()
     val productImageUrl = product.productImageUrl()
     val productPrice = product.productPrice()
     val resolvedCardTag = cardTestTag ?: "catalog_item_$productId"
     val resolvedSaveTag = saveTestTag ?: "catalog_save_$productId"
+    val cardImageRequest = remember(productImageUrl, context) {
+        productImageUrl.takeIf { it.isNotBlank() }?.let { url ->
+            construirPeticionImagenPublicacion(context = context, imageUrl = url, maxSizePx = 540)
+        }
+    }
 
     ElevatedCard(
         modifier = modifier
@@ -89,12 +97,14 @@ fun ProductGridCard(
                         .aspectRatio(1f)
                         .background(Color(0xFFF3EFEA))
                 ) {
-                    AsyncImage(
-                        model = productImageUrl,
-                        contentDescription = productName,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (cardImageRequest != null) {
+                        AsyncImage(
+                            model = cardImageRequest,
+                            contentDescription = productName,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
                     if (categoryLabel.isNotBlank()) {
                         Surface(

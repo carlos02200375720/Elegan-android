@@ -23,23 +23,29 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.imageLoader
 import com.example.data.model.ProductJson
 import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganGold
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun CarruselMultimediaPublicacion(
@@ -97,10 +103,32 @@ fun CarruselMultimediaPublicacion(
             )
         } else {
             val activePagerState = pagerState ?: rememberPagerState(pageCount = { mediaItems.size })
+            val context = LocalContext.current
+            val imageLoader = remember(context) { context.imageLoader }
+            val prefetchedSlides = remember(productId, mediaItems) { HashSet<String>(mediaItems.size) }
+
+            LaunchedEffect(activePagerState, mediaItems, imageLoader) {
+                snapshotFlow { activePagerState.currentPage }
+                    .distinctUntilChanged()
+                    .collectLatest { currentPage ->
+                        listOf(currentPage + 1, currentPage + 2, currentPage - 1).forEach { targetIndex ->
+                            val url = when (val slide = mediaItems.getOrNull(targetIndex)) {
+                                is GalleryMediaItem.Image -> slide.imageUrl
+                                is GalleryMediaItem.Video -> slide.posterUrl
+                                null -> ""
+                            }
+                            if (url.isNotBlank() && prefetchedSlides.add(url)) {
+                                imageLoader.enqueue(
+                                    construirPeticionImagenPublicacion(context, url)
+                                )
+                            }
+                        }
+                    }
+            }
 
             HorizontalPager(
                 state = activePagerState,
-                beyondViewportPageCount = 0,
+                beyondViewportPageCount = 1,
                 key = { page -> "${productId}_$page" },
                 modifier = Modifier
                     .fillMaxSize()

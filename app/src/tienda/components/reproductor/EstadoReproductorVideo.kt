@@ -31,6 +31,7 @@ internal class EstadoReproductorVideo(
 
     var videoWidth by mutableIntStateOf(0)
     var videoHeight by mutableIntStateOf(0)
+    var retryToken by mutableIntStateOf(0)
 
     var textureViewRef by mutableStateOf<TextureView?>(null)
     var playerRef by mutableStateOf<ExoPlayer?>(null)
@@ -114,6 +115,18 @@ internal class EstadoReproductorVideo(
         isPlaying = false
         showOverlayControls = true
         pausarSiEsPosible()
+    }
+
+    fun reintentarCarga() {
+        hasError = false
+        isPrepared = false
+        isCompleted = false
+        hasStarted = false
+        isFirstFrameRendered = false
+        shouldLoadPlayer = true
+        isPlaying = true
+        showOverlayControls = false
+        retryToken += 1
     }
 }
 

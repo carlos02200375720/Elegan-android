@@ -38,7 +38,7 @@ internal fun CicloVidaMediaPlayer(
         }
     }
 
-    DisposableEffect(videoUrl, state.shouldLoadPlayer) {
+    DisposableEffect(videoUrl, state.shouldLoadPlayer, state.retryToken) {
         if (!state.shouldLoadPlayer) {
             onDispose {}
         } else {

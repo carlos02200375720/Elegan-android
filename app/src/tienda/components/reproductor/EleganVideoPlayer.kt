@@ -116,7 +116,7 @@ fun EleganVideoPlayer(
                 modifier = Modifier.align(Alignment.Center)
             )
         } else {
-            VistaErrorVideo()
+            VistaErrorVideo(onRetry = { state.reintentarCarga() })
         }
     }
 }
