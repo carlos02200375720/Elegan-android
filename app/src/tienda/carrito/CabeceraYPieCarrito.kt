@@ -7,9 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -50,15 +49,16 @@ fun CabeceraCarrito(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(50.dp),
+                .heightIn(min = 52.dp),
             color = Color.White,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 4.dp),
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(
@@ -101,6 +101,7 @@ fun CabeceraCarrito(
                         color = if (totalItems > 0) Color.White else EleganCharcoal,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
+                        maxLines = 1,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                     )
                 }
@@ -123,19 +124,28 @@ fun BarraInferiorTotalCarrito(
             shadowElevation = 0.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
+                .heightIn(min = 64.dp)
         ) {
             BoxWithConstraints(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxWidth(),
                 contentAlignment = Alignment.Center
             ) {
-                val isCompactBar = maxWidth < 350.dp
+                val isUltraCompactBar = maxWidth < 330.dp
+                val isCompactBar = maxWidth < 360.dp
+                val isWideBar = maxWidth >= 600.dp
+                val barHorizontalPad = when {
+                    isUltraCompactBar -> 10.dp
+                    isCompactBar -> 12.dp
+                    isWideBar -> 24.dp
+                    else -> 16.dp
+                }
+
                 Row(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .widthIn(max = 680.dp)
                         .padding(
-                            horizontal = if (isCompactBar) 12.dp else 16.dp,
+                            horizontal = barHorizontalPad,
                             vertical = 8.dp
                         ),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -151,14 +161,19 @@ fun BarraInferiorTotalCarrito(
                                 color = Color.Gray,
                                 fontSize = 11.sp
                             ),
-                            maxLines = 1
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = formatearPrecioRd(total),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = EleganBurgundyDark,
-                                fontSize = if (isCompactBar) 15.sp else 16.sp
+                                fontSize = when {
+                                    isUltraCompactBar -> 14.5.sp
+                                    isCompactBar -> 15.5.sp
+                                    else -> 16.5.sp
+                                }
                             ),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -175,18 +190,23 @@ fun BarraInferiorTotalCarrito(
                             contentColor = Color.White
                         ),
                         contentPadding = PaddingValues(
-                            horizontal = if (isCompactBar) 14.dp else 16.dp,
+                            horizontal = when {
+                                isUltraCompactBar -> 12.dp
+                                isCompactBar -> 14.dp
+                                else -> 18.dp
+                            },
                             vertical = 0.dp
                         ),
                         modifier = Modifier
-                            .height(44.dp)
+                            .heightIn(min = 48.dp)
                             .testTag("checkout_continue_btn")
                     ) {
                         Text(
                             text = stringResource(R.string.cart_continue),
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp,
-                            maxLines = 1
+                            fontSize = if (isUltraCompactBar) 13.sp else 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Icon(

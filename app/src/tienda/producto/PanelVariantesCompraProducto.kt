@@ -3,7 +3,10 @@ package com.example.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,7 +63,7 @@ import com.example.data.model.productSizes
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PanelVariantesCompraProducto(
     product: ProductJson,
@@ -111,214 +114,306 @@ fun PanelVariantesCompraProducto(
             )
         }
     ) {
-        Column(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag("product_options_bottom_sheet")
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 8.dp, top = 4.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Color(0xFFF0EBE3)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (thumbnailUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = thumbnailUrl,
-                            contentDescription = product.productName(),
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.matchParentSize()
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Checkroom,
-                            contentDescription = product.productName(),
-                            tint = Color(0xFFB5ABA0),
-                            modifier = Modifier.size(28.dp)
-                        )
-                    }
-                }
+            val isUltraCompact = maxWidth < 340.dp
+            val isCompact = maxWidth < 385.dp
 
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = product.productName(),
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.Bold,
-                            color = EleganCharcoal,
-                            fontFamily = FontFamily.Serif
-                        ),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = formatearPrecioRd(unitPrice),
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.ExtraBold,
-                                color = EleganBurgundy,
-                                fontSize = 17.sp
-                            )
-                        )
-                        if (quantity > 1L || shippingPrice > 0.0) {
-                            Text(
-                                text = stringResource(
-                                    R.string.producto_panel_estimated_total,
-                                    formatearPrecioRd(estimatedTotal)
-                                ),
-                                style = MaterialTheme.typography.bodySmall.copy(
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = Color(0xFF5D534A)
-                                )
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = summaryParts,
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            color = Color(0xFF6B6259)
-                        ),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.testTag("panel_selection_summary")
-                    )
-                }
-
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.testTag("panel_close_btn")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = stringResource(R.string.producto_panel_close_cd),
-                        tint = EleganCharcoal
-                    )
-                }
+            val headerStartPad = when {
+                isUltraCompact -> 12.dp
+                isCompact -> 14.dp
+                else -> 16.dp
+            }
+            val headerEndPad = when {
+                isUltraCompact -> 2.dp
+                isCompact -> 4.dp
+                else -> 8.dp
+            }
+            val thumbnailSize = when {
+                isUltraCompact -> 52.dp
+                isCompact -> 58.dp
+                else -> 64.dp
+            }
+            val headerImageGap = if (isCompact) 10.dp else 12.dp
+            val bodyHorizontalPad = when {
+                isUltraCompact -> 14.dp
+                isCompact -> 16.dp
+                else -> 20.dp
+            }
+            val bodyVerticalPad = when {
+                isUltraCompact -> 12.dp
+                isCompact -> 14.dp
+                else -> 16.dp
+            }
+            val footerHorizontalPad = when {
+                isUltraCompact -> 12.dp
+                isCompact -> 14.dp
+                else -> 16.dp
             }
 
-            HorizontalDivider(color = Color(0xFFEAE2DA))
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f, fill = false)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-            ) {
-                if (sizes.isNotEmpty()) {
-                    SelectorOpcionesProducto(
-                        title = "Seleccionar Talla / Medida:",
-                        options = sizes,
-                        selectedOption = selectedSize,
-                        onSelect = onSelectSize,
-                        rowTestTag = "panel_size_selector_row",
-                        chipTagPrefix = "panel_size_chip_"
-                    )
-                }
-
-                if (colors.isNotEmpty()) {
-                    SelectorOpcionesProducto(
-                        title = "Seleccionar Color:",
-                        options = colors,
-                        selectedOption = selectedColor,
-                        onSelect = onSelectColor,
-                        rowTestTag = "panel_color_selector_row",
-                        chipTagPrefix = "panel_color_chip_"
-                    )
-                }
-
-                SelectorEnvioProducto(
-                    shippingMethods = shippingMethods,
-                    selectedShippingId = selectedShippingId,
-                    onSelectShipping = onSelectShipping,
-                    testTagPrefix = "panel_shipping_method_"
-                )
-
-                SelectorCantidadProducto(
-                    quantity = quantity,
-                    onDecrease = onDecreaseQuantity,
-                    onIncrease = onIncreaseQuantity,
-                    testTagPrefix = "panel_quantity_"
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            EleganBottomBarShadow()
-            Surface(
-                color = Color.White,
-                tonalElevation = 0.dp,
-                shadowElevation = 0.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        .padding(
+                            start = headerStartPad,
+                            end = headerEndPad,
+                            top = 4.dp,
+                            bottom = if (isUltraCompact) 10.dp else 12.dp
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
-                        onClick = onAddToCart,
+                    Box(
                         modifier = Modifier
-                            .weight(1f)
-                            .heightIn(min = 48.dp)
-                            .testTag("add_to_cart_btn"),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = EleganBurgundy
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                            brush = SolidColor(EleganBurgundy)
-                        )
+                            .size(thumbnailSize)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFFF0EBE3)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingBag,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                        if (thumbnailUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = thumbnailUrl,
+                                contentDescription = product.productName(),
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.matchParentSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Checkroom,
+                                contentDescription = product.productName(),
+                                tint = Color(0xFFB5ABA0),
+                                modifier = Modifier.size(if (isUltraCompact) 24.dp else 28.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(headerImageGap))
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = stringResource(R.string.producto_panel_add_to_cart),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                            text = product.productName(),
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = EleganCharcoal,
+                                fontFamily = FontFamily.Serif,
+                                fontSize = when {
+                                    isUltraCompact -> 13.5.sp
+                                    isCompact -> 14.sp
+                                    else -> 15.sp
+                                },
+                                lineHeight = when {
+                                    isUltraCompact -> 17.sp
+                                    isCompact -> 18.sp
+                                    else -> 20.sp
+                                }
+                            ),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        FlowRow(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = formatearPrecioRd(unitPrice),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = EleganBurgundy,
+                                    fontSize = when {
+                                        isUltraCompact -> 14.5.sp
+                                        isCompact -> 15.5.sp
+                                        else -> 17.sp
+                                    }
+                                ),
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            )
+                            if (quantity > 1L || shippingPrice > 0.0) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.producto_panel_estimated_total,
+                                        formatearPrecioRd(estimatedTotal)
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color(0xFF5D534A),
+                                        fontSize = when {
+                                            isUltraCompact -> 11.sp
+                                            isCompact -> 11.5.sp
+                                            else -> 12.sp
+                                        }
+                                    ),
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = summaryParts,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = Color(0xFF6B6259),
+                                fontSize = if (isUltraCompact) 11.sp else 12.sp
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.testTag("panel_selection_summary")
                         )
                     }
 
-                    Button(
-                        onClick = onBuyNow,
+                    IconButton(
+                        onClick = onDismiss,
                         modifier = Modifier
-                            .weight(1.2f)
-                            .heightIn(min = 48.dp)
-                            .testTag("buy_now_btn"),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = EleganBurgundy,
-                            contentColor = Color.White
-                        )
+                            .size(48.dp)
+                            .testTag("panel_close_btn")
                     ) {
-                        Text(
-                            text = stringResource(R.string.producto_panel_buy_now),
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.producto_panel_close_cd),
+                            tint = EleganCharcoal
                         )
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFEAE2DA))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = bodyHorizontalPad, vertical = bodyVerticalPad)
+                ) {
+                    if (sizes.isNotEmpty()) {
+                        SelectorOpcionesProducto(
+                            title = "Seleccionar Talla / Medida:",
+                            options = sizes,
+                            selectedOption = selectedSize,
+                            onSelect = onSelectSize,
+                            rowTestTag = "panel_size_selector_row",
+                            chipTagPrefix = "panel_size_chip_",
+                            isCompact = isCompact
+                        )
+                    }
+
+                    if (colors.isNotEmpty()) {
+                        SelectorOpcionesProducto(
+                            title = "Seleccionar Color:",
+                            options = colors,
+                            selectedOption = selectedColor,
+                            onSelect = onSelectColor,
+                            rowTestTag = "panel_color_selector_row",
+                            chipTagPrefix = "panel_color_chip_",
+                            isCompact = isCompact
+                        )
+                    }
+
+                    SelectorEnvioProducto(
+                        shippingMethods = shippingMethods,
+                        selectedShippingId = selectedShippingId,
+                        onSelectShipping = onSelectShipping,
+                        testTagPrefix = "panel_shipping_method_",
+                        isCompact = isCompact
+                    )
+
+                    SelectorCantidadProducto(
+                        quantity = quantity,
+                        onDecrease = onDecreaseQuantity,
+                        onIncrease = onIncreaseQuantity,
+                        testTagPrefix = "panel_quantity_",
+                        isCompact = isCompact
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                EleganBottomBarShadow()
+                Surface(
+                    color = Color.White,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                horizontal = footerHorizontalPad,
+                                vertical = if (isUltraCompact) 10.dp else 12.dp
+                            ),
+                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = onAddToCart,
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 48.dp)
+                                .testTag("add_to_cart_btn"),
+                            contentPadding = PaddingValues(
+                                horizontal = if (isUltraCompact) 6.dp else 8.dp,
+                                vertical = 10.dp
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = EleganBurgundy
+                            ),
+                            border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
+                                brush = SolidColor(EleganBurgundy)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingBag,
+                                contentDescription = null,
+                                modifier = Modifier.size(if (isUltraCompact) 15.dp else 16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(if (isUltraCompact) 4.dp else 6.dp))
+                            Text(
+                                text = stringResource(R.string.producto_panel_add_to_cart),
+                                fontSize = if (isUltraCompact) 12.5.sp else 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Button(
+                            onClick = onBuyNow,
+                            modifier = Modifier
+                                .weight(1.2f)
+                                .heightIn(min = 48.dp)
+                                .testTag("buy_now_btn"),
+                            contentPadding = PaddingValues(
+                                horizontal = if (isUltraCompact) 6.dp else 8.dp,
+                                vertical = 10.dp
+                            ),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = EleganBurgundy,
+                                contentColor = Color.White
+                            )
+                        ) {
+                            Text(
+                                text = stringResource(R.string.producto_panel_buy_now),
+                                fontSize = if (isUltraCompact) 12.5.sp else 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }

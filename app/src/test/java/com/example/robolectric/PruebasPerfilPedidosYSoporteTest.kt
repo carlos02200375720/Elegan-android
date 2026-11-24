@@ -237,18 +237,52 @@ class PruebasPerfilPedidosYSoporteTest {
                         "id" to "ORD_FINAL_900",
                         "customer_name" to "Carlos Méndez",
                         "payment_method" to "Transferencia bancaria",
-                        "total" to 371.0,
+                        "subtotal" to 3000.0,
+                        "discount" to 200.0,
+                        "shipping_cost" to 500.0,
+                        "total" to 3300.0,
                         "item_count" to 2,
-                        "status" to "pagado"
+                        "status" to "pendiente_confirmacion",
+                        "items" to listOf(
+                            mapOf(
+                                "productId" to "prod_99",
+                                "name" to "Camisa Oxford",
+                                "imageUrl" to "/uploads/camisa.jpg",
+                                "price" to 1500.0,
+                                "quantity" to 2,
+                                "selectedSize" to "M",
+                                "selectedColor" to "Blanco",
+                                "shippingMethodName" to "Internacional",
+                                "shippingPrice" to 500.0,
+                                "shippingDeliveryTime" to "5-15 días",
+                                "shippingOrigin" to "Estados Unidos"
+                            )
+                        )
                     )
                 )
             ),
             fallbackUserId = "u1"
         )
         assertEquals(1, orders.size)
-        assertEquals("ORD_FINAL_900", orders.first().id)
-        assertEquals("Transferencia bancaria", orders.first().paymentMethod)
-        assertEquals(371.0, orders.first().total, 0.01)
+        val parsedOrder = orders.first()
+        assertEquals("ORD_FINAL_900", parsedOrder.id)
+        assertEquals("Transferencia bancaria", parsedOrder.paymentMethod)
+        assertEquals(3000.0, parsedOrder.subtotal, 0.01)
+        assertEquals(200.0, parsedOrder.discount, 0.01)
+        assertEquals(500.0, parsedOrder.shippingCost, 0.01)
+        assertEquals(3300.0, parsedOrder.total, 0.01)
+        assertEquals("Internacional", parsedOrder.shippingMethodName)
+        assertEquals("5-15 días", parsedOrder.shippingDeliveryTime)
+        assertEquals(1, parsedOrder.items.size)
+        val parsedItem = parsedOrder.items.first()
+        assertEquals("Camisa Oxford", parsedItem.name)
+        assertTrue(parsedItem.imageUrl.endsWith("/uploads/camisa.jpg"))
+        assertEquals(1500.0, parsedItem.price, 0.01)
+        assertEquals(2L, parsedItem.quantity)
+        assertEquals("M", parsedItem.selectedSize)
+        assertEquals("Blanco", parsedItem.selectedColor)
+        assertEquals("5-15 días", parsedItem.shippingDeliveryTime)
+        assertEquals("Estados Unidos", parsedItem.shippingOrigin)
 
         val messages = extractMessagesJson(
             mapOf(

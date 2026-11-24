@@ -47,6 +47,7 @@ fun PerfilScreen(
     userProfile: UserProfile?,
     orders: List<Order>,
     savedProducts: List<ProductJson> = emptyList(),
+    catalogProducts: List<ProductJson> = emptyList(),
     cartItemCount: Long = 0L,
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
@@ -209,7 +210,10 @@ fun PerfilScreen(
                                             }
                                         }
                                     )
-                                    "orders" -> SeccionPedidosPerfil(orders = orders)
+                                    "orders" -> SeccionPedidosPerfil(
+                                        orders = orders,
+                                        catalogProducts = catalogProducts
+                                    )
                                 }
                             }
                         }

@@ -26,14 +26,20 @@ class ExampleUnitTest {
     try {
       for (locale in listOf(Locale.US, Locale.forLanguageTag("es-ES"), Locale.GERMANY, Locale.FRANCE)) {
         Locale.setDefault(locale)
-        assertEquals("1250.50", formatearMontoDecimal(1250.5))
-        assertEquals("0.00", formatearMontoDecimal(-0.0))
-        assertEquals("0.00", formatearMontoDecimal(Double.NaN))
-        assertEquals("RD$ 55.00", formatearMonedaRD(55.0))
-        assertEquals("RD$ 55.00", formatearPrecioRd(55.0))
-        assertEquals("-RD$ 12.75", formatearDescuentoRd(12.75))
+        assertEquals("1.500", formatearMontoDecimal(1500.0))
+        assertEquals("100", formatearMontoDecimal(100.0))
+        assertEquals("1.250,50", formatearMontoDecimal(1250.5))
+        assertEquals("1.000.000", formatearMontoDecimal(1_000_000.0))
+        assertEquals("0", formatearMontoDecimal(-0.0))
+        assertEquals("0", formatearMontoDecimal(Double.NaN))
+        assertEquals("RD$ 1.500", formatearMonedaRD(1500.0))
+        assertEquals("RD$ 100", formatearPrecioRd(100.0))
+        assertEquals("RD$ 55", formatearPrecioRd(55.0))
+        assertEquals("-RD$ 12,75", formatearDescuentoRd(12.75))
+        assertEquals("-RD$ 500", formatearDescuentoRd(500.0))
         assertEquals("GRATIS", formatearEnvioRd(0.0))
-        assertEquals("RD$ 250.00", formatearEnvioRd(250.0))
+        assertEquals("RD$ 250", formatearEnvioRd(250.0))
+        assertEquals("RD$ 1.500", formatearEnvioRd(1500.0))
       }
     } finally {
       Locale.setDefault(previousLocale)

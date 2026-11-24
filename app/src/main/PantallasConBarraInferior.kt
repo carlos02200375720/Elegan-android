@@ -229,6 +229,7 @@ internal fun PantallasConBarraInferior(
                             userProfile = userProfile,
                             orders = orders,
                             savedProducts = savedProducts,
+                            catalogProducts = products,
                             cartItemCount = totalCartCount,
                             isAuthenticated = isAuthenticated,
                             onRequireAuth = onRequireAuth,

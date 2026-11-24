@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RemoveShoppingCart
 import androidx.compose.material.icons.filled.ShoppingBag
@@ -43,6 +46,7 @@ fun EstadoVacioCarrito(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(if (isCompact) 20.dp else 32.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -96,7 +100,9 @@ fun EstadoVacioCarrito(
                 onClick = onExploreCatalog,
                 colors = ButtonDefaults.buttonColors(containerColor = EleganBurgundy),
                 shape = RoundedCornerShape(10.dp),
-                modifier = Modifier.testTag("explore_catalog_from_empty_cart_btn")
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .testTag("explore_catalog_from_empty_cart_btn")
             ) {
                 Icon(Icons.Default.ShoppingBag, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))

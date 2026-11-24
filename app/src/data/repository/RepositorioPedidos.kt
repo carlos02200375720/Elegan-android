@@ -5,6 +5,8 @@ import android.os.Build
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.Order
+import com.example.data.model.OrderItem
+import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
@@ -182,26 +184,97 @@ private fun extractSingleOrderJson(response: Map<String, Any?>, fallbackUserId: 
 private fun mapOrderFromJsonMap(map: Map<*, *>, fallbackUserId: String): Order? {
     val id = firstOrderString(map, "id", "_id", "orderId", "order_id")
     if (id.isBlank()) return null
-    val rawTotal = map["total"] ?: map["amount"]
-    val total = when (rawTotal) {
-        is Number -> rawTotal.toDouble()
-        is String -> rawTotal.trim().toDoubleOrNull() ?: 0.0
-        else -> 0.0
+
+    val parsedItems = extractOrderItemsFromMap(map)
+    val shippingMap = (map["shipping"] as? Map<*, *>)
+        ?: (map["shippingMethod"] as? Map<*, *>)
+        ?: (map["shipping_method"] as? Map<*, *>)
+
+    val total = firstOrderDouble(map, "total", "totalDOP", "total_dop", "amount")
+    val explicitSubtotal = firstOrderDouble(map, "subtotal", "sub_total", "subtotalDOP", "subtotal_dop")
+    val computedSubtotal = parsedItems.sumOf { it.price * it.quantity }
+    val subtotal = if (explicitSubtotal > 0.0) explicitSubtotal else computedSubtotal
+
+    val discount = firstOrderDouble(
+        map,
+        "discount",
+        "discountAmount",
+        "discount_amount",
+        "discountAmountDOP",
+        "discount_amount_dop"
+    )
+
+    val explicitShippingCost = firstOrderDouble(
+        map,
+        "shippingCost",
+        "shipping_cost",
+        "shippingPrice",
+        "shipping_price",
+        "shippingTotal",
+        "shipping_total",
+        "shippingCostDOP",
+        "shippingPriceDOP",
+        "shipping_dop"
+    ).let { direct ->
+        if (direct > 0.0) direct
+        else if (shippingMap != null) firstOrderDouble(shippingMap, "price", "cost", "amount", "priceDOP")
+        else 0.0
     }
+    val computedItemsShipping = parsedItems.sumOf { it.shippingPrice }
+    val shippingCost = if (explicitShippingCost > 0.0) explicitShippingCost else computedItemsShipping
+
+    val shippingMethodName = firstOrderString(
+        map,
+        "shippingMethodName",
+        "shipping_method_name",
+        "shippingName",
+        "shipping_name",
+        "shippingMethod",
+        "shipping_method"
+    ).ifBlank {
+        shippingMap?.let { firstOrderString(it, "name", "title", "methodName", "label") }.orEmpty()
+    }.ifBlank {
+        parsedItems.map { it.shippingMethodName }.filter { it.isNotBlank() }.distinct().joinToString(" / ")
+    }
+
+    val shippingDeliveryTime = firstOrderString(
+        map,
+        "shippingDeliveryTime",
+        "shipping_delivery_time",
+        "deliveryTime",
+        "delivery_time",
+        "estimatedDelivery",
+        "estimated_delivery"
+    ).ifBlank {
+        shippingMap?.let { firstOrderString(it, "deliveryTime", "delivery_time", "estimatedDelivery", "eta") }.orEmpty()
+    }.ifBlank {
+        parsedItems.map { it.shippingDeliveryTime }.filter { it.isNotBlank() }.distinct().joinToString(" / ")
+    }
+
+    val shippingOrigin = firstOrderString(
+        map,
+        "shippingOrigin",
+        "shipping_origin",
+        "origin"
+    ).ifBlank {
+        shippingMap?.let { firstOrderString(it, "origin", "shippingOrigin", "country") }.orEmpty()
+    }.ifBlank {
+        parsedItems.map { it.shippingOrigin }.filter { it.isNotBlank() }.distinct().joinToString(" / ")
+    }
+
     val rawCount = map["itemCount"] ?: map["item_count"]
     val itemCount = when (rawCount) {
         is Number -> rawCount.toLong().coerceAtLeast(1L)
         is String -> rawCount.trim().toLongOrNull()?.coerceAtLeast(1L) ?: 1L
-        else -> (map["items"] as? List<*>)?.size?.toLong()?.coerceAtLeast(1L) ?: 1L
+        else -> parsedItems.sumOf { it.quantity }.takeIf { it > 0L } ?: 1L
     }
+
     val summary = firstOrderString(map, "itemsSummary", "items_summary").ifBlank {
-        val rawItems = map["items"] as? List<*>
-        rawItems?.mapNotNull { it as? Map<*, *> }?.joinToString(", ") { item ->
-            val q = (item["quantity"] as? Number)?.toLong() ?: 1L
-            val n = (item["name"] as? String)?.trim().orEmpty()
-            if (n.isNotBlank()) "${q}x $n" else ""
-        }?.takeIf { it.isNotBlank() }.orEmpty()
+        parsedItems.joinToString(", ") { item ->
+            if (item.name.isNotBlank()) "${item.quantity}x ${item.name}" else ""
+        }.trim().trimEnd(',')
     }
+
     return Order(
         id = id,
         userId = firstOrderString(map, "userId", "user_id").ifBlank { fallbackUserId },
@@ -216,12 +289,150 @@ private fun mapOrderFromJsonMap(map: Map<*, *>, fallbackUserId: String): Order? 
             else -> firstOrderString(map, "paymentMethod", "payment_method").ifBlank { "No especificado" }
         },
         paymentProofUrl = firstOrderString(map, "paymentProofUrl", "payment_proof_url"),
+        subtotal = subtotal,
+        discount = discount,
+        shippingCost = shippingCost,
+        shippingMethodName = shippingMethodName,
+        shippingDeliveryTime = shippingDeliveryTime,
+        shippingOrigin = shippingOrigin,
         total = total,
         itemCount = itemCount,
         status = firstOrderString(map, "status").ifBlank { "confirmado" },
         itemsSummary = summary,
+        items = parsedItems,
         createdAt = firstOrderString(map, "createdAt", "created_at").ifBlank { null }
     )
+}
+
+private fun extractOrderItemsFromMap(map: Map<*, *>): List<OrderItem> {
+    val rawItems = (map["items"] as? List<*>)
+        ?: (map["orderItems"] as? List<*>)
+        ?: (map["order_items"] as? List<*>)
+        ?: (map["products"] as? List<*>)
+        ?: return emptyList()
+
+    return rawItems.mapNotNull { entry ->
+        val itemMap = entry as? Map<*, *> ?: return@mapNotNull null
+        val nestedProduct = itemMap["product"] as? Map<*, *>
+        val nestedShipping = (itemMap["shipping"] as? Map<*, *>)
+            ?: (itemMap["shippingMethod"] as? Map<*, *>)
+            ?: (itemMap["shipping_method"] as? Map<*, *>)
+
+        val productId = firstOrderString(itemMap, "productId", "product_id", "id", "_id")
+            .ifBlank { nestedProduct?.let { firstOrderString(it, "id", "_id") }.orEmpty() }
+        val name = firstOrderString(itemMap, "name", "title", "productName", "product_name")
+            .ifBlank { nestedProduct?.let { firstOrderString(it, "name", "title") }.orEmpty() }
+
+        val rawImageUrl = firstOrderString(
+            itemMap,
+            "imageUrl",
+            "image_url",
+            "image",
+            "photoUrl",
+            "photo_url",
+            "thumbnail",
+            "coverImage"
+        ).ifBlank {
+            nestedProduct?.let {
+                firstOrderString(it, "imageUrl", "image_url", "image", "coverImage")
+            }.orEmpty()
+        }
+        val imageUrl = resolveBackendMediaUrl(rawImageUrl)
+
+        val price = firstOrderDouble(
+            itemMap,
+            "price",
+            "unitPrice",
+            "unit_price",
+            "priceDOP",
+            "price_dop"
+        ).let { direct ->
+            if (direct > 0.0) direct
+            else nestedProduct?.let { firstOrderDouble(it, "price", "priceDOP") } ?: 0.0
+        }
+
+        val rawQty = itemMap["quantity"] ?: itemMap["qty"]
+        val quantity = when (rawQty) {
+            is Number -> rawQty.toLong().coerceAtLeast(1L)
+            is String -> rawQty.trim().toLongOrNull()?.coerceAtLeast(1L) ?: 1L
+            else -> 1L
+        }
+
+        val shippingMethodName = firstOrderString(
+            itemMap,
+            "shippingMethodName",
+            "shipping_method_name",
+            "shippingName",
+            "shipping_name",
+            "shippingMethod",
+            "shipping_method"
+        ).ifBlank {
+            nestedShipping?.let { firstOrderString(it, "name", "title", "methodName", "label") }.orEmpty()
+        }
+
+        val shippingPrice = firstOrderDouble(
+            itemMap,
+            "shippingPrice",
+            "shipping_price",
+            "shippingPriceDOP",
+            "shipping_price_dop",
+            "shippingCost",
+            "shipping_cost"
+        ).let { direct ->
+            if (direct > 0.0) direct
+            else nestedShipping?.let { firstOrderDouble(it, "price", "cost", "amount", "priceDOP") } ?: 0.0
+        }
+
+        val shippingDeliveryTime = firstOrderString(
+            itemMap,
+            "shippingDeliveryTime",
+            "shipping_delivery_time",
+            "deliveryTime",
+            "delivery_time",
+            "estimatedDelivery",
+            "estimated_delivery"
+        ).ifBlank {
+            nestedShipping?.let { firstOrderString(it, "deliveryTime", "delivery_time", "estimatedDelivery", "eta") }.orEmpty()
+        }
+
+        val shippingOrigin = firstOrderString(
+            itemMap,
+            "shippingOrigin",
+            "shipping_origin",
+            "origin"
+        ).ifBlank {
+            nestedShipping?.let { firstOrderString(it, "origin", "shippingOrigin", "country") }.orEmpty()
+        }
+
+        if (name.isBlank() && productId.isBlank()) return@mapNotNull null
+
+        OrderItem(
+            productId = productId,
+            name = name.ifBlank { "Producto" },
+            imageUrl = imageUrl,
+            price = price,
+            quantity = quantity,
+            selectedSize = firstOrderString(itemMap, "selectedSize", "selected_size", "size"),
+            selectedColor = firstOrderString(itemMap, "selectedColor", "selected_color", "color"),
+            shippingMethodName = shippingMethodName,
+            shippingPrice = shippingPrice,
+            shippingDeliveryTime = shippingDeliveryTime,
+            shippingOrigin = shippingOrigin
+        )
+    }
+}
+
+private fun firstOrderDouble(map: Map<*, *>, vararg keys: String): Double {
+    for (key in keys) {
+        val raw = map[key] ?: continue
+        val parsed = when (raw) {
+            is Number -> raw.toDouble()
+            is String -> raw.trim().toDoubleOrNull()
+            else -> null
+        }
+        if (parsed != null && parsed.isFinite()) return parsed.coerceAtLeast(0.0)
+    }
+    return 0.0
 }
 
 private fun firstOrderString(map: Map<*, *>, vararg keys: String): String {

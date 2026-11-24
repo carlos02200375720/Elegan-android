@@ -43,11 +43,12 @@ fun BloqueDetalleProducto(
     Column(modifier = Modifier.padding(20.dp)) {
         Text(
             text = product.productName(),
-            style = MaterialTheme.typography.titleMedium.copy(
+            style = MaterialTheme.typography.titleSmall.copy(
                 fontWeight = FontWeight.Bold,
                 color = EleganCharcoal,
                 fontFamily = FontFamily.Serif,
-                fontSize = 16.sp
+                fontSize = 13.5.sp,
+                lineHeight = 18.sp
             ),
             modifier = Modifier.fillMaxWidth()
         )

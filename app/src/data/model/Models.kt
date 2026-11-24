@@ -368,6 +368,21 @@ data class CartItem(
 )
 
 @Immutable
+data class OrderItem(
+    val productId: String = "",
+    val name: String = "",
+    val imageUrl: String = "",
+    val price: Double = 0.0,
+    val quantity: Long = 1L,
+    val selectedSize: String = "",
+    val selectedColor: String = "",
+    val shippingMethodName: String = "",
+    val shippingPrice: Double = 0.0,
+    val shippingDeliveryTime: String = "",
+    val shippingOrigin: String = ""
+)
+
+@Immutable
 data class Order(
     val id: String = "",
     val userId: String = "",
@@ -378,10 +393,17 @@ data class Order(
     val city: String = "",
     val paymentMethod: String = "Tarjeta",
     val paymentProofUrl: String = "",
+    val subtotal: Double = 0.0,
+    val discount: Double = 0.0,
+    val shippingCost: Double = 0.0,
+    val shippingMethodName: String = "",
+    val shippingDeliveryTime: String = "",
+    val shippingOrigin: String = "",
     val total: Double = 0.0,
     val itemCount: Long = 1L,
     val status: String = "confirmado",
     val itemsSummary: String = "",
+    val items: List<OrderItem> = emptyList(),
     val createdAt: String? = null
 )
 

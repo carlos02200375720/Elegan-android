@@ -17,13 +17,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,9 +46,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CartItem
+import com.example.ui.theme.EleganBurgundy
+import com.example.ui.theme.EleganMuted
 import kotlinx.coroutines.launch
 
 @Composable
@@ -136,9 +141,11 @@ fun CarritoScreen(
                 .padding(padding),
             contentAlignment = Alignment.TopCenter
         ) {
-            val isCompact = maxWidth < 350.dp
+            val isUltraCompact = maxWidth < 330.dp
+            val isCompact = maxWidth < 360.dp
             val isWide = maxWidth >= 600.dp
             val horizontalPad = when {
+                isUltraCompact -> 10.dp
                 isCompact -> 12.dp
                 isWide -> 24.dp
                 else -> 16.dp
@@ -184,7 +191,8 @@ fun CarritoScreen(
                                     text = "Reintentar",
                                     color = Color(0xFFD32F2F),
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.5.sp
+                                    fontSize = 12.5.sp,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -202,40 +210,70 @@ fun CarritoScreen(
                             .fillMaxSize()
                             .testTag("cart_items_list"),
                         contentPadding = PaddingValues(horizontal = horizontalPad, vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 10.dp else 12.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 8.dp else 12.dp)
                     ) {
                         item {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Checkbox(
                                     checked = selectedCartItemIds.size == cartItems.size,
                                     onCheckedChange = { checked ->
                                         selectedCartItemIds = if (checked) cartItems.map { it.id }.toSet() else emptySet()
-                                    }
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = EleganBurgundy,
+                                        uncheckedColor = EleganMuted,
+                                        checkmarkColor = Color.White
+                                    )
                                 )
-                                Text("Seleccionar todos (${selectedCartItemIds.size}/${cartItems.size})", fontWeight = FontWeight.SemiBold)
+                                Text(
+                                    text = "Seleccionar todos (${selectedCartItemIds.size}/${cartItems.size})",
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = if (isUltraCompact) 14.sp else 15.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
                             }
                         }
 
-                        items(cartItems, key = { it.id }) { item ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Checkbox(checked = item.id in selectedCartItemIds, onCheckedChange = { checked ->
-                                    selectedCartItemIds = if (checked) selectedCartItemIds + item.id else selectedCartItemIds - item.id
-                                })
+                        itemsIndexed(cartItems, key = { _, item -> item.id }) { index, item ->
+                            Column(modifier = Modifier.fillMaxWidth()) {
                                 CartItemRow(
-                                item = item,
-                                onIncrease = { onUpdateQuantity(item.id, item.quantity + 1) },
-                                onDecrease = {
-                                    if (item.quantity > 1) {
-                                        onUpdateQuantity(item.id, item.quantity - 1)
-                                    } else {
-                                        onRemoveItem(item.id)
-                                    }
-                                },
-                                onRemove = { onRemoveItem(item.id) }
+                                    item = item,
+                                    isSelected = item.id in selectedCartItemIds,
+                                    onSelectedChange = { checked ->
+                                        selectedCartItemIds = if (checked) {
+                                            selectedCartItemIds + item.id
+                                        } else {
+                                            selectedCartItemIds - item.id
+                                        }
+                                    },
+                                    onIncrease = { onUpdateQuantity(item.id, item.quantity + 1) },
+                                    onDecrease = {
+                                        if (item.quantity > 1) {
+                                            onUpdateQuantity(item.id, item.quantity - 1)
+                                        } else {
+                                            onRemoveItem(item.id)
+                                        }
+                                    },
+                                    onRemove = { onRemoveItem(item.id) }
                                 )
+                                if (index < cartItems.lastIndex) {
+                                    HorizontalDivider(
+                                        color = Color(0xFFF0EAE4),
+                                        modifier = Modifier.padding(
+                                            horizontal = when {
+                                                isUltraCompact -> 10.dp
+                                                isCompact -> 12.dp
+                                                else -> 16.dp
+                                            }
+                                        )
+                                    )
+                                }
                             }
                         }
 

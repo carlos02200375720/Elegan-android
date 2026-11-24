@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,7 +31,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.data.model.ProductShippingMethod
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
@@ -41,19 +45,23 @@ fun SelectorOpcionesProducto(
     selectedOption: String,
     onSelect: (String) -> Unit,
     rowTestTag: String,
-    chipTagPrefix: String
+    chipTagPrefix: String,
+    isCompact: Boolean = false
 ) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall.copy(
             fontWeight = FontWeight.Bold,
-            color = EleganCharcoal
-        )
+            color = EleganCharcoal,
+            fontSize = if (isCompact) 13.5.sp else 14.sp
+        ),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
     )
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 10.dp))
 
     LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 6.dp else 8.dp),
         modifier = Modifier
             .fillMaxWidth()
             .testTag(rowTestTag)
@@ -62,6 +70,10 @@ fun SelectorOpcionesProducto(
             val isSelected = option == selectedOption
             Box(
                 modifier = Modifier
+                    .defaultMinSize(
+                        minWidth = if (isCompact) 42.dp else 46.dp,
+                        minHeight = 42.dp
+                    )
                     .clip(RoundedCornerShape(8.dp))
                     .background(if (isSelected) EleganBurgundy else Color.White)
                     .border(
@@ -70,7 +82,10 @@ fun SelectorOpcionesProducto(
                         shape = RoundedCornerShape(8.dp)
                     )
                     .clickable { onSelect(option) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                    .padding(
+                        horizontal = if (isCompact) 12.dp else 16.dp,
+                        vertical = if (isCompact) 8.dp else 10.dp
+                    )
                     .testTag("$chipTagPrefix$option"),
                 contentAlignment = Alignment.Center
             ) {
@@ -80,14 +95,15 @@ fun SelectorOpcionesProducto(
                     softWrap = false,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = if (isSelected) Color.White else EleganCharcoal,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                        fontSize = if (isCompact) 13.sp else 14.sp
                     )
                 )
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(20.dp))
+    Spacer(modifier = Modifier.height(if (isCompact) 16.dp else 20.dp))
 }
 
 @Composable
@@ -95,7 +111,8 @@ fun SelectorEnvioProducto(
     shippingMethods: List<ProductShippingMethod>,
     selectedShippingId: String,
     onSelectShipping: (String) -> Unit,
-    testTagPrefix: String = "shipping_method_"
+    testTagPrefix: String = "shipping_method_",
+    isCompact: Boolean = false
 ) {
     if (shippingMethods.isEmpty()) return
 
@@ -104,10 +121,13 @@ fun SelectorEnvioProducto(
         text = "Selecciona el método de envío",
         style = MaterialTheme.typography.titleSmall.copy(
             fontWeight = FontWeight.Bold,
-            color = EleganCharcoal
-        )
+            color = EleganCharcoal,
+            fontSize = if (isCompact) 13.5.sp else 14.sp
+        ),
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
     )
-    Spacer(modifier = Modifier.height(10.dp))
+    Spacer(modifier = Modifier.height(if (isCompact) 8.dp else 10.dp))
     shippingMethods.forEach { method ->
         val selected = method.id == selectedShippingId
         Column(
@@ -122,35 +142,57 @@ fun SelectorEnvioProducto(
                     shape = RoundedCornerShape(10.dp)
                 )
                 .clickable { onSelectShipping(method.id) }
-                .padding(12.dp)
+                .padding(if (isCompact) 10.dp else 12.dp)
                 .testTag("$testTagPrefix${method.id}")
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = method.name,
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.Bold,
-                    color = EleganCharcoal
+                    color = EleganCharcoal,
+                    fontSize = if (isCompact) 14.sp else 15.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = formatearEnvioRd(method.price),
                     fontWeight = FontWeight.Bold,
-                    color = EleganBurgundy
+                    color = EleganBurgundy,
+                    fontSize = if (isCompact) 14.sp else 15.sp,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
-            Text(
-                text = "Entrega: ${method.deliveryTime}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF666666)
-            )
-            Text(
-                text = "Origen: ${method.origin}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF666666)
-            )
+            if (method.deliveryTime.isNotBlank()) {
+                Text(
+                    text = "Entrega: ${method.deliveryTime}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = if (isCompact) 12.sp else 12.5.sp
+                    ),
+                    color = Color(0xFF666666),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (method.origin.isNotBlank()) {
+                Text(
+                    text = "Origen: ${method.origin}",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = if (isCompact) 12.sp else 12.5.sp
+                    ),
+                    color = Color(0xFF666666),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
-    Spacer(modifier = Modifier.height(12.dp))
+    Spacer(modifier = Modifier.height(if (isCompact) 10.dp else 12.dp))
 }
 
 @Composable
@@ -158,7 +200,8 @@ fun SelectorCantidadProducto(
     quantity: Long,
     onDecrease: () -> Unit,
     onIncrease: () -> Unit,
-    testTagPrefix: String = "quantity_"
+    testTagPrefix: String = "quantity_",
+    isCompact: Boolean = false
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -169,9 +212,15 @@ fun SelectorCantidadProducto(
             text = "Cantidad:",
             style = MaterialTheme.typography.titleSmall.copy(
                 fontWeight = FontWeight.Bold,
-                color = EleganCharcoal
-            )
+                color = EleganCharcoal,
+                fontSize = if (isCompact) 13.5.sp else 14.sp
+            ),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
         )
+
+        Spacer(modifier = Modifier.width(8.dp))
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -184,7 +233,7 @@ fun SelectorCantidadProducto(
             IconButton(
                 onClick = onDecrease,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(if (isCompact) 34.dp else 36.dp)
                     .testTag("${testTagPrefix}decrease_btn")
             ) {
                 Icon(Icons.Default.Remove, contentDescription = "Menos", tint = EleganBurgundy)
@@ -193,16 +242,18 @@ fun SelectorCantidadProducto(
                 text = "$quantity",
                 style = MaterialTheme.typography.bodyLarge.copy(
                     fontWeight = FontWeight.Bold,
-                    color = EleganCharcoal
+                    color = EleganCharcoal,
+                    fontSize = if (isCompact) 15.sp else 16.sp
                 ),
+                maxLines = 1,
                 modifier = Modifier
-                    .padding(horizontal = 12.dp)
+                    .padding(horizontal = if (isCompact) 10.dp else 12.dp)
                     .testTag("${testTagPrefix}value_text")
             )
             IconButton(
                 onClick = onIncrease,
                 modifier = Modifier
-                    .size(36.dp)
+                    .size(if (isCompact) 34.dp else 36.dp)
                     .testTag("${testTagPrefix}increase_btn")
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Más", tint = EleganBurgundy)

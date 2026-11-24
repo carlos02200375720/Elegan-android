@@ -1,6 +1,7 @@
 package com.example.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.ui.theme.EleganBurgundyDark
 import com.example.ui.theme.EleganCharcoal
 
@@ -40,60 +42,84 @@ fun TarjetaResumenPedidoCarrito(
         colors = CardDefaults.elevatedCardColors(containerColor = Color.White),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(if (isCompact) 12.dp else 16.dp)) {
-            Text(
-                text = "Resumen del Pedido",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    color = EleganCharcoal
-                )
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            SummaryRow(label = "Subtotal", value = formatearPrecioRd(subtotal))
-
-            if (discountAmount > 0.0) {
-                val discountLabel = if (appliedCouponCode.isNotBlank()) {
-                    "Descuento (${appliedCouponCode.trim()})"
-                } else {
-                    "Descuento"
-                }
-                SummaryRow(
-                    label = discountLabel,
-                    value = formatearDescuentoRd(discountAmount),
-                    valueColor = Color(0xFF1E7E34)
-                )
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val isUltraCompact = maxWidth < 310.dp
+            val cardPad = when {
+                isUltraCompact -> 10.dp
+                isCompact -> 12.dp
+                else -> 16.dp
             }
 
-            SummaryRow(
-                label = "Envío",
-                value = formatearEnvioRd(shippingCost),
-                valueColor = if (shippingCost == 0.0) Color(0xFF1E7E34) else EleganCharcoal
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = Color(0xFFE5DDD5))
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.padding(cardPad)) {
                 Text(
-                    text = "Total Final",
+                    text = "Resumen del Pedido",
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
-                        color = EleganCharcoal
-                    )
+                        color = EleganCharcoal,
+                        fontSize = if (isUltraCompact) 15.sp else 16.sp
+                    ),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Text(
-                    text = formatearPrecioRd(total),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        color = EleganBurgundyDark
+                Spacer(modifier = Modifier.height(12.dp))
+
+                SummaryRow(label = "Subtotal", value = formatearPrecioRd(subtotal))
+
+                if (discountAmount > 0.0) {
+                    val discountLabel = if (appliedCouponCode.isNotBlank()) {
+                        "Descuento (${appliedCouponCode.trim()})"
+                    } else {
+                        "Descuento"
+                    }
+                    SummaryRow(
+                        label = discountLabel,
+                        value = formatearDescuentoRd(discountAmount),
+                        valueColor = Color(0xFF1E7E34)
                     )
+                }
+
+                SummaryRow(
+                    label = "Envío",
+                    value = formatearEnvioRd(shippingCost),
+                    valueColor = if (shippingCost == 0.0) Color(0xFF1E7E34) else EleganCharcoal
                 )
+
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider(color = Color(0xFFE5DDD5))
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Total Final",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = EleganCharcoal,
+                            fontSize = if (isUltraCompact) 14.5.sp else 16.sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = formatearPrecioRd(total),
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                            color = EleganBurgundyDark,
+                            fontSize = when {
+                                isUltraCompact -> 17.5.sp
+                                isCompact -> 19.sp
+                                else -> 21.sp
+                            }
+                        ),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             }
         }
     }
@@ -125,7 +151,9 @@ fun SummaryRow(
             style = MaterialTheme.typography.bodyMedium.copy(
                 fontWeight = FontWeight.SemiBold,
                 color = valueColor
-            )
+            ),
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
