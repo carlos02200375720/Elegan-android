@@ -29,6 +29,7 @@ class ExampleUnitTest {
         assertEquals("1.500", formatearMontoDecimal(1500.0))
         assertEquals("100", formatearMontoDecimal(100.0))
         assertEquals("1.251", formatearMontoDecimal(1250.5))
+        assertEquals("-1.251", formatearMontoDecimal(-1250.5))
         assertEquals("1.000.000", formatearMontoDecimal(1_000_000.0))
         assertEquals("0", formatearMontoDecimal(-0.0))
         assertEquals("0", formatearMontoDecimal(Double.NaN))
