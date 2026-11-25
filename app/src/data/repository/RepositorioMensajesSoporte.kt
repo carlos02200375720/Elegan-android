@@ -112,14 +112,15 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                 )
             }
             try {
-                val payload = mapOf(
-                    "text" to clean,
-                    "message" to clean,
-                    "mediaUrl" to cleanMedia,
-                    "media_url" to cleanMedia,
-                    "mediaType" to resolvedType,
-                    "media_type" to resolvedType
-                )
+                // POST /api/movil/messages acepta exclusivamente el campo "text".
+                // El modelo Pydantic del backend usa extra="forbid"; enviar alias
+                // adicionales provoca HTTP 422 y el mensaje nunca llega a MongoDB.
+                if (clean.isBlank()) {
+                    throw IllegalArgumentException(
+                        "El backend de soporte solo acepta mensajes de texto por ahora."
+                    )
+                }
+                val payload = mapOf("text" to clean)
                 val response = ApiAutenticacionMovil.service.sendMessage("Bearer $token", payload)
                 val remoteAfter = extractMessagesJson(response, optionalUserId(appContext).orEmpty())
                 if (remoteAfter.isNotEmpty()) {
@@ -139,13 +140,17 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
             } catch (e: Exception) {
                 MonitorErrores.registrarAdvertencia(
                     tag = "EleganMessages",
-                    mensaje = "No se pudo enviar el mensaje al backend; usando respaldo de sesión.",
+                    mensaje = "No se pudo enviar el mensaje al backend. No se marcará como enviado.",
                     error = e,
                     extras = mapOf(
                         "operation" to "sendSupportMessage",
                         "hasMedia" to cleanMedia.isNotBlank().toString()
                     )
                 )
+                // No crear mensajes/respuestas ficticias localmente cuando hay una
+                // sesión autenticada: eso ocultaba el HTTP 422 y daba la impresión
+                // de que soporte había recibido el mensaje.
+                throw e
             }
         }
 
