@@ -9,6 +9,22 @@ import com.example.BuildConfig
  */
 typealias ProductJson = Map<String, Any?>
 
+/** Lee únicamente importes enteros; los valores fraccionarios se rechazan. */
+fun parseWholeMoney(raw: Any?): Double? {
+    val integer = when (raw) {
+        is Byte, is Short, is Int, is Long -> (raw as Number).toLong()
+        is Number -> {
+            val number = raw.toDouble()
+            if (!number.isFinite() || number < 0.0 || number % 1.0 != 0.0 || number >= Long.MAX_VALUE.toDouble()) return null
+            number.toLong()
+        }
+        is String -> raw.trim().takeIf { it.matches(Regex("^\\d+$")) }?.toLongOrNull()
+        else -> null
+    } ?: return null
+    if (integer < 0L) return null
+    return integer.toDouble()
+}
+
 fun ProductJson.productId(): String =
     firstNonBlankString("id", "_id")
 
@@ -59,14 +75,12 @@ fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
         val method = entry as? Map<*, *> ?: return@mapNotNull null
         val id = method["id"]?.toString()?.trim().orEmpty()
         val name = method["name"]?.toString()?.trim().orEmpty()
-        val price = (method["price"] as? Number)?.toDouble()
-            ?: method["price"]?.toString()?.toDoubleOrNull()
-            ?: 0.0
+        val price = parseWholeMoney(method["price"]) ?: return@mapNotNull null
         if (id.isBlank() || name.isBlank()) return@mapNotNull null
         ProductShippingMethod(
             id = id,
             name = name,
-            price = price.coerceAtLeast(0.0),
+            price = price,
             deliveryTime = method["deliveryTime"]?.toString().orEmpty(),
             origin = method["origin"]?.toString().orEmpty()
         )
@@ -74,11 +88,7 @@ fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
 
 fun ProductJson.productPrice(): Double {
     val raw = this["price"] ?: return 0.0
-    return when (raw) {
-        is Number -> raw.toDouble()
-        is String -> raw.trim().toDoubleOrNull() ?: 0.0
-        else -> 0.0
-    }
+    return parseWholeMoney(raw) ?: 0.0
 }
 
 fun ProductJson.productReviewCount(): Long {
