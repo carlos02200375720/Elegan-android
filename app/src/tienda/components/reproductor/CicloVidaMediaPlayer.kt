@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -12,6 +13,9 @@ import androidx.media3.common.Player
 import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.data.observability.MonitorErrores
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.withContext
 
 internal fun sanitizarUrlVideoParaLog(videoUrl: String): String =
     videoUrl.trim().substringBefore('?').substringBefore('#').take(180)
@@ -38,34 +42,38 @@ internal fun CicloVidaMediaPlayer(
         }
     }
 
-    DisposableEffect(videoUrl, state.shouldLoadPlayer, state.retryToken) {
-        if (!state.shouldLoadPlayer) {
-            onDispose {}
-        } else {
-            state.isDisposed = false
-            state.isPrepared = false
-            state.hasStarted = false
-            state.isCompleted = false
-            state.hasError = false
-            state.isFirstFrameRendered = false
-            state.videoWidth = 0
-            state.videoHeight = 0
+    LaunchedEffect(videoUrl, state.shouldLoadPlayer, state.retryToken) {
+        if (!state.shouldLoadPlayer) return@LaunchedEffect
 
-            val player = ExoPlayer.Builder(context.applicationContext)
-                .setMediaSourceFactory(
-                    crearMediaSourceConCacheVideo(context.applicationContext)
-                )
+        state.isDisposed = false
+        state.isPrepared = false
+        state.hasStarted = false
+        state.isCompleted = false
+        state.hasError = false
+        state.isFirstFrameRendered = false
+        state.videoWidth = 0
+        state.videoHeight = 0
+
+        val appCtx = context.applicationContext
+        val mediaSourceFactory = withContext(Dispatchers.IO) {
+            crearMediaSourceConCacheVideo(appCtx)
+        }
+
+        var player: ExoPlayer? = null
+        try {
+            val createdPlayer = ExoPlayer.Builder(appCtx)
+                .setMediaSourceFactory(mediaSourceFactory)
                 .build()
                 .apply {
                     repeatMode = Player.REPEAT_MODE_ONE
                     volume = if (state.isMuted) 0f else 1f
                 }
+            player = createdPlayer
+            state.playerRef = createdPlayer
 
-            state.playerRef = player
-
-            player.addListener(object : Player.Listener {
+            createdPlayer.addListener(object : Player.Listener {
                 override fun onPlaybackStateChanged(playbackState: Int) {
-                    if (state.isDisposed || state.playerRef !== player) return
+                    if (state.isDisposed || state.playerRef !== createdPlayer) return
                     state.isPrepared = playbackState == Player.STATE_READY
                     if (playbackState == Player.STATE_ENDED) {
                         state.hasStarted = false
@@ -74,7 +82,7 @@ internal fun CicloVidaMediaPlayer(
                         state.showOverlayControls = true
                     } else if (playbackState == Player.STATE_READY && state.isPlaying) {
                         if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                            player.play()
+                            createdPlayer.play()
                         } else {
                             state.pausarPorSegundoPlano()
                         }
@@ -82,12 +90,12 @@ internal fun CicloVidaMediaPlayer(
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (state.isDisposed || state.playerRef !== player) return
+                    if (state.isDisposed || state.playerRef !== createdPlayer) return
                     state.hasStarted = isPlaying
                 }
 
                 override fun onVideoSizeChanged(videoSize: VideoSize) {
-                    if (state.isDisposed || state.playerRef !== player) return
+                    if (state.isDisposed || state.playerRef !== createdPlayer) return
                     if (videoSize.width > 0 && videoSize.height > 0) {
                         state.videoWidth = videoSize.width
                         state.videoHeight = videoSize.height
@@ -100,13 +108,13 @@ internal fun CicloVidaMediaPlayer(
                 }
 
                 override fun onRenderedFirstFrame() {
-                    if (!state.isDisposed && state.playerRef === player) {
+                    if (!state.isDisposed && state.playerRef === createdPlayer) {
                         state.isFirstFrameRendered = true
                     }
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    if (state.isDisposed || state.playerRef !== player) return
+                    if (state.isDisposed || state.playerRef !== createdPlayer) return
                     state.isPrepared = false
                     state.hasStarted = false
                     state.hasError = true
@@ -128,11 +136,11 @@ internal fun CicloVidaMediaPlayer(
             })
 
             if (videoUrl.isNotBlank()) {
-                player.setMediaItem(MediaItem.fromUri(videoUrl))
-                player.prepare()
+                createdPlayer.setMediaItem(MediaItem.fromUri(videoUrl))
+                createdPlayer.prepare()
                 if (state.isPlaying) {
                     if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
-                        player.play()
+                        createdPlayer.play()
                     } else {
                         state.pausarPorSegundoPlano()
                     }
@@ -145,17 +153,19 @@ internal fun CicloVidaMediaPlayer(
                 )
             }
 
-            onDispose {
-                state.isDisposed = true
-                state.isPrepared = false
-                state.hasStarted = false
-                if (state.playerRef === player) {
+            awaitCancellation()
+        } finally {
+            state.isDisposed = true
+            state.isPrepared = false
+            state.hasStarted = false
+            player?.let { activePlayer ->
+                if (state.playerRef === activePlayer) {
                     state.textureViewRef?.let { textureView ->
-                        runCatching { player.clearVideoTextureView(textureView) }
+                        runCatching { activePlayer.clearVideoTextureView(textureView) }
                     }
                     state.playerRef = null
                 }
-                player.release()
+                activePlayer.release()
             }
         }
     }

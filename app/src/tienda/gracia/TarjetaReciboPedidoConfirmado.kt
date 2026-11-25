@@ -3,12 +3,12 @@ package com.example.ui
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -29,6 +29,7 @@ import com.example.R
 import com.example.data.model.CartItem
 import com.example.ui.theme.EleganBurgundyDark
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TarjetaReciboPedidoConfirmado(
     displayOrderId: String,
@@ -53,22 +54,25 @@ fun TarjetaReciboPedidoConfirmado(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(if (isCompact) 14.dp else 18.dp)) {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
                     text = stringResource(R.string.gracia_order_code_label),
                     style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
-                    modifier = Modifier.weight(1f),
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(end = 8.dp)
                 )
-                Spacer(modifier = Modifier.width(8.dp))
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color(0xFFF6EFEA)
+                    color = Color(0xFFF6EFEA),
+                    modifier = Modifier.align(Alignment.CenterVertically)
                 ) {
                     Text(
                         text = displayOrderId,
@@ -76,7 +80,7 @@ fun TarjetaReciboPedidoConfirmado(
                             fontWeight = FontWeight.Bold,
                             color = EleganBurgundyDark
                         ),
-                        maxLines = 1,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier
                             .padding(horizontal = 8.dp, vertical = 4.dp)

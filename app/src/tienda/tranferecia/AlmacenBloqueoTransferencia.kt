@@ -3,11 +3,16 @@ package com.example.ui
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Looper
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import android.webkit.MimeTypeMap
 import com.example.data.model.BankAccountInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
@@ -66,6 +71,10 @@ object AlmacenBloqueoTransferencia {
     private const val GCM_TAG_LENGTH_BITS = 128
     private const val ENCRYPTED_PREFIX = "v1:"
     private val lock = Any()
+    private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var cachedSecretKey: SecretKey? = null
+    private var cachedEncryptedRaw: String? = null
+    private var cachedEstado: EstadoBloqueoTransferencia? = null
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -74,9 +83,14 @@ object AlmacenBloqueoTransferencia {
         "robolectric".equals(Build.FINGERPRINT, ignoreCase = true)
 
     private fun obtenerOCrearClave(): SecretKey {
+        cachedSecretKey?.let { return it }
+
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         val existing = (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
-        if (existing != null) return existing
+        if (existing != null) {
+            cachedSecretKey = existing
+            return existing
+        }
 
         val spec = KeyGenParameterSpec.Builder(
             KEY_ALIAS,
@@ -90,6 +104,7 @@ object AlmacenBloqueoTransferencia {
         return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
             .apply { init(spec) }
             .generateKey()
+            .also { cachedSecretKey = it }
     }
 
     private fun cifrarEstado(plainText: String): String {
@@ -193,15 +208,29 @@ object AlmacenBloqueoTransferencia {
 
     private fun cargarEstadoInterno(context: Context): EstadoBloqueoTransferencia? {
         val sp = prefs(context)
-        if (!sp.getBoolean(KEY_ACTIVE, false)) return null
+        if (!sp.getBoolean(KEY_ACTIVE, false)) {
+            cachedEncryptedRaw = null
+            cachedEstado = null
+            return null
+        }
 
         val encrypted = sp.getString(KEY_ENCRYPTED_STATE, null)
         if (!encrypted.isNullOrBlank()) {
+            if (encrypted == cachedEncryptedRaw && cachedEstado != null) {
+                return cachedEstado
+            }
             return runCatching { jsonAEstado(descifrarEstado(encrypted)) }
+                .onSuccess { decoded ->
+                    cachedEncryptedRaw = encrypted
+                    cachedEstado = decoded
+                }
                 .getOrElse {
                     // Si el contenido fue alterado o la clave dejó de estar disponible, no se usa
                     // información incompleta ni se deja un bloqueo ilegible permanentemente.
-                    sp.edit().clear().commit()
+                    cachedSecretKey = null
+                    cachedEncryptedRaw = null
+                    cachedEstado = null
+                    sp.edit().clear().apply()
                     null
                 }
         }
@@ -257,12 +286,13 @@ object AlmacenBloqueoTransferencia {
 
     fun guardar(context: Context, estado: EstadoBloqueoTransferencia) = synchronized(lock) {
         val encrypted = cifrarEstado(estadoComoJson(estado))
-        val success = prefs(context).edit()
+        cachedEncryptedRaw = encrypted
+        cachedEstado = estado
+        prefs(context).edit()
             .clear()
             .putBoolean(KEY_ACTIVE, true)
             .putString(KEY_ENCRYPTED_STATE, encrypted)
-            .commit()
-        check(success) { "No se pudo guardar el estado cifrado de transferencia." }
+            .apply()
     }
 
     fun cargar(context: Context, expectedUserId: String? = null): EstadoBloqueoTransferencia? = synchronized(lock) {
@@ -321,7 +351,16 @@ object AlmacenBloqueoTransferencia {
     }
 
     fun limpiar(context: Context) = synchronized(lock) {
-        prefs(context).edit().clear().commit()
-        eliminarCopiaComprobante(context)
+        cachedEncryptedRaw = null
+        cachedEstado = null
+        prefs(context).edit().clear().apply()
+        val appCtx = context.applicationContext
+        if (isRobolectric() || Looper.myLooper() != Looper.getMainLooper()) {
+            eliminarCopiaComprobante(appCtx)
+        } else {
+            cleanupScope.launch {
+                eliminarCopiaComprobante(appCtx)
+            }
+        }
     }
 }

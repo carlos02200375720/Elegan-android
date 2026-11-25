@@ -93,7 +93,7 @@ internal fun CabeceraMenuCategorias(onBack: () -> Unit) {
                     Spacer(modifier = Modifier.width(if (isCompactHeader) 6.dp else 8.dp))
 
                     Text(
-                        text = "Menú de Categorías",
+                        text = "Categorías",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = EleganCharcoal,

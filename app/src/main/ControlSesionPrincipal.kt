@@ -42,17 +42,26 @@ enum class Screen {
 fun MainApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val hasPendingTransferLock = remember { AlmacenBloqueoTransferencia.tieneBloqueoActivo(context) }
+    var hasPendingTransferLock by remember { mutableStateOf(false) }
     var currentUser by remember { mutableStateOf<AuthUser?>(null) }
     var isSessionReady by remember { mutableStateOf(false) }
     var isGuest by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val cachedUser = withContext(Dispatchers.IO) { MobileSession.user(context) }
+        val (cachedUser, pendingLock, userHasTransferLock) = withContext(Dispatchers.IO) {
+            val user = MobileSession.user(context)
+            val anyLock = AlmacenBloqueoTransferencia.tieneBloqueoActivo(context)
+            val userLock = if (user != null) {
+                AlmacenBloqueoTransferencia.cargar(context, user.id) != null
+            } else {
+                false
+            }
+            Triple(user, anyLock, userLock)
+        }
+        hasPendingTransferLock = pendingLock
         if (cachedUser == null) {
             isSessionReady = true
         } else {
-            val userHasTransferLock = AlmacenBloqueoTransferencia.tieneBloqueoActivo(context, cachedUser.id)
             if (userHasTransferLock) {
                 currentUser = cachedUser
                 isSessionReady = true
@@ -77,8 +86,12 @@ fun MainApp() {
         MonitorErrores.actualizarUsuario(currentUser?.id, currentUser?.role)
         activity?.window?.let { window ->
             val controller = WindowCompat.getInsetsController(window, window.decorView)
-            controller.isAppearanceLightStatusBars = true
-            controller.isAppearanceLightNavigationBars = true
+            if (!controller.isAppearanceLightStatusBars) {
+                controller.isAppearanceLightStatusBars = true
+            }
+            if (!controller.isAppearanceLightNavigationBars) {
+                controller.isAppearanceLightNavigationBars = true
+            }
         }
     }
 

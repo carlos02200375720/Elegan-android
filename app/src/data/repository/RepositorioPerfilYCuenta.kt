@@ -41,16 +41,16 @@ internal class RepositorioPerfilYCuenta(
         updatedAt = remote.updatedAt
     )
 
-    private suspend fun ensureProfileLoaded() {
+    private suspend fun ensureProfileLoaded() = withContext(Dispatchers.IO) {
         val token = MobileSession.token(appContext)
         if (token.isNullOrBlank()) {
             profileFlow.value = null
             loadedToken = null
-            return
+            return@withContext
         }
-        if (loadedToken == token && profileFlow.value != null) return
+        if (loadedToken == token && profileFlow.value != null) return@withContext
         profileLoadMutex.withLock {
-            if (loadedToken == token && profileFlow.value != null) return
+            if (loadedToken == token && profileFlow.value != null) return@withLock
             val cachedUser = MobileSession.user(appContext)
             val resolved = try {
                 mapRemoteProfile(
@@ -95,7 +95,7 @@ internal class RepositorioPerfilYCuenta(
         phone: String,
         address: String,
         city: String
-    ) {
+    ) = withContext(Dispatchers.IO) {
         val token = MobileSession.token(appContext)
             ?: throw IllegalStateException("Debes iniciar sesión para guardar tu perfil.")
         val response = ApiAutenticacionMovil.service.updateProfile(

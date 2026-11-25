@@ -37,6 +37,8 @@ internal object AlmacenCifradoSesion {
     private const val ENCRYPTED_PREFIX = "v1:"
 
     private val lock = Any()
+    private var cachedSecretKey: SecretKey? = null
+    private val decryptedCache = HashMap<String, Pair<String, String>>()
 
     private fun isRobolectric(): Boolean =
         "robolectric".equals(Build.FINGERPRINT, ignoreCase = true)
@@ -45,9 +47,14 @@ internal object AlmacenCifradoSesion {
         context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     private fun obtenerOCrearClaveMaestra(): SecretKey {
+        cachedSecretKey?.let { return it }
+
         val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
         val existing = (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
-        if (existing != null) return existing
+        if (existing != null) {
+            cachedSecretKey = existing
+            return existing
+        }
 
         val spec = KeyGenParameterSpec.Builder(
             KEY_ALIAS,
@@ -60,7 +67,7 @@ internal object AlmacenCifradoSesion {
 
         val keyGenerator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
         keyGenerator.init(spec)
-        return keyGenerator.generateKey()
+        return keyGenerator.generateKey().also { cachedSecretKey = it }
     }
 
     private fun cifrarValor(plainText: String): String {
@@ -97,12 +104,22 @@ internal object AlmacenCifradoSesion {
 
     private fun leerSeguro(context: Context, key: String): String? = synchronized(lock) {
         val prefs = rawPreferences(context)
-        val raw = prefs.getString(key, null) ?: return@synchronized null
+        val raw = prefs.getString(key, null)
+        if (raw == null) {
+            decryptedCache.remove(key)
+            return@synchronized null
+        }
         if (isRobolectric()) return@synchronized raw
+        val cached = decryptedCache[key]
+        if (cached != null && cached.first == raw) {
+            return@synchronized cached.second
+        }
         return@synchronized try {
             val decoded = descifrarValor(raw)
             if (decoded == null) {
                 recuperarAlmacenInvalido(context, null)
+            } else {
+                decryptedCache[key] = raw to decoded
             }
             decoded
         } catch (e: Exception) {
@@ -112,6 +129,8 @@ internal object AlmacenCifradoSesion {
     }
 
     private fun recuperarAlmacenInvalido(context: Context, error: Exception?) {
+        cachedSecretKey = null
+        decryptedCache.clear()
         if (error != null) {
             MonitorErrores.registrarAdvertencia(
                 "MobileSession",
@@ -139,15 +158,26 @@ internal object AlmacenCifradoSesion {
 
         synchronized(lock) {
             fun escribir() {
-                rawPreferences(context).edit()
-                    .putString(TOKEN, cifrarValor(response.token))
-                    .putString(USER_ID, cifrarValor(response.user.effectiveId))
-                    .putString(EMAIL, cifrarValor(response.user.email.orEmpty()))
-                    .putString(NAME, cifrarValor(response.user.name))
-                    .putString(PHOTO, cifrarValor(response.user.effectivePhotoUrl))
-                    .putString(ROLE, cifrarValor(role))
-                    .putString(PROVIDER, cifrarValor(response.user.provider))
-                    .apply()
+                val plainValues = listOf(
+                    TOKEN to response.token,
+                    USER_ID to response.user.effectiveId,
+                    EMAIL to response.user.email.orEmpty(),
+                    NAME to response.user.name,
+                    PHOTO to response.user.effectivePhotoUrl,
+                    ROLE to role,
+                    PROVIDER to response.user.provider
+                )
+                val encryptedPairs = plainValues.map { (key, plain) ->
+                    Triple(key, cifrarValor(plain), plain)
+                }
+                val editor = rawPreferences(context).edit()
+                encryptedPairs.forEach { (key, encrypted, plain) ->
+                    editor.putString(key, encrypted)
+                    if (!isRobolectric()) {
+                        decryptedCache[key] = encrypted to plain
+                    }
+                }
+                editor.apply()
             }
 
             try {
@@ -174,11 +204,11 @@ internal object AlmacenCifradoSesion {
     fun userId(context: Context): String? =
         leerSeguro(context, USER_ID)?.takeIf { it.isNotBlank() }
 
-    fun user(context: Context): AuthUser? {
-        val id = userId(context) ?: return null
-        val token = token(context) ?: return null
-        if (token.startsWith("local_session_")) return null
-        return AuthUser(
+    fun user(context: Context): AuthUser? = synchronized(lock) {
+        val id = userId(context) ?: return@synchronized null
+        val token = token(context) ?: return@synchronized null
+        if (token.startsWith("local_session_")) return@synchronized null
+        AuthUser(
             id = id,
             email = leerSeguro(context, EMAIL).orEmpty(),
             name = leerSeguro(context, NAME).orEmpty(),
@@ -189,6 +219,7 @@ internal object AlmacenCifradoSesion {
     }
 
     fun clear(context: Context) = synchronized(lock) {
+        decryptedCache.clear()
         rawPreferences(context).edit().clear().apply()
     }
 }

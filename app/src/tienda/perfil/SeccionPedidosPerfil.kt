@@ -592,6 +592,20 @@ private fun formatOrderStatus(rawStatus: String): Triple<String, Color, Color> {
             Color(0xFFFFF8E1),
             Color(0xFF9A6700)
         )
+        normalized.contains("proces") || normalized.contains("process") -> Triple(
+            readable,
+            Color(0xFFFFF3E0),
+            Color(0xFFE65100)
+        )
+        normalized.isBlank() ||
+            normalized.contains("confirmad") ||
+            normalized.contains("confirmed") ||
+            normalized.contains("enviad") ||
+            normalized.contains("shipped") -> Triple(
+            readable,
+            Color(0xFFE3F2FD),
+            Color(0xFF1565C0)
+        )
         else -> Triple(
             readable,
             Color(0xFFE8F5E9),

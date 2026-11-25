@@ -26,12 +26,12 @@ private object CacheMultimediaVideo {
         val directorio = File(context.cacheDir, "elegan_video_cache")
         val ruta = directorio.absolutePath
         val actual = instancia
-        if (actual != null && rutaCacheActiva == ruta && directorio.exists()) {
+        if (actual != null && rutaCacheActiva == ruta) {
             return actual
         }
         return synchronized(this) {
             val revalidada = instancia
-            if (revalidada != null && rutaCacheActiva == ruta && directorio.exists()) {
+            if (revalidada != null && rutaCacheActiva == ruta) {
                 revalidada
             } else {
                 runCatching { revalidada?.release() }
