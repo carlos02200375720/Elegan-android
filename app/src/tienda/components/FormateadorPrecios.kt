@@ -1,27 +1,17 @@
 package com.example.ui
 
 import java.math.BigDecimal
-import java.math.BigInteger
 import java.math.RoundingMode
 import kotlin.math.abs
 
-private val CIEN = BigInteger.valueOf(100L)
-
 fun formatearMontoDecimal(monto: Double): String {
     val normalizado = if (!monto.isFinite() || monto == 0.0) 0.0 else monto
-    val redondeado = BigDecimal.valueOf(normalizado).setScale(2, RoundingMode.HALF_UP)
-    val esNegativo = redondeado.signum() < 0
-    val centavosTotales = redondeado.abs().movePointRight(2).toBigInteger()
-    val parteEntera = centavosTotales.divide(CIEN)
-    val centavos = centavosTotales.remainder(CIEN).toInt()
-    val enteroFormateado = agruparMilesConPunto(parteEntera.toString())
-    val prefijoSigno = if (esNegativo) "-" else ""
-
-    return if (centavos == 0) {
-        "$prefijoSigno$enteroFormateado"
-    } else {
-        "$prefijoSigno$enteroFormateado,${centavos.toString().padStart(2, '0')}"
-    }
+    val entero = BigDecimal.valueOf(normalizado)
+        .setScale(0, RoundingMode.HALF_UP)
+        .toBigInteger()
+    val negativo = entero.signum() < 0
+    val agrupado = agruparMilesConPunto(entero.abs().toString())
+    return if (negativo) "-$agrupado" else agrupado
 }
 
 private fun agruparMilesConPunto(digitos: String): String {
