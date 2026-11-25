@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import kotlin.math.roundToLong
 import android.content.Context
 import android.os.Build
 import com.example.data.model.CartItem
@@ -378,8 +379,8 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
         if (id.isBlank() && productId.isBlank()) return@mapNotNull null
         val rawPrice = map["price"] ?: map["unitPrice"] ?: map["unit_price"]
         val price = when (rawPrice) {
-            is Number -> rawPrice.toDouble()
-            is String -> rawPrice.trim().toDoubleOrNull() ?: 0.0
+            is Number -> rawPrice.toDouble().roundToLong().toDouble()
+            is String -> (rawPrice.trim().toDoubleOrNull() ?: 0.0).roundToLong().toDouble()
             else -> 0.0
         }
         val rawQty = map["quantity"] ?: map["qty"]
@@ -399,8 +400,8 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
             selectedColor = firstString(map, "selectedColor", "selected_color", "color"),
             shippingMethodId = firstString(map, "shippingMethodId", "selectedShippingId"),
             shippingMethodName = firstString(map, "shippingMethodName"),
-            shippingPrice = ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? Number)?.toDouble()
-                ?: ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? String)?.toDoubleOrNull() ?: 0.0,
+            shippingPrice = (((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? Number)?.toDouble()
+                ?: ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? String)?.toDoubleOrNull() ?: 0.0).roundToLong().toDouble(),
             shippingDeliveryTime = firstString(map, "shippingDeliveryTime"),
             shippingOrigin = firstString(map, "shippingOrigin"),
             allowCashOnDelivery = map["allowCashOnDelivery"] as? Boolean ?: true,
