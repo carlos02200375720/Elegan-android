@@ -207,7 +207,7 @@ class PruebasPerfilPedidosYSoporteTest {
                         "id" to "cart_1",
                         "product_id" to "prod_99",
                         "name" to "Mocasín Veneciano",
-                        "price" to "185.50",
+                        "price" to "185",
                         "quantity" to 2,
                         "selected_size" to "42",
                         "selected_color" to "Tabaco",
