@@ -80,7 +80,7 @@ class PruebasCatalogoYPublicacionesTest {
                   "name": "Blazer Sartorial Azul",
                   "description": "Lana fría italiana",
                   "category": "camisa",
-                  "price": 295.5,
+                  "price": 295,
                   "imageUrl": "https://cdn.example.com/uploads/blazer.jpg",
                   "images": ["https://cdn.example.com/uploads/blazer.jpg", "https://cdn.example.com/blazer-2.jpg"],
                   "sizes": ["48R", "50R"],
@@ -92,7 +92,7 @@ class PruebasCatalogoYPublicacionesTest {
                   "id": "backend_prod_2",
                   "title": "Oxford Borgoña",
                   "category": "zapato",
-                  "price": "240.00",
+                  "price": "240",
                   "video_url": "https://cdn.example.com/uploads/oxford.mp4",
                   "in_stock": true
                 }
