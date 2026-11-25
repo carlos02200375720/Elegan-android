@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import kotlin.math.roundToLong
 import android.content.Context
 import android.os.Build
 import com.example.data.model.BankAccountInfo
@@ -426,8 +427,8 @@ private fun firstOrderDouble(map: Map<*, *>, vararg keys: String): Double {
     for (key in keys) {
         val raw = map[key] ?: continue
         val parsed = when (raw) {
-            is Number -> raw.toDouble()
-            is String -> raw.trim().replace("RD$", "", ignoreCase = true).replace("$", "").trim().toDoubleOrNull()
+            is Number -> raw.toDouble().roundToLong().toDouble()
+            is String -> raw.trim().replace("RD$", "", ignoreCase = true).replace("$", "").trim().toDoubleOrNull()?.roundToLong()?.toDouble()
             else -> null
         }
         if (parsed != null && parsed.isFinite()) return parsed.coerceAtLeast(0.0)
