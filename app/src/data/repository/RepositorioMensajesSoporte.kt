@@ -115,9 +115,9 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                 // POST /api/movil/messages acepta exclusivamente el campo "text".
                 // El modelo Pydantic del backend usa extra="forbid"; enviar alias
                 // adicionales provoca HTTP 422 y el mensaje nunca llega a MongoDB.
-                if (clean.isBlank()) {
+                if (clean.isBlank() || cleanMedia.isNotBlank()) {
                     throw IllegalArgumentException(
-                        "El backend de soporte solo acepta mensajes de texto por ahora."
+                        "El backend de soporte solo acepta mensajes de texto sin adjuntos por ahora."
                     )
                 }
                 val payload = mapOf("text" to clean)
