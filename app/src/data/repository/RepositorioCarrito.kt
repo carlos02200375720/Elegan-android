@@ -8,6 +8,7 @@ import com.example.data.model.productId
 import com.example.data.model.productImageUrl
 import com.example.data.model.productName
 import com.example.data.model.productPrice
+import com.example.data.model.parseWholeMoney
 import com.example.data.model.productShippingMethods
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.observability.MonitorErrores
@@ -377,11 +378,7 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
         val name = firstString(map, "name", "title", "productName", "product_name")
         if (id.isBlank() && productId.isBlank()) return@mapNotNull null
         val rawPrice = map["price"] ?: map["unitPrice"] ?: map["unit_price"]
-        val price = when (rawPrice) {
-            is Number -> rawPrice.toDouble()
-            is String -> rawPrice.trim().toDoubleOrNull() ?: 0.0
-            else -> 0.0
-        }
+        val price = parseWholeMoney(rawPrice) ?: 0.0
         val rawQty = map["quantity"] ?: map["qty"]
         val quantity = when (rawQty) {
             is Number -> rawQty.toLong().coerceAtLeast(1L)
@@ -399,8 +396,7 @@ internal fun extractCartItemsOrNull(response: Map<String, Any?>, fallbackUserId:
             selectedColor = firstString(map, "selectedColor", "selected_color", "color"),
             shippingMethodId = firstString(map, "shippingMethodId", "selectedShippingId"),
             shippingMethodName = firstString(map, "shippingMethodName"),
-            shippingPrice = ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? Number)?.toDouble()
-                ?: ((map["shippingPrice"] ?: map["shippingPriceDOP"]) as? String)?.toDoubleOrNull() ?: 0.0,
+            shippingPrice = parseWholeMoney(map["shippingPrice"] ?: map["shippingPriceDOP"]) ?: 0.0,
             shippingDeliveryTime = firstString(map, "shippingDeliveryTime"),
             shippingOrigin = firstString(map, "shippingOrigin"),
             allowCashOnDelivery = map["allowCashOnDelivery"] as? Boolean ?: true,
