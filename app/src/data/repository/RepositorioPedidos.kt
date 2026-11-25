@@ -422,12 +422,27 @@ private fun extractOrderItemsFromMap(map: Map<*, *>): List<OrderItem> {
     }
 }
 
+private fun parseDominicanOrderAmount(raw: String): Double? {
+    val value = raw.trim()
+        .replace("RD$", "", ignoreCase = true)
+        .replace("$", "")
+        .replace(" ", "")
+    if (value.isBlank()) return null
+
+    val normalized = when {
+        value.contains(",") -> value.replace(".", "").replace(",", ".")
+        value.matches(Regex("-?\\d{1,3}(\\.\\d{3})+")) -> value.replace(".", "")
+        else -> value
+    }
+    return normalized.toDoubleOrNull()
+}
+
 private fun firstOrderDouble(map: Map<*, *>, vararg keys: String): Double {
     for (key in keys) {
         val raw = map[key] ?: continue
         val parsed = when (raw) {
             is Number -> raw.toDouble()
-            is String -> raw.trim().toDoubleOrNull()
+            is String -> parseDominicanOrderAmount(raw)
             else -> null
         }
         if (parsed != null && parsed.isFinite()) return parsed.coerceAtLeast(0.0)
