@@ -2,6 +2,7 @@ package com.example.data.model
 
 import androidx.compose.runtime.Immutable
 import com.example.BuildConfig
+import kotlin.math.roundToLong
 
 /**
  * Representación directa de cada producto tal como llega en JSON desde el backend
@@ -59,9 +60,9 @@ fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
         val method = entry as? Map<*, *> ?: return@mapNotNull null
         val id = method["id"]?.toString()?.trim().orEmpty()
         val name = method["name"]?.toString()?.trim().orEmpty()
-        val price = (method["price"] as? Number)?.toDouble()
+        val price = ((method["price"] as? Number)?.toDouble()
             ?: method["price"]?.toString()?.toDoubleOrNull()
-            ?: 0.0
+            ?: 0.0).roundToLong().toDouble()
         if (id.isBlank() || name.isBlank()) return@mapNotNull null
         ProductShippingMethod(
             id = id,
@@ -75,8 +76,8 @@ fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
 fun ProductJson.productPrice(): Double {
     val raw = this["price"] ?: return 0.0
     return when (raw) {
-        is Number -> raw.toDouble()
-        is String -> raw.trim().toDoubleOrNull() ?: 0.0
+        is Number -> raw.toDouble().roundToLong().toDouble()
+        is String -> (raw.trim().toDoubleOrNull() ?: 0.0).roundToLong().toDouble()
         else -> 0.0
     }
 }
