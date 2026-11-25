@@ -7,6 +7,7 @@ import com.example.data.model.CartItem
 import com.example.data.model.Order
 import com.example.data.model.OrderItem
 import com.example.data.model.resolveBackendMediaUrl
+import com.example.data.model.parseWholeMoney
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
@@ -424,13 +425,8 @@ private fun extractOrderItemsFromMap(map: Map<*, *>): List<OrderItem> {
 
 private fun firstOrderDouble(map: Map<*, *>, vararg keys: String): Double {
     for (key in keys) {
-        val raw = map[key] ?: continue
-        val parsed = when (raw) {
-            is Number -> raw.toDouble()
-            is String -> raw.trim().replace("RD$", "", ignoreCase = true).replace("$", "").trim().toDoubleOrNull()
-            else -> null
-        }
-        if (parsed != null && parsed.isFinite()) return parsed.coerceAtLeast(0.0)
+        val parsed = parseWholeMoney(map[key]) ?: continue
+        return parsed
     }
     return 0.0
 }
