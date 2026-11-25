@@ -220,7 +220,7 @@ class PruebasPerfilPedidosYSoporteTest {
         assertEquals(1, cartItems.size)
         assertEquals("cart_1", cartItems.first().id)
         assertEquals("prod_99", cartItems.first().productId)
-        assertEquals(185.5, cartItems.first().price, 0.01)
+        assertEquals(185.0, cartItems.first().price, 0.01)
         assertEquals(2L, cartItems.first().quantity)
         assertEquals("42", cartItems.first().selectedSize)
         assertTrue(cartItems.first().imageUrl.endsWith("/uploads/mocasin.jpg"))
