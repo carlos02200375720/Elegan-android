@@ -11,6 +11,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -77,6 +78,14 @@ internal fun PantallasSecundariasNavegacion(
             Screen.CHATS -> viewModel.refreshMessages()
             Screen.VERIFICASION -> { paymentError = null; viewModel.loadCashOnDeliveryConfig() }
             else -> {}
+        }
+
+        // Mientras el chat está abierto, consulta las respuestas nuevas del backend.
+        if (screen == Screen.CHATS) {
+            while (true) {
+                delay(5000)
+                viewModel.refreshMessages()
+            }
         }
     }
 
