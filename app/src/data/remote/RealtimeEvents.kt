@@ -29,7 +29,7 @@ object RealtimeEvents {
         .readTimeout(0, TimeUnit.MILLISECONDS)
         .retryOnConnectionFailure(true)
         .build()
-    private val mutableEvents = MutableSharedFlow<RealtimeEvent>(extraBufferCapacity = 64)
+    private val mutableEvents = MutableSharedFlow<RealtimeEvent>(replay = 1, extraBufferCapacity = 64)
     val events = mutableEvents.asSharedFlow()
     private var connectionJob: Job? = null
 
