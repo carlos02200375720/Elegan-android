@@ -128,7 +128,7 @@ fun TarjetaDatosEntregaContraEntrega(
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "$itemCount artículo(s) • Total a pagar al recibir: RD$ $amountFormatted",
+                text = "$itemCount artículo(s) • Total a pagar al recibir: \$amountFormatted",
                 style = MaterialTheme.typography.labelMedium.copy(
                     color = EleganBurgundy,
                     fontWeight = FontWeight.Bold
