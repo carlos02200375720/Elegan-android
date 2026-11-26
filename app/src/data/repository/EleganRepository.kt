@@ -118,6 +118,9 @@ class EleganRepository(context: Context) {
     fun observePublicationComments(productId: String): Flow<List<PublicationComment>> =
         comentariosRepo.observePublicationComments(productId)
 
+    suspend fun refreshPublicationComments(productId: String): List<PublicationComment> =
+        comentariosRepo.refreshPublicationComments(productId)
+
     suspend fun addPublicationComment(productId: String, displayName: String, text: String) =
         comentariosRepo.addPublicationComment(productId, displayName, text)
 
