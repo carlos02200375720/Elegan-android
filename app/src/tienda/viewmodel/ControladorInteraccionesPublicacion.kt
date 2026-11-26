@@ -173,6 +173,19 @@ internal class ControladorInteraccionesPublicacion(
         _commentsProductId.value = productId
     }
 
+    fun refreshCurrentPublicationComments() {
+        val productId = _commentsProductId.value ?: return
+        scope.launch {
+            try {
+                repository.refreshPublicationComments(productId)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                MonitorErrores.registrarAdvertencia("EleganComments", "No se pudieron actualizar los comentarios en tiempo real.", e)
+            }
+        }
+    }
+
     fun addPublicationComment(
         productId: String,
         displayName: String,
