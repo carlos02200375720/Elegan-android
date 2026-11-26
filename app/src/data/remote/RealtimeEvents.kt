@@ -19,6 +19,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 data class RealtimeEvent(val collection: String, val operation: String)
 
@@ -37,6 +38,7 @@ object RealtimeEvents {
         if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return
         connectionJob?.cancel()
         connectionJob = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            val retryDelayMs = AtomicLong(1000L)
             val base = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
                 .replaceFirst(Regex("^https:", RegexOption.IGNORE_CASE), "wss:")
                 .replaceFirst(Regex("^http:", RegexOption.IGNORE_CASE), "ws:")
@@ -53,13 +55,23 @@ object RealtimeEvents {
                         override fun onMessage(webSocket: WebSocket, text: String) {
                             runCatching {
                                 val json = JSONObject(text)
-                                if (json.optString("type") == "data_changed") {
-                                    mutableEvents.tryEmit(
-                                        RealtimeEvent(
-                                            collection = json.optString("collection"),
-                                            operation = json.optString("operation")
+                                when (json.optString("type")) {
+                                    "connected" -> {
+                                        // Recupera el estado actual: los eventos enviados durante
+                                        // una desconexión no se pueden reproducir desde el socket.
+                                        retryDelayMs.set(1000L)
+                                        mutableEvents.tryEmit(
+                                            RealtimeEvent("supportMessages", "resync")
                                         )
-                                    )
+                                    }
+                                    "data_changed" -> {
+                                        mutableEvents.tryEmit(
+                                            RealtimeEvent(
+                                                collection = json.optString("collection"),
+                                                operation = json.optString("operation")
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -78,7 +90,10 @@ object RealtimeEvents {
                 } finally {
                     socket?.cancel()
                 }
-                if (isActive) delay(2000)
+                if (isActive) {
+                    delay(retryDelayMs.get())
+                    retryDelayMs.updateAndGet { current -> (current * 2L).coerceAtMost(30000L) }
+                }
             }
         }
     }
