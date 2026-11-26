@@ -119,6 +119,10 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshMessages() = perfilCtrl.refreshMessages()
 
+    fun refreshInteractions() = interaccionesCtrl.refreshSavedProducts()
+
+    fun refreshCurrentPublicationComments() = interaccionesCtrl.refreshCurrentPublicationComments()
+
     fun setCategory(category: String?) = catalogoCtrl.setCategory(category)
 
     fun setSearchQuery(query: String) = catalogoCtrl.setSearchQuery(query)
