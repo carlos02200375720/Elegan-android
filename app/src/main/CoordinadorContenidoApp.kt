@@ -64,6 +64,7 @@ fun AppContent(
                     "orders" -> viewModel.refreshOrders()
                     "supportMessages" -> viewModel.refreshMessages()
                     "usuarios" -> viewModel.refreshUserProfile()
+                    "blocked_users" -> viewModel.refreshCurrentPublicationComments()
                     "comments" -> {
                         viewModel.refreshProducts()
                         viewModel.refreshCurrentPublicationComments()
