@@ -219,7 +219,7 @@ class PruebasBloqueoTransferenciaTest {
 
         // Al reabrir la app debe abrir directamente en la pantalla de transferencia
         composeTestRule.onNodeWithTag("tranferecia_screen").assertIsDisplayed()
-        composeTestRule.onNodeWithText("RD$ 55").assertIsDisplayed()
+        composeTestRule.onNodeWithText("$55").assertIsDisplayed()
         composeTestRule.onNodeWithText("Banco popular").assertIsDisplayed()
         composeTestRule.onNodeWithText("849431325").assertIsDisplayed()
 
@@ -415,7 +415,7 @@ class PruebasBloqueoTransferenciaTest {
         composeTestRule.onNodeWithTag("gracia_shipping_method")
             .performScrollTo()
             .assertIsDisplayed()
-            .assertTextEquals("Envío Mensajería Local • RD$ 250")
+            .assertTextEquals("Envío Mensajería Local • $250")
         composeTestRule.onNodeWithTag("gracia_delivery_time")
             .performScrollTo()
             .assertIsDisplayed()
