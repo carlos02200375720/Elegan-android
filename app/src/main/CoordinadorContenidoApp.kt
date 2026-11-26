@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.MobileSession
+import com.example.data.remote.RealtimeEvents
 import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.auth.VentanaEmergenteRegistro
 import com.example.ui.components.EleganNotificationHost
@@ -46,6 +47,25 @@ fun AppContent(
 
     LaunchedEffect(isAuthenticated) {
         viewModel.syncAccountData()
+    }
+
+    LaunchedEffect(currentUserId, isAuthenticated) {
+        RealtimeEvents.start(MobileSession.token(context))
+        try {
+            RealtimeEvents.events.collect { event ->
+                when (event.collection) {
+                    "products" -> viewModel.refreshProducts()
+                    "store_categories" -> viewModel.refreshCategories()
+                    "announcements" -> viewModel.refreshAnnouncements()
+                    "cart" -> viewModel.refreshCart()
+                    "orders" -> viewModel.refreshOrders()
+                    "supportMessages" -> viewModel.refreshMessages()
+                    "cash_on_delivery", "cashOnDelivery" -> viewModel.loadCashOnDeliveryConfig()
+                }
+            }
+        } finally {
+            RealtimeEvents.stop()
+        }
     }
 
     var currentScreen by remember {
