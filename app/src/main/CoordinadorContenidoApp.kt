@@ -60,6 +60,7 @@ fun AppContent(
                     "cart" -> viewModel.refreshCart()
                     "orders" -> viewModel.refreshOrders()
                     "supportMessages" -> viewModel.refreshMessages()
+                    "usuarios" -> viewModel.refreshUserProfile()
                     "comments" -> {
                         viewModel.refreshProducts()
                         viewModel.refreshCurrentPublicationComments()
