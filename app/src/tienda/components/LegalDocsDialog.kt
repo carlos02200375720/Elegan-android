@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.data.remote.ApiAutenticacionMovil
+import com.example.data.remote.RealtimeEvents
 import com.example.ui.EleganTopBarShadow
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -78,29 +79,36 @@ fun LegalDocumentDialog(
     var error by remember(docType) { mutableStateOf("") }
 
     LaunchedEffect(documentType) {
-        loading = true
-        error = ""
-        try {
-            val response = ApiAutenticacionMovil.service.getLegalDocuments()
-            val items = response["items"] as? List<*> ?: emptyList<Any?>()
-            val item = items.filterIsInstance<Map<*, *>>()
-                .firstOrNull { it["type"]?.toString() == documentType }
-            if (item == null) {
-                error = "El documento todavía no está publicado."
-            } else {
-                document = LegalDocument(
-                    title = item["title"]?.toString().orEmpty(),
-                    subtitle = item["subtitle"]?.toString().orEmpty(),
-                    content = item["content"]?.toString().orEmpty()
-                )
+        suspend fun loadDocument() {
+            loading = true
+            error = ""
+            try {
+                val response = ApiAutenticacionMovil.service.getLegalDocuments()
+                val items = response["items"] as? List<*> ?: emptyList<Any?>()
+                val item = items.filterIsInstance<Map<*, *>>()
+                    .firstOrNull { it["type"]?.toString() == documentType }
+                if (item == null) {
+                    error = "El documento todavía no está publicado."
+                } else {
+                    document = LegalDocument(
+                        title = item["title"]?.toString().orEmpty(),
+                        subtitle = item["subtitle"]?.toString().orEmpty(),
+                        content = item["content"]?.toString().orEmpty()
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                MonitorErrores.registrarAdvertencia("LegalDocs", "No se pudo cargar el documento legal $documentType.", e)
+                error = "No se pudo cargar el documento. Comprueba tu conexión e inténtalo de nuevo."
+            } finally {
+                loading = false
             }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            MonitorErrores.registrarAdvertencia("LegalDocs", "No se pudo cargar el documento legal $documentType.", e)
-            error = "No se pudo cargar el documento. Comprueba tu conexión e inténtalo de nuevo."
-        } finally {
-            loading = false
+        }
+
+        loadDocument()
+        RealtimeEvents.events.collect { event ->
+            if (event.collection == "legal_documents") loadDocument()
         }
     }
 
