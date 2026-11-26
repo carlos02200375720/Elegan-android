@@ -54,7 +54,10 @@ fun AppContent(
         try {
             RealtimeEvents.events.collect { event ->
                 when (event.collection) {
-                    "products" -> viewModel.refreshProducts()
+                    "products" -> {
+                        viewModel.refreshProducts()
+                        viewModel.refreshSelectedProduct()
+                    }
                     "store_categories" -> viewModel.refreshCategories()
                     "announcements" -> viewModel.refreshAnnouncements()
                     "cart" -> viewModel.refreshCart()
