@@ -1,5 +1,6 @@
 package com.example.data.remote
 
+import android.os.Build
 import com.example.BuildConfig
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -33,6 +34,7 @@ object RealtimeEvents {
 
     @Synchronized
     fun start(token: String?) {
+        if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) return
         connectionJob?.cancel()
         connectionJob = CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             val base = BuildConfig.ELEGAN_API_BASE_URL.trimEnd('/')
