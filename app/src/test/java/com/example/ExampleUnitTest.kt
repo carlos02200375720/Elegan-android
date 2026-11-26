@@ -35,7 +35,7 @@ class ExampleUnitTest {
         assertEquals("$1.500", formatearMonedaRD(1500.0))
         assertEquals("$100", formatearPrecioRd(100.0))
         assertEquals("$55", formatearPrecioRd(55.0))
-        assertEquals("-$ —", formatearDescuentoRd(12.75))
+        assertEquals("-$—", formatearDescuentoRd(12.75))
         assertEquals("-$500", formatearDescuentoRd(500.0))
         assertEquals("GRATIS", formatearEnvioRd(0.0))
         assertEquals("$250", formatearEnvioRd(250.0))
