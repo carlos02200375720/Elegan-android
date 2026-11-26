@@ -16,11 +16,11 @@ private fun agruparMilesConPunto(digitos: String): String {
     return if (negativo) "-$grupos" else grupos
 }
 
-fun formatearMonedaRD(monto: Double): String = "RD$ ${formatearMontoDecimal(monto)}"
+fun formatearMonedaRD(monto: Double): String = "\$" + formatearMontoDecimal(monto)
 
 fun formatearPrecioRd(monto: Double): String = formatearMonedaRD(monto)
 
-fun formatearDescuentoRd(monto: Double): String = "-RD$ ${formatearMontoDecimal(abs(monto))}"
+fun formatearDescuentoRd(monto: Double): String = "-\$" + formatearMontoDecimal(abs(monto))
 
 fun formatearEnvioRd(monto: Double): String =
     if (monto == 0.0) "GRATIS" else formatearMonedaRD(monto)
