@@ -91,6 +91,22 @@ internal class ControladorCatalogoYAnuncios(
         }
     }
 
+    fun refreshSelectedProduct() {
+        val productId = _selectedProduct.value?.productId()?.takeIf { it.isNotBlank() } ?: return
+        scope.launch {
+            try {
+                val fresh = repository.getProductById(productId)
+                if (fresh != null && _selectedProduct.value?.productId() == productId) {
+                    _selectedProduct.value = fresh
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                MonitorErrores.registrarAdvertencia("EleganCatalog", "No se pudo actualizar el producto abierto en tiempo real.", e)
+            }
+        }
+    }
+
     fun setCategory(category: String?) {
         _selectedCategory.value = category?.takeIf { it.isNotBlank() }
     }
