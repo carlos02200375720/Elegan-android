@@ -11,12 +11,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.BankAccountInfo
+import com.example.data.remote.RealtimeEvents
 import com.example.data.model.productCategory
 import com.example.data.model.productId
 import com.example.ui.CarritoScreen
@@ -80,11 +80,18 @@ internal fun PantallasSecundariasNavegacion(
             else -> {}
         }
 
-        // Mientras el chat está abierto, consulta las respuestas nuevas del backend.
-        if (screen == Screen.CHATS) {
-            while (true) {
-                delay(5000)
-                viewModel.refreshMessages()
+        if (screen == Screen.VERIFICASION) {
+            viewModel.loadBankAccounts { result ->
+                result.onSuccess { bankAccounts = it; paymentError = null }
+                    .onFailure { paymentError = it.localizedMessage ?: "No se pudieron cargar las cuentas bancarias." }
+            }
+            RealtimeEvents.events.collect { event ->
+                if (event.collection == "bank_accounts") {
+                    viewModel.loadBankAccounts { result ->
+                        result.onSuccess { bankAccounts = it; paymentError = null }
+                            .onFailure { paymentError = it.localizedMessage ?: "No se pudieron actualizar las cuentas bancarias." }
+                    }
+                }
             }
         }
     }
