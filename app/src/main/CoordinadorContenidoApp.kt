@@ -60,6 +60,11 @@ fun AppContent(
                     "cart" -> viewModel.refreshCart()
                     "orders" -> viewModel.refreshOrders()
                     "supportMessages" -> viewModel.refreshMessages()
+                    "comments" -> {
+                        viewModel.refreshProducts()
+                        viewModel.refreshCurrentPublicationComments()
+                    }
+                    "likes", "guardadas", "publication_shares" -> viewModel.refreshInteractions()
                     "cash_on_delivery", "cashOnDelivery" -> viewModel.loadCashOnDeliveryConfig()
                 }
             }
