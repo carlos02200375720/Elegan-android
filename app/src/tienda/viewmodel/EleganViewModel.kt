@@ -93,6 +93,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshProducts() = catalogoCtrl.refreshProducts()
 
+    fun refreshSelectedProduct() = catalogoCtrl.refreshSelectedProduct()
+
     fun refreshAnnouncements() = catalogoCtrl.refreshAnnouncements()
 
     fun loadCategoriesOnce() = catalogoCtrl.loadCategoriesOnce()
