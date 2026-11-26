@@ -119,6 +119,8 @@ class EleganViewModel(application: Application) : AndroidViewModel(application) 
 
     fun refreshMessages() = perfilCtrl.refreshMessages()
 
+    fun refreshUserProfile() = perfilCtrl.refreshUserProfile()
+
     fun refreshInteractions() = interaccionesCtrl.refreshSavedProducts()
 
     fun refreshCurrentPublicationComments() = interaccionesCtrl.refreshCurrentPublicationComments()
