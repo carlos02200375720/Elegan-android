@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.Product
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
@@ -38,7 +39,6 @@ import com.example.data.model.productImageUrl
 import com.example.data.model.productName
 import com.example.data.model.productPrice
 import com.example.ui.GalleryMediaItem
-import com.example.ui.construirPeticionImagenPublicacion
 import com.example.ui.formatearMonedaRD
 import com.example.ui.getProductMediaItems
 import com.example.ui.theme.EleganGold
@@ -69,7 +69,7 @@ fun SavedPublicationGridItem(
     }
     val previewRequest = remember(previewUrl, context) {
         previewUrl.takeIf { it.isNotBlank() }?.let { url ->
-            construirPeticionImagenPublicacion(context = context, imageUrl = url, maxSizePx = 420)
+            ConfiguracionCacheImagenesCoil.peticionMiniaturaProducto(context = context, imageUrl = url)
         }
     }
 

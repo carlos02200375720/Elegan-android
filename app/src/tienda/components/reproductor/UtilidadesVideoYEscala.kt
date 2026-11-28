@@ -10,7 +10,7 @@ import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import coil.request.ImageRequest
-import coil.size.Precision
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import java.io.File
 
 private object CacheMultimediaVideo {
@@ -95,13 +95,10 @@ internal fun construirPeticionPortadaVideo(
     context: Context,
     effectivePoster: String?
 ): ImageRequest? {
-    return effectivePoster?.let { url ->
-        ImageRequest.Builder(context)
-            .data(url)
-            .size(900, 900)
-            .precision(Precision.INEXACT)
-            .allowRgb565(true)
-            .crossfade(false)
-            .build()
+    return effectivePoster?.takeIf { it.isNotBlank() }?.let { url ->
+        ConfiguracionCacheImagenesCoil.peticionImagenPublicacion(
+            context = context,
+            imageUrl = url
+        )
     }
 }

@@ -2,6 +2,9 @@ package com.example.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.example.data.error.ErrorApi
 import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
 import com.example.data.model.Product
@@ -12,10 +15,18 @@ import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -23,12 +34,16 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel dedicado a los flujos de Inicio, Catálogo, Categorías y Detalle de Producto.
- * Recibe [EleganRepository] por inyección en constructor sin depender de `AndroidViewModel`.
+ * Usa Paging 3 ([pagedFeedProducts] y [pagedCatalogProducts]) para cargar miles de productos
+ * de forma paginada sin mantener todo el catálogo en RAM.
  */
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class CatalogoViewModel(
     private val repository: EleganRepository,
     autoLoad: Boolean = true,
-    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default
+    private val enablePaging: Boolean = autoLoad,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    private val searchDebounceMs: Long = 220L
 ) : ViewModel() {
 
     private val _selectedCategory = MutableStateFlow<String?>(null)
@@ -43,6 +58,8 @@ class CatalogoViewModel(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val pagingRefreshTrigger = MutableStateFlow(0L)
 
     val products: StateFlow<List<Product>> = repository.observeProducts()
         .stateIn(
@@ -59,6 +76,48 @@ class CatalogoViewModel(
             started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
+
+    /** Flujo paginado de Paging 3 para el feed principal de Inicio (solo productos en stock). */
+    val pagedFeedProducts: Flow<PagingData<Product>> = if (enablePaging) {
+        pagingRefreshTrigger
+            .flatMapLatest {
+                repository.observePagedProducts(
+                    category = null,
+                    query = null,
+                    inStockOnly = true
+                )
+            }
+            .cachedIn(viewModelScope)
+    } else {
+        flowOf(PagingData.empty())
+    }
+
+    private val debouncedSearchQuery: Flow<String> = _searchQuery
+        .map { it.trim() }
+        .debounce { query -> if (query.isEmpty()) 0L else searchDebounceMs }
+        .distinctUntilChanged()
+
+    /** Flujo paginado de Paging 3 para el Catálogo filtrado por categoría y búsqueda con debounce. */
+    val pagedCatalogProducts: Flow<PagingData<Product>> = if (enablePaging) {
+        combine(
+            _selectedCategory,
+            debouncedSearchQuery,
+            pagingRefreshTrigger
+        ) { category, query, _ ->
+            category to query.ifBlank { null }
+        }
+            .distinctUntilChanged()
+            .flatMapLatest { (category, query) ->
+                repository.observePagedProducts(
+                    category = category,
+                    query = query,
+                    inStockOnly = true
+                )
+            }
+            .cachedIn(viewModelScope)
+    } else {
+        flowOf(PagingData.empty())
+    }
 
     val announcements: StateFlow<List<Announcement>> = repository.observeAnnouncements()
         .stateIn(
@@ -90,6 +149,13 @@ class CatalogoViewModel(
             initialValue = false
         )
 
+    val productsApiError: StateFlow<ErrorApi?> = repository.observeProductsApiError()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = null
+        )
+
     val productsError: StateFlow<String?> = repository.observeProductsError()
         .stateIn(
             scope = viewModelScope,
@@ -99,15 +165,19 @@ class CatalogoViewModel(
 
     init {
         if (autoLoad) {
-            refreshProducts()
             refreshAnnouncements()
             loadCategoriesOnce()
         }
     }
 
     fun refreshProducts() {
-        viewModelScope.launch {
-            repository.refreshProducts()
+        if (enablePaging) {
+            pagingRefreshTrigger.value += 1L
+            repository.scheduleBackgroundCatalogSync(force = false)
+        } else {
+            viewModelScope.launch {
+                repository.refreshProducts()
+            }
         }
     }
 

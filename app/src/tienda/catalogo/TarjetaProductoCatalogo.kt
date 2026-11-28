@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.Product
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
@@ -72,7 +73,7 @@ fun ProductGridCard(
     val resolvedSaveTag = saveTestTag ?: "catalog_save_$productId"
     val cardImageRequest = remember(productImageUrl, context) {
         productImageUrl.takeIf { it.isNotBlank() }?.let { url ->
-            construirPeticionImagenPublicacion(context = context, imageUrl = url, maxSizePx = 540)
+            ConfiguracionCacheImagenesCoil.peticionMiniaturaProducto(context = context, imageUrl = url)
         }
     }
 

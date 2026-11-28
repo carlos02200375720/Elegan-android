@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.paging.compose.LazyPagingItems
 import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
 import com.example.data.model.Product
@@ -65,14 +66,20 @@ fun InicioScreen(
     isLoadingProducts: Boolean = false,
     productsError: String? = null,
     onRefreshProducts: () -> Unit = {},
-    onVisibleProductsChanged: (List<String>) -> Unit = {}
+    onVisibleProductsChanged: (List<String>) -> Unit = {},
+    pagedProducts: LazyPagingItems<Product>? = null
 ) {
     val prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 3) }
     val listState = rememberLazyListState(prefetchStrategy = prefetchStrategy)
     val context = LocalContext.current
     val notifier = LocalEleganNotifier.current
-    val videoProductIds = remember(featuredProducts) {
-        featuredProducts.asSequence()
+    val loadedSnapshotProducts = if (pagedProducts != null) {
+        pagedProducts.itemSnapshotList.items
+    } else {
+        featuredProducts
+    }
+    val videoProductIds = remember(loadedSnapshotProducts) {
+        loadedSnapshotProducts.asSequence()
             .filter { it.productHasVideo() }
             .map { it.productId() }
             .toSet()
@@ -107,13 +114,13 @@ fun InicioScreen(
     )
     EfectoConteosVisiblesInicio(
         listState = listState,
-        featuredProducts = featuredProducts,
+        featuredProducts = loadedSnapshotProducts,
         headerItemCount = headerItemCount,
         onVisibleProductsChanged = onVisibleProductsChanged
     )
     EfectoPrecargaImagenesInicio(
         listState = listState,
-        featuredProducts = featuredProducts,
+        featuredProducts = loadedSnapshotProducts,
         headerItemCount = headerItemCount
     )
 
@@ -162,7 +169,8 @@ fun InicioScreen(
 
         ContenidoFeedInicio(
             listState = listState,
-            featuredProducts = featuredProducts,
+            featuredProducts = loadedSnapshotProducts,
+            pagedProducts = pagedProducts,
             categories = categories,
             announcements = announcements,
             savedProductIds = savedProductIds,

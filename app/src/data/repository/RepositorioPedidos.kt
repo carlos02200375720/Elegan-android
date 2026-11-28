@@ -2,6 +2,10 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Build
+import com.example.data.error.ApiParsingException
+import com.example.data.error.ErrorApi
+import com.example.data.error.ResultWrapper
+import com.example.data.error.safeApiCall
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.CashOnDeliveryConfig
@@ -10,12 +14,10 @@ import com.example.data.model.OrderItem
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.model.parseWholeMoney
 import com.example.data.model.toCashOnDeliveryConfig
-import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
 import com.example.data.remote.MobileSession
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlinx.coroutines.CancellationException
 import org.json.JSONObject
 import retrofit2.HttpException
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +34,7 @@ internal class RepositorioPedidos(
 ) {
     private val ordersList = CopyOnWriteArrayList<Order>()
     private val ordersFlow = MutableStateFlow<List<Order>>(emptyList())
+    private val ordersApiErrorFlow = MutableStateFlow<ErrorApi?>(null)
 
     private fun activeBackendToken(): String? {
         if (tokenProvider != null) {
@@ -47,27 +50,31 @@ internal class RepositorioPedidos(
 
     fun observeOrders(): Flow<List<Order>> = ordersFlow.asStateFlow()
 
-    suspend fun refreshOrders(): List<Order> = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: return@withContext ordersList.toList()
-        try {
+    fun observeOrdersApiError(): Flow<ErrorApi?> = ordersApiErrorFlow.asStateFlow()
+
+    suspend fun refreshOrdersResult(): ResultWrapper<List<Order>> {
+        val token = activeBackendToken() ?: return ResultWrapper.Success(ordersList.toList())
+        val result = safeApiCall(
+            tag = "EleganOrders",
+            operation = "refreshOrders"
+        ) {
             val response = apiProvider().getOrders("Bearer $token")
             val remoteOrders = extractOrdersJson(response, optionalUserId(appContext).orEmpty())
             ordersList.clear()
             ordersList.addAll(remoteOrders)
             ordersFlow.value = ordersList.toList()
             remoteOrders
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            MonitorErrores.registrarAdvertencia(
-                tag = "EleganOrders",
-                mensaje = "No se pudieron obtener las órdenes desde el backend.",
-                error = e,
-                extras = mapOf("operation" to "refreshOrders")
-            )
-            ordersList.toList()
         }
+        when (result) {
+            is ResultWrapper.Success -> ordersApiErrorFlow.value = null
+            is ResultWrapper.Error -> ordersApiErrorFlow.value = result.error
+            ResultWrapper.Loading -> Unit
+        }
+        return result
     }
+
+    suspend fun refreshOrders(): List<Order> =
+        refreshOrdersResult().getOrElse { ordersList.toList() }
 
     suspend fun validateCoupon(code: String, selectedCartItemIds: List<String>): Map<String, Any?> = withContext(Dispatchers.IO) {
         val token = activeBackendToken()
@@ -77,7 +84,7 @@ internal class RepositorioPedidos(
                 authorization = "Bearer $token",
                 request = mapOf("code" to code.trim().uppercase(), "selectedCartItemIds" to selectedCartItemIds)
             )
-        } catch (e: retrofit2.HttpException) {
+        } catch (e: HttpException) {
             val errorBody = runCatching { e.response()?.errorBody()?.string() }.getOrNull().orEmpty()
             val message = when {
                 errorBody.contains("COUPON_INVALID_OR_INACTIVE", ignoreCase = true) ->
@@ -90,28 +97,44 @@ internal class RepositorioPedidos(
         }
     }
 
-    suspend fun getCashOnDeliveryConfig(): CashOnDeliveryConfig = withContext(Dispatchers.IO) {
-        apiProvider().getCashOnDeliveryConfig().toCashOnDeliveryConfig()
-    }
+    suspend fun getCashOnDeliveryConfigResult(): ResultWrapper<CashOnDeliveryConfig> =
+        safeApiCall(
+            tag = "EleganOrders",
+            operation = "getCashOnDeliveryConfig"
+        ) {
+            apiProvider().getCashOnDeliveryConfig().toCashOnDeliveryConfig()
+        }
 
-    suspend fun getBankAccounts(): List<BankAccountInfo> = withContext(Dispatchers.IO) {
-        val token = activeBackendToken() ?: throw IllegalStateException("Debes iniciar sesión.")
-        val response = apiProvider().getBankAccounts("Bearer $token")
-        val raw = response["items"] as? List<*> ?: emptyList<Any?>()
-        raw.mapNotNull { entry ->
-            val row = entry as? Map<*, *> ?: return@mapNotNull null
-            val id = row["id"]?.toString().orEmpty()
-            if (id.isBlank()) return@mapNotNull null
-            BankAccountInfo(
-                id = id,
-                bankName = row["bankName"]?.toString().orEmpty(),
-                accountNumber = row["accountNumber"]?.toString().orEmpty(),
-                accountType = row["accountType"]?.toString().orEmpty(),
-                holderName = row["holderName"]?.toString().orEmpty(),
-                holderDocument = row["holderDocument"]?.toString().orEmpty()
-            )
+    suspend fun getCashOnDeliveryConfig(): CashOnDeliveryConfig =
+        getCashOnDeliveryConfigResult().getOrThrow()
+
+    suspend fun getBankAccountsResult(): ResultWrapper<List<BankAccountInfo>> {
+        val token = activeBackendToken()
+            ?: return ResultWrapper.Error(ErrorApi.UnauthorizedError(userMessage = "Debes iniciar sesión."))
+        return safeApiCall(
+            tag = "EleganOrders",
+            operation = "getBankAccounts"
+        ) {
+            val response = apiProvider().getBankAccounts("Bearer $token")
+            val raw = response["items"] as? List<*> ?: emptyList<Any?>()
+            raw.mapNotNull { entry ->
+                val row = entry as? Map<*, *> ?: return@mapNotNull null
+                val id = row["id"]?.toString().orEmpty()
+                if (id.isBlank()) return@mapNotNull null
+                BankAccountInfo(
+                    id = id,
+                    bankName = row["bankName"]?.toString().orEmpty(),
+                    accountNumber = row["accountNumber"]?.toString().orEmpty(),
+                    accountType = row["accountType"]?.toString().orEmpty(),
+                    holderName = row["holderName"]?.toString().orEmpty(),
+                    holderDocument = row["holderDocument"]?.toString().orEmpty()
+                )
+            }
         }
     }
+
+    suspend fun getBankAccounts(): List<BankAccountInfo> =
+        getBankAccountsResult().getOrThrow()
 
     suspend fun createPaymentOrder(
         paymentMethod: String, bankAccountId: String, cashOnDeliveryAccepted: Boolean,
@@ -140,7 +163,10 @@ internal class RepositorioPedidos(
         }
         val order = response["order"] as? Map<*, *> ?: response
         val id = (order["id"] as? String) ?: (response["id"] as? String)
-            ?: throw IllegalStateException("El servidor no devolvió el número de pedido.")
+            ?: throw ApiParsingException(
+                message = "El servidor no devolvió el número de pedido.",
+                fieldOrContext = "order.id"
+            )
         runCatching { carritoRepo.refreshCart() }
         refreshOrders()
         id
@@ -149,6 +175,7 @@ internal class RepositorioPedidos(
     fun clearUserData() {
         ordersList.clear()
         ordersFlow.value = emptyList()
+        ordersApiErrorFlow.value = null
     }
 }
 

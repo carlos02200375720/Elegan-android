@@ -33,6 +33,25 @@
             </intent-filter>
         </activity>
 
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <!-- Inicialización automática mínima y sin I/O en el arranque en frío -->
+            <meta-data
+                android:name="com.example.startup.ClienteHttpInitializer"
+                android:value="androidx.startup" />
+            <!-- Desactiva el autodescubrimiento temprano de WorkManager para usar inicialización bajo demanda
+                 (Configuration.Provider en EleganApplication) y programación diferida tras el primer frame -->
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+            <!-- SentryInitializer, BaseDatosLocalInitializer y SincronizacionCatalogoInitializer se inicializan
+                 de forma diferida tras el primer frame mediante AppInitializer.initializeComponent(...) -->
+        </provider>
+
         <receiver
             android:name=".ui.ReceptorCompartidoPublicacion"
             android:exported="false" />

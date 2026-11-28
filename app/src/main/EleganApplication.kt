@@ -1,44 +1,56 @@
 package com.example
 
 import android.app.Application
+import android.content.ComponentCallbacks2
+import android.util.Log
+import androidx.startup.AppInitializer
+import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
-import coil.disk.DiskCache
-import coil.memory.MemoryCache
 import com.example.data.di.ContenedorDependenciasApp
 import com.example.data.di.ContenedorDependenciasElegan
 import com.example.data.di.ProveedorContenedorElegan
-import com.example.data.observability.MonitorErrores
-import com.example.data.remote.ClienteHttpElegan
+import com.example.data.media.ConfiguracionCacheImagenesCoil
+import com.example.data.work.FabricaWorkersElegan
+import com.example.startup.ClienteHttpInitializer
 
-class EleganApplication : Application(), ImageLoaderFactory, ProveedorContenedorElegan {
+class EleganApplication : Application(), ImageLoaderFactory, ProveedorContenedorElegan, Configuration.Provider {
+    @Volatile
+    private var activeImageLoader: ImageLoader? = null
+
     override val contenedor: ContenedorDependenciasElegan by lazy {
         ContenedorDependenciasApp(this)
     }
 
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setMinimumLoggingLevel(if (BuildConfig.DEBUG) Log.DEBUG else Log.INFO)
+            .setWorkerFactory(FabricaWorkersElegan())
+            .build()
+
     override fun onCreate() {
         super.onCreate()
-        ClienteHttpElegan.inicializar(this)
-        MonitorErrores.inicializar(this)
+        // ClienteHttpInitializer se autodescubre vía androidx.startup.InitializationProvider;
+        // Sentry, Room y WorkManager se inicializan de forma diferida tras el primer frame en MainActivity.
+        AppInitializer.getInstance(this).initializeComponent(ClienteHttpInitializer::class.java)
     }
 
     override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
-            .okHttpClient(ClienteHttpElegan.mediaClient)
-            .memoryCache {
-                MemoryCache.Builder(this)
-                    .maxSizePercent(0.25)
-                    .build()
-            }
-            .diskCache {
-                DiskCache.Builder()
-                    .directory(cacheDir.resolve("elegan_image_cache"))
-                    .maxSizeBytes(150L * 1024L * 1024L)
-                    .build()
-            }
-            .respectCacheHeaders(false)
-            .allowRgb565(true)
-            .crossfade(120)
-            .build()
+        return ConfiguracionCacheImagenesCoil.crearImageLoader(this).also { loader ->
+            activeImageLoader = loader
+        }
+    }
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        ConfiguracionCacheImagenesCoil.recortarMemoria(activeImageLoader, level)
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        ConfiguracionCacheImagenesCoil.recortarMemoria(
+            activeImageLoader,
+            ComponentCallbacks2.TRIM_MEMORY_BACKGROUND
+        )
     }
 }

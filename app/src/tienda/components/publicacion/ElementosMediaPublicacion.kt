@@ -39,9 +39,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
-import coil.request.CachePolicy
 import coil.request.ImageRequest
-import coil.size.Precision
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.Product
 import com.example.data.model.productId
 import com.example.data.model.productName
@@ -56,26 +55,14 @@ private const val MAX_AUTO_IMAGE_RETRIES = 2
 internal fun construirPeticionImagenPublicacion(
     context: Context,
     imageUrl: String,
-    maxSizePx: Int = 900,
+    maxSizePx: Int = ConfiguracionCacheImagenesCoil.FEED_MEDIA_SIZE_PX,
     retryAttempt: Int = 0
-): ImageRequest {
-    val builder = ImageRequest.Builder(context)
-        .data(imageUrl)
-        .size(maxSizePx, maxSizePx)
-        .precision(Precision.INEXACT)
-        .allowRgb565(true)
-        .diskCachePolicy(CachePolicy.ENABLED)
-        .crossfade(false)
-
-    if (retryAttempt > 0) {
-        builder
-            .memoryCachePolicy(CachePolicy.WRITE_ONLY)
-            .setParameter("elegan_retry", retryAttempt, memoryCacheKey = null)
-    } else {
-        builder.memoryCachePolicy(CachePolicy.ENABLED)
-    }
-    return builder.build()
-}
+): ImageRequest = ConfiguracionCacheImagenesCoil.peticionImagenPublicacion(
+    context = context,
+    imageUrl = imageUrl,
+    maxSizePx = maxSizePx,
+    retryAttempt = retryAttempt
+)
 
 @Composable
 internal fun ElementoMultimediaPublicacion(

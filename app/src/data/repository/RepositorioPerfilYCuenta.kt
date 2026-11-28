@@ -1,16 +1,18 @@
 package com.example.data.repository
 
 import android.content.Context
+import com.example.data.error.ErrorApi
+import com.example.data.error.ResultWrapper
+import com.example.data.error.safeApiCall
 import com.example.data.model.UserProfile
-import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import com.example.data.remote.PerfilActualizarRequest
 import com.example.data.remote.PerfilUsuarioRespuesta
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.sync.Mutex
@@ -29,6 +31,7 @@ internal class RepositorioPerfilYCuenta(
     @Volatile
     private var loadedToken: String? = null
     private val profileFlow = MutableStateFlow<UserProfile?>(null)
+    private val profileApiErrorFlow = MutableStateFlow<ErrorApi?>(null)
 
     private fun mapRemoteProfile(remote: PerfilUsuarioRespuesta): UserProfile = UserProfile(
         id = remote.userId,
@@ -41,10 +44,13 @@ internal class RepositorioPerfilYCuenta(
         updatedAt = remote.updatedAt
     )
 
+    fun observeProfileApiError(): Flow<ErrorApi?> = profileApiErrorFlow.asStateFlow()
+
     private suspend fun ensureProfileLoaded() = withContext(Dispatchers.IO) {
         val token = MobileSession.token(appContext)
         if (token.isNullOrBlank()) {
             profileFlow.value = null
+            profileApiErrorFlow.value = null
             loadedToken = null
             return@withContext
         }
@@ -52,27 +58,31 @@ internal class RepositorioPerfilYCuenta(
         profileLoadMutex.withLock {
             if (loadedToken == token && profileFlow.value != null) return@withLock
             val cachedUser = MobileSession.user(appContext)
-            val resolved = try {
+            val result = safeApiCall(
+                tag = "EleganRepository",
+                operation = "ensureProfileLoaded"
+            ) {
                 mapRemoteProfile(
                     ApiAutenticacionMovil.service.profile("Bearer $token").item
                 )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (error: Exception) {
-                MonitorErrores.registrarAdvertencia(
-                    tag = "EleganRepository",
-                    mensaje = "No se pudo obtener el perfil desde el backend.",
-                    error = error,
-                    extras = mapOf("operation" to "ensureProfileLoaded")
-                )
-                cachedUser?.let {
-                    UserProfile(
-                        id = it.effectiveId,
-                        userId = it.effectiveId,
-                        displayName = it.name,
-                        email = it.email.orEmpty()
-                    )
+            }
+            val resolved = when (result) {
+                is ResultWrapper.Success -> {
+                    profileApiErrorFlow.value = null
+                    result.data
                 }
+                is ResultWrapper.Error -> {
+                    profileApiErrorFlow.value = result.error
+                    cachedUser?.let {
+                        UserProfile(
+                            id = it.effectiveId,
+                            userId = it.effectiveId,
+                            displayName = it.name,
+                            email = it.email.orEmpty()
+                        )
+                    }
+                }
+                ResultWrapper.Loading -> null
             }
             profileFlow.value = resolved
             loadedToken = token
@@ -97,35 +107,47 @@ internal class RepositorioPerfilYCuenta(
         city: String
     ) = withContext(Dispatchers.IO) {
         val token = MobileSession.token(appContext)
-            ?: throw IllegalStateException("Debes iniciar sesión para guardar tu perfil.")
-        val response = ApiAutenticacionMovil.service.updateProfile(
-            authorization = "Bearer $token",
-            request = PerfilActualizarRequest(
-                name = name.trim(),
-                email = email.trim(),
-                phone = phone.trim(),
-                address = address.trim(),
-                city = city.trim()
+            ?: throw ErrorApi.UnauthorizedError(userMessage = "Debes iniciar sesión para guardar tu perfil.").toException()
+
+        val updateResult = safeApiCall(
+            tag = "EleganRepository",
+            operation = "saveUserProfile"
+        ) {
+            val response = ApiAutenticacionMovil.service.updateProfile(
+                authorization = "Bearer $token",
+                request = PerfilActualizarRequest(
+                    name = name.trim(),
+                    email = email.trim(),
+                    phone = phone.trim(),
+                    address = address.trim(),
+                    city = city.trim()
+                )
             )
-        )
-        if (!response.success) {
-            throw IllegalStateException("El servidor no confirmó la actualización del perfil.")
+            if (!response.success) {
+                throw IllegalStateException("El servidor no confirmó la actualización del perfil.")
+            }
+            mapRemoteProfile(response.item)
         }
 
-        val profile = mapRemoteProfile(response.item)
+        val profile = when (updateResult) {
+            is ResultWrapper.Success -> {
+                profileApiErrorFlow.value = null
+                updateResult.data
+            }
+            is ResultWrapper.Error -> {
+                profileApiErrorFlow.value = updateResult.error
+                throw updateResult.error.toException()
+            }
+            ResultWrapper.Loading -> return@withContext
+        }
+
         profileFlow.value = profile
         loadedToken = token
-        try {
+        safeApiCall(
+            tag = "EleganRepository",
+            operation = "validateSessionAfterProfileSave"
+        ) {
             MobileSession.validateSession(appContext)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (error: Exception) {
-            MonitorErrores.registrarAdvertencia(
-                tag = "EleganRepository",
-                mensaje = "El perfil se guardó, pero no se pudo refrescar la sesión.",
-                error = error,
-                extras = mapOf("operation" to "saveUserProfile")
-            )
         }
     }
 
@@ -136,6 +158,7 @@ internal class RepositorioPerfilYCuenta(
             pedidosRepo.clearUserData()
             mensajesRepo.clearUserData()
             profileFlow.value = null
+            profileApiErrorFlow.value = null
             loadedToken = null
         }
     }
@@ -143,10 +166,15 @@ internal class RepositorioPerfilYCuenta(
     suspend fun deleteUserAccountData() {
         withContext(Dispatchers.IO) {
             val token = MobileSession.token(appContext)
-                ?: throw IllegalStateException("Debes iniciar sesión para eliminar tu cuenta.")
+                ?: throw ErrorApi.UnauthorizedError(userMessage = "Debes iniciar sesión para eliminar tu cuenta.").toException()
 
             // El servidor confirma la eliminación antes de borrar la sesión local.
-            ApiAutenticacionMovil.service.deleteAccount("Bearer $token")
+            safeApiCall(
+                tag = "EleganRepository",
+                operation = "deleteAccount"
+            ) {
+                ApiAutenticacionMovil.service.deleteAccount("Bearer $token")
+            }.getOrThrow()
 
             carritoRepo.clearCart(syncRemote = false)
             guardadosYLikesRepo.clearUserData()
@@ -154,6 +182,7 @@ internal class RepositorioPerfilYCuenta(
             mensajesRepo.clearUserData()
 
             profileFlow.value = null
+            profileApiErrorFlow.value = null
             loadedToken = null
             MobileSession.deleteAccount(appContext)
         }

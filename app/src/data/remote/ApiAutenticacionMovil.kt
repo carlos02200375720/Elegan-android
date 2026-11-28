@@ -103,6 +103,15 @@ internal interface EleganAuthApi {
     @GET("api/movil/products")
     suspend fun products(): Map<String, Any?>
 
+    @GET("api/movil/products")
+    suspend fun productsPage(
+        @Query("page") page: Int,
+        @Query("limit") limit: Int,
+        @Query("category") category: String? = null,
+        @Query("q") query: String? = null,
+        @Query("inStock") inStock: Boolean? = null
+    ): Map<String, Any?>
+
     @GET("api/movil/products/{product_id}")
     suspend fun productById(@Path("product_id") productId: String): Map<String, Any?>
 

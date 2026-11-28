@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.data.model.AnnouncementDestination
 import com.example.data.model.announcementDestination
 import com.example.data.model.productColors
@@ -40,6 +41,7 @@ internal fun NavGraphBuilder.registrarRutasConBarraInferior(
 ) {
     composable<RutaApp.Inicio> {
         val inStockProducts by catalogoViewModel.inStockProducts.collectAsStateWithLifecycle()
+        val pagedFeedProducts = catalogoViewModel.pagedFeedProducts.collectAsLazyPagingItems()
         val announcements by catalogoViewModel.announcements.collectAsStateWithLifecycle()
         val categories by catalogoViewModel.categories.collectAsStateWithLifecycle()
         val isLoadingProducts by catalogoViewModel.isLoadingProducts.collectAsStateWithLifecycle()
@@ -148,19 +150,22 @@ internal fun NavGraphBuilder.registrarRutasConBarraInferior(
                 isLoadingProducts = isLoadingProducts,
                 productsError = productsError,
                 onRefreshProducts = {
-                    catalogoViewModel.refreshProducts()
+                    pagedFeedProducts.refresh()
                     catalogoViewModel.refreshCategories()
                 },
-                onVisibleProductsChanged = interaccionesViewModel::onVisibleProductsChanged
+                onVisibleProductsChanged = interaccionesViewModel::onVisibleProductsChanged,
+                pagedProducts = pagedFeedProducts
             )
         }
     }
 
     composable<RutaApp.Catalogo> {
         val inStockProducts by catalogoViewModel.inStockProducts.collectAsStateWithLifecycle()
+        val pagedCatalogProducts = catalogoViewModel.pagedCatalogProducts.collectAsLazyPagingItems()
         val categories by catalogoViewModel.categories.collectAsStateWithLifecycle()
         val categoryTitleById by catalogoViewModel.categoryTitleById.collectAsStateWithLifecycle()
         val selectedCategory by catalogoViewModel.selectedCategory.collectAsStateWithLifecycle()
+        val searchQuery by catalogoViewModel.searchQuery.collectAsStateWithLifecycle()
         val isLoadingProducts by catalogoViewModel.isLoadingProducts.collectAsStateWithLifecycle()
         val productsError by catalogoViewModel.productsError.collectAsStateWithLifecycle()
         val cartItems by carritoYPedidosViewModel.cartItems.collectAsStateWithLifecycle()
@@ -206,9 +211,12 @@ internal fun NavGraphBuilder.registrarRutasConBarraInferior(
                 isLoadingProducts = isLoadingProducts,
                 productsError = productsError,
                 onRefreshProducts = {
-                    catalogoViewModel.refreshProducts()
+                    pagedCatalogProducts.refresh()
                     catalogoViewModel.refreshCategories()
-                }
+                },
+                pagedProducts = pagedCatalogProducts,
+                searchQuery = searchQuery,
+                onSearchQueryChange = catalogoViewModel::setSearchQuery
             )
         }
     }

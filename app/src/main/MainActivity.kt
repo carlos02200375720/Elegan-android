@@ -8,6 +8,7 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.WindowCompat
+import com.example.startup.CoordinadorInicioDiferido
 import com.example.ui.theme.EleganTheme
 
 class MainActivity : ComponentActivity() {
@@ -28,6 +29,11 @@ class MainActivity : ComponentActivity() {
                 MainApp()
             }
         }
+
+        CoordinadorInicioDiferido.programarTrasPrimerFrame(
+            decorView = window.decorView,
+            context = applicationContext
+        )
     }
 
     override fun onNewIntent(intent: Intent) {

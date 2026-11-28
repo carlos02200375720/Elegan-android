@@ -1,18 +1,19 @@
 package com.example.data.repository
 
 import android.content.Context
+import com.example.data.error.ApiParsingException
+import com.example.data.error.ErrorApi
+import com.example.data.error.safeApiCall
 import com.example.data.model.PublicationComment
-import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import java.util.concurrent.ConcurrentHashMap
-import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 
 internal class RepositorioComentarios(
     private val appContext: Context,
@@ -37,37 +38,30 @@ internal class RepositorioComentarios(
         }
     }
 
-    suspend fun refreshPublicationComments(productId: String): List<PublicationComment> =
-        withContext(Dispatchers.IO) {
-            require(productId.isNotBlank())
-            val token = activeBackendToken() ?: return@withContext cachedComments(productId)
-            try {
-                val response = ApiAutenticacionMovil.service.getPublicationComments(
-                    authorization = "Bearer $token",
-                    productId = productId
-                )
-                val remoteComments = extractPublicationComments(response)
-                val list = commentsCache.computeIfAbsent(productId) { mutableListOf() }
-                synchronized(list) {
-                    list.clear()
-                    list.addAll(remoteComments)
-                }
-                val count = (response["commentsCount"] as? Number)?.toLong()
-                if (count != null) statsRepo.updateCommentsCount(productId, count)
-                commentsUpdated.tryEmit(productId)
-                remoteComments
-            } catch (e: CancellationException) {
-                throw e
-            } catch (error: Exception) {
-                MonitorErrores.registrarAdvertencia(
-                    tag = "EleganComments",
-                    mensaje = "No se pudieron cargar los comentarios desde el backend.",
-                    error = error,
-                    extras = mapOf("operation" to "refreshPublicationComments", "productId" to productId)
-                )
-                cachedComments(productId)
+    suspend fun refreshPublicationComments(productId: String): List<PublicationComment> {
+        require(productId.isNotBlank())
+        val token = activeBackendToken() ?: return cachedComments(productId)
+        return safeApiCall(
+            tag = "EleganComments",
+            operation = "refreshPublicationComments",
+            extras = mapOf("productId" to productId)
+        ) {
+            val response = ApiAutenticacionMovil.service.getPublicationComments(
+                authorization = "Bearer $token",
+                productId = productId
+            )
+            val remoteComments = extractPublicationComments(response)
+            val list = commentsCache.computeIfAbsent(productId) { mutableListOf() }
+            synchronized(list) {
+                list.clear()
+                list.addAll(remoteComments)
             }
-        }
+            val count = (response["commentsCount"] as? Number)?.toLong()
+            if (count != null) statsRepo.updateCommentsCount(productId, count)
+            commentsUpdated.tryEmit(productId)
+            remoteComments
+        }.getOrElse { cachedComments(productId) }
+    }
 
     suspend fun addPublicationComment(productId: String, displayName: String, text: String) =
         withContext(Dispatchers.IO) {
@@ -75,22 +69,34 @@ internal class RepositorioComentarios(
             require(productId.isNotBlank() && clean.isNotEmpty() && clean.length <= 1000)
 
             val token = activeBackendToken()
-                ?: throw IllegalStateException("Debes iniciar sesión para comentar.")
+                ?: throw ErrorApi.UnauthorizedError(userMessage = "Debes iniciar sesión para comentar.").toException()
 
-            val response = ApiAutenticacionMovil.service.addPublicationComment(
-                authorization = "Bearer $token",
-                productId = productId,
-                request = mapOf("text" to clean)
-            )
-            val rawItem = response["item"] as? Map<*, *>
-                ?: throw IllegalStateException("El servidor no devolvió el comentario guardado.")
-            val savedComment = rawItem.toPublicationComment()
-                ?: throw IllegalStateException("La respuesta del comentario no es válida.")
+            safeApiCall(
+                tag = "EleganComments",
+                operation = "addPublicationComment",
+                extras = mapOf("productId" to productId)
+            ) {
+                val response = ApiAutenticacionMovil.service.addPublicationComment(
+                    authorization = "Bearer $token",
+                    productId = productId,
+                    request = mapOf("text" to clean)
+                )
+                val rawItem = response["item"] as? Map<*, *>
+                    ?: throw ApiParsingException(
+                        message = "El servidor no devolvió el comentario guardado.",
+                        fieldOrContext = "comment.item"
+                    )
+                val savedComment = rawItem.toPublicationComment()
+                    ?: throw ApiParsingException(
+                        message = "La respuesta del comentario no es válida.",
+                        fieldOrContext = "comment.payload"
+                    )
 
-            appendComment(savedComment)
-            val count = (response["commentsCount"] as? Number)?.toLong()
-            if (count != null) statsRepo.updateCommentsCount(productId, count)
-            else statsRepo.incrementComments(productId)
+                appendComment(savedComment)
+                val count = (response["commentsCount"] as? Number)?.toLong()
+                if (count != null) statsRepo.updateCommentsCount(productId, count)
+                else statsRepo.incrementComments(productId)
+            }.getOrThrow()
         }
 
     suspend fun reportComment(
@@ -100,23 +106,35 @@ internal class RepositorioComentarios(
         val cleanCommentId = commentId.trim()
         require(cleanCommentId.isNotBlank()) { "El comentario no es válido." }
         val token = activeBackendToken()
-            ?: throw IllegalStateException("Inicia sesión para reportar.")
-        ApiAutenticacionMovil.service.reportComment(
-            authorization = "Bearer $token",
-            commentId = cleanCommentId,
-            request = mapOf("reason" to reason.trim().ifBlank { "Contenido inapropiado" })
-        )
+            ?: throw ErrorApi.UnauthorizedError(userMessage = "Inicia sesión para reportar.").toException()
+        safeApiCall(
+            tag = "EleganComments",
+            operation = "reportComment",
+            extras = mapOf("commentId" to cleanCommentId)
+        ) {
+            ApiAutenticacionMovil.service.reportComment(
+                authorization = "Bearer $token",
+                commentId = cleanCommentId,
+                request = mapOf("reason" to reason.trim().ifBlank { "Contenido inapropiado" })
+            )
+        }.getOrThrow()
     }
 
     suspend fun blockUser(userId: String) = withContext(Dispatchers.IO) {
         val cleanUserId = userId.trim()
         require(cleanUserId.isNotBlank()) { "El usuario no es válido." }
         val token = activeBackendToken()
-            ?: throw IllegalStateException("Inicia sesión para bloquear.")
-        ApiAutenticacionMovil.service.blockUser(
-            authorization = "Bearer $token",
-            userId = cleanUserId
-        )
+            ?: throw ErrorApi.UnauthorizedError(userMessage = "Inicia sesión para bloquear.").toException()
+        safeApiCall(
+            tag = "EleganComments",
+            operation = "blockUser",
+            extras = mapOf("targetUserId" to cleanUserId)
+        ) {
+            ApiAutenticacionMovil.service.blockUser(
+                authorization = "Bearer $token",
+                userId = cleanUserId
+            )
+        }.getOrThrow()
         commentsCache.forEach { (productId, list) ->
             val removed = synchronized(list) { list.removeAll { it.userId == cleanUserId } }
             if (removed) {

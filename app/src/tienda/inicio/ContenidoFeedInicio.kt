@@ -28,6 +28,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
+import androidx.paging.compose.itemKey
 import com.example.R
 import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
@@ -35,6 +39,11 @@ import com.example.data.model.Product
 import com.example.data.model.PublicationStats
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
+import com.example.ui.components.BannerCatalogoSinConexion
+import com.example.ui.components.ErrorCargaSiguientePagina
+import com.example.ui.components.FinCatalogoPaginado
+import com.example.ui.components.IndicadorCargaSiguientePagina
+import com.example.ui.components.IndicadorSincronizacionEnSegundoPlano
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -42,6 +51,7 @@ import com.example.ui.theme.EleganCharcoal
 internal fun ContenidoFeedInicio(
     listState: LazyListState,
     featuredProducts: List<Product>,
+    pagedProducts: LazyPagingItems<Product>? = null,
     categories: List<CategoryItem> = emptyList(),
     announcements: List<Announcement> = emptyList(),
     savedProductIds: Set<String>,
@@ -127,13 +137,33 @@ internal fun ContenidoFeedInicio(
                 Spacer(modifier = Modifier.height(if (containerWidth < 360.dp) 12.dp else 16.dp))
             }
 
-            if (featuredProducts.isEmpty() && (isLoadingProducts || !productsError.isNullOrBlank())) {
+            val refreshState = pagedProducts?.loadState?.refresh
+            val effectiveIsEmpty = if (pagedProducts != null) {
+                pagedProducts.itemCount == 0
+            } else {
+                featuredProducts.isEmpty()
+            }
+            val effectiveIsLoading = if (pagedProducts != null) {
+                refreshState is LoadState.Loading
+            } else {
+                isLoadingProducts
+            }
+            val effectiveError = if (pagedProducts != null) {
+                (refreshState as? LoadState.Error)?.let { err ->
+                    err.error.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: "No se pudo cargar el catálogo desde el servidor."
+                }
+            } else {
+                productsError
+            }
+
+            if (effectiveIsEmpty && (effectiveIsLoading || !effectiveError.isNullOrBlank())) {
                 item(key = "feed_backend_status", contentType = "feed_backend_status") {
                     Column(
                         modifier = feedItemModifier.padding(horizontal = 24.dp, vertical = 24.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        if (isLoadingProducts) {
+                        if (effectiveIsLoading) {
                             CircularProgressIndicator(color = EleganBurgundy)
                             Spacer(modifier = Modifier.height(10.dp))
                             Text(
@@ -141,7 +171,7 @@ internal fun ContenidoFeedInicio(
                                 style = MaterialTheme.typography.bodyMedium.copy(color = Color.Gray),
                                 textAlign = TextAlign.Center
                             )
-                        } else if (!productsError.isNullOrBlank()) {
+                        } else if (!effectiveError.isNullOrBlank()) {
                             Text(
                                 text = "No se pudo cargar el catálogo",
                                 style = MaterialTheme.typography.titleMedium.copy(
@@ -152,13 +182,16 @@ internal fun ContenidoFeedInicio(
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = productsError,
+                                text = effectiveError,
                                 style = MaterialTheme.typography.bodySmall.copy(color = Color.Gray),
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
-                                onClick = onRefreshProducts,
+                                onClick = {
+                                    pagedProducts?.retry()
+                                    onRefreshProducts()
+                                },
                                 colors = ButtonDefaults.buttonColors(containerColor = EleganBurgundy)
                             ) {
                                 Text("Reintentar")
@@ -168,38 +201,115 @@ internal fun ContenidoFeedInicio(
                 }
             }
 
-            itemsIndexed(
-                items = featuredProducts,
-                key = { index, prod -> prod.productId().ifBlank { "product_$index" } },
-                contentType = { _, _ -> "product_post" }
-            ) { index, prod ->
-                val prodId = prod.productId()
-                val isLiked = prodId in likedPublicationIds
-                val isSaved = if (onToggleSaveProduct != null) {
-                    savedProductIds.contains(prodId)
-                } else {
-                    localSavedProductIds.contains(prodId)
+            if (!effectiveIsEmpty && effectiveIsLoading) {
+                item(key = "feed_background_sync", contentType = "paging_status") {
+                    IndicadorSincronizacionEnSegundoPlano(modifier = feedItemModifier)
                 }
-                val hasVideo = prod.productHasVideo()
+            } else if (!effectiveIsEmpty && !effectiveError.isNullOrBlank()) {
+                item(key = "feed_offline_banner", contentType = "paging_status") {
+                    BannerCatalogoSinConexion(
+                        onRetry = {
+                            pagedProducts?.refresh()
+                            onRefreshProducts()
+                        },
+                        modifier = feedItemModifier
+                    )
+                }
+            }
 
-                ElementoPublicacionFeedInicio(
-                    product = prod,
-                    index = index,
-                    stats = publicationStats[prodId],
-                    isLiked = isLiked,
-                    isSaved = isSaved,
-                    isFocusedProvider = { hasVideo && focusedProductIdState.value == prodId },
-                    onToggleSaveProduct = onToggleSaveProduct,
-                    onToggleLocalSave = onToggleLocalSave,
-                    onToggleLike = onToggleLike,
-                    onOpenComments = onOpenCommentsForProduct,
-                    onShareProduct = onShareProduct,
-                    onNavigateToProduct = onNavigateToProduct,
-                    isCompact = isCompactPost,
-                    brandLogoPainter = brandLogoPainter,
-                    modifier = feedItemModifier,
-                    categories = categories
-                )
+            if (pagedProducts != null) {
+                items(
+                    count = pagedProducts.itemCount,
+                    key = pagedProducts.itemKey { prod -> prod.productId() },
+                    contentType = pagedProducts.itemContentType { "product_post" }
+                ) { index ->
+                    val prod = pagedProducts[index] ?: return@items
+                    val prodId = prod.productId()
+                    val isLiked = prodId in likedPublicationIds
+                    val isSaved = if (onToggleSaveProduct != null) {
+                        savedProductIds.contains(prodId)
+                    } else {
+                        localSavedProductIds.contains(prodId)
+                    }
+                    val hasVideo = prod.productHasVideo()
+
+                    ElementoPublicacionFeedInicio(
+                        product = prod,
+                        index = index,
+                        stats = publicationStats[prodId],
+                        isLiked = isLiked,
+                        isSaved = isSaved,
+                        isFocusedProvider = { hasVideo && focusedProductIdState.value == prodId },
+                        onToggleSaveProduct = onToggleSaveProduct,
+                        onToggleLocalSave = onToggleLocalSave,
+                        onToggleLike = onToggleLike,
+                        onOpenComments = onOpenCommentsForProduct,
+                        onShareProduct = onShareProduct,
+                        onNavigateToProduct = onNavigateToProduct,
+                        isCompact = isCompactPost,
+                        brandLogoPainter = brandLogoPainter,
+                        modifier = feedItemModifier,
+                        categories = categories
+                    )
+                }
+
+                when (val appendState = pagedProducts.loadState.append) {
+                    is LoadState.Loading -> {
+                        item(key = "feed_paging_append_loading", contentType = "paging_status") {
+                            IndicadorCargaSiguientePagina(modifier = feedItemModifier)
+                        }
+                    }
+                    is LoadState.Error -> {
+                        item(key = "feed_paging_append_error", contentType = "paging_status") {
+                            ErrorCargaSiguientePagina(
+                                message = appendState.error.localizedMessage,
+                                onRetry = { pagedProducts.retry() },
+                                modifier = feedItemModifier
+                            )
+                        }
+                    }
+                    is LoadState.NotLoading -> {
+                        if (appendState.endOfPaginationReached && pagedProducts.itemCount > 0) {
+                            item(key = "feed_paging_end", contentType = "paging_status") {
+                                FinCatalogoPaginado(modifier = feedItemModifier)
+                            }
+                        }
+                    }
+                }
+            } else {
+                itemsIndexed(
+                    items = featuredProducts,
+                    key = { index, prod -> prod.productId().ifBlank { "product_$index" } },
+                    contentType = { _, _ -> "product_post" }
+                ) { index, prod ->
+                    val prodId = prod.productId()
+                    val isLiked = prodId in likedPublicationIds
+                    val isSaved = if (onToggleSaveProduct != null) {
+                        savedProductIds.contains(prodId)
+                    } else {
+                        localSavedProductIds.contains(prodId)
+                    }
+                    val hasVideo = prod.productHasVideo()
+
+                    ElementoPublicacionFeedInicio(
+                        product = prod,
+                        index = index,
+                        stats = publicationStats[prodId],
+                        isLiked = isLiked,
+                        isSaved = isSaved,
+                        isFocusedProvider = { hasVideo && focusedProductIdState.value == prodId },
+                        onToggleSaveProduct = onToggleSaveProduct,
+                        onToggleLocalSave = onToggleLocalSave,
+                        onToggleLike = onToggleLike,
+                        onOpenComments = onOpenCommentsForProduct,
+                        onShareProduct = onShareProduct,
+                        onNavigateToProduct = onNavigateToProduct,
+                        isCompact = isCompactPost,
+                        brandLogoPainter = brandLogoPainter,
+                        modifier = feedItemModifier,
+                        categories = categories
+                    )
+                }
             }
 
             item(key = "concierge_vip_card", contentType = "concierge_vip_card") {

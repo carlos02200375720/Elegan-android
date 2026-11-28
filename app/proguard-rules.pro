@@ -37,3 +37,13 @@
 -keep,allowobfuscation,allowshrinking interface com.example.data.remote.EleganAuthApi {
     <methods>;
 }
+
+# Inicializadores de Jetpack App Startup (incluyendo inicialización diferida manual por reflexión)
+-keep class com.example.startup.** implements androidx.startup.Initializer {
+    <init>();
+}
+
+# Workers de WorkManager instanciados por nombre de clase desde FabricaWorkersElegan o reflexión
+-keep class com.example.data.work.** extends androidx.work.ListenableWorker {
+    public <init>(android.content.Context, androidx.work.WorkerParameters);
+}

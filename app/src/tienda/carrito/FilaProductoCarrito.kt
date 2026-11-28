@@ -27,11 +27,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -41,6 +43,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.CartItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -113,6 +116,12 @@ fun CartItemRow(
                     .padding(start = startPad, end = endIconPad),
                 verticalAlignment = Alignment.Top
             ) {
+                val context = LocalContext.current
+                val cartThumbnailRequest = remember(item.imageUrl, context) {
+                    item.imageUrl.takeIf { it.isNotBlank() }?.let { url ->
+                        ConfiguracionCacheImagenesCoil.peticionMiniaturaCompacta(context, url)
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .padding(top = verticalPad, bottom = verticalPad)
@@ -120,12 +129,14 @@ fun CartItemRow(
                         .clip(RoundedCornerShape(10.dp))
                         .background(Color(0xFFF3ECE4))
                 ) {
-                    AsyncImage(
-                        model = item.imageUrl,
-                        contentDescription = item.name,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                    if (cartThumbnailRequest != null) {
+                        AsyncImage(
+                            model = cartThumbnailRequest,
+                            contentDescription = item.name,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(imageGap))

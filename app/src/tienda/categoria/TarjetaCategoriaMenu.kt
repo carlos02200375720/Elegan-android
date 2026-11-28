@@ -20,17 +20,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.CategoryItem
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -63,9 +66,15 @@ internal fun TarjetaCategoriaMenu(
                 .background(Color(0xFFF6EFE9)),
             contentAlignment = Alignment.Center
         ) {
-            if (catItem.imageUrl.isNotBlank()) {
+            val context = LocalContext.current
+            val categoryThumbnailRequest = remember(catItem.imageUrl, context) {
+                catItem.imageUrl.takeIf { it.isNotBlank() }?.let { url ->
+                    ConfiguracionCacheImagenesCoil.peticionMiniaturaCompacta(context, url)
+                }
+            }
+            if (categoryThumbnailRequest != null) {
                 AsyncImage(
-                    model = catItem.imageUrl,
+                    model = categoryThumbnailRequest,
                     contentDescription = catItem.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(if (isCompact) 42.dp else 48.dp)

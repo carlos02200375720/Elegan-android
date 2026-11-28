@@ -817,19 +817,20 @@ class PruebasCatalogoYPublicacionesTest {
 
         // 2. Verifica que EleganDatabase.createBuilder NO borre tablas si hay cambio de versión sin migración,
         // sino que proteja los datos preservando la tabla intacta en SQLite.
+        val nextSchemaVersion = EleganDatabase.SCHEMA_VERSION + 1
         val sqliteHelper = FrameworkSQLiteOpenHelperFactory().create(
             SupportSQLiteOpenHelper.Configuration.builder(context)
                 .name(dbName)
-                .callback(object : SupportSQLiteOpenHelper.Callback(2) {
+                .callback(object : SupportSQLiteOpenHelper.Callback(nextSchemaVersion) {
                     override fun onCreate(db: SupportSQLiteDatabase) = Unit
                     override fun onUpgrade(db: SupportSQLiteDatabase, oldVersion: Int, newVersion: Int) {
                         // Simula una migración incremental segura agregando una columna nueva sin recrear la tabla.
-                        val migration1To2 = object : Migration(1, 2) {
+                        val incrementalMigration = object : Migration(oldVersion, newVersion) {
                             override fun migrate(db: SupportSQLiteDatabase) {
                                 db.execSQL("ALTER TABLE pending_visitor_shares ADD COLUMN attemptCount INTEGER NOT NULL DEFAULT 0")
                             }
                         }
-                        migration1To2.migrate(db)
+                        incrementalMigration.migrate(db)
                     }
                 })
                 .build()

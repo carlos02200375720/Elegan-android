@@ -2,6 +2,10 @@ package com.example.data.repository
 
 import android.content.Context
 import android.net.Uri
+import androidx.paging.PagingData
+import com.example.data.error.ErrorApi
+import com.example.data.error.ResultWrapper
+import com.example.data.local.EleganDatabase
 import com.example.data.model.Announcement
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
@@ -15,6 +19,7 @@ import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
+import com.example.data.work.ProgramadorSincronizacionProductos
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
@@ -34,7 +39,9 @@ class EleganRepository internal constructor(
 ) {
     constructor(context: Context) : this(
         appContext = context.applicationContext,
-        catalogoRepo = RepositorioCatalogo(),
+        catalogoRepo = RepositorioCatalogo(
+            databaseProvider = { EleganDatabase.getInstance(context.applicationContext) }
+        ),
         categoriasRepo = RepositorioCategorias(),
         anunciosRepo = RepositorioAnuncios(),
         mediaRepo = RepositorioMedia(context.applicationContext),
@@ -77,25 +84,66 @@ class EleganRepository internal constructor(
 
     fun observeProducts(): Flow<List<Product>> = catalogoRepo.observeProducts()
 
+    fun observePagedProducts(
+        category: String? = null,
+        query: String? = null,
+        inStockOnly: Boolean = true,
+        pageSize: Int = ProductosPagingSource.DEFAULT_PAGE_SIZE,
+        prefetchDistance: Int = ProductosPagingSource.DEFAULT_PREFETCH_DISTANCE,
+        maxSize: Int = ProductosPagingSource.DEFAULT_MAX_MEMORY_ITEMS
+    ): Flow<PagingData<Product>> = catalogoRepo.observePagedProducts(
+        category = category,
+        query = query,
+        inStockOnly = inStockOnly,
+        pageSize = pageSize,
+        prefetchDistance = prefetchDistance,
+        maxSize = maxSize
+    )
+
     fun observeProductsLoading(): Flow<Boolean> = catalogoRepo.observeLoading()
+
+    fun observeProductsApiError(): Flow<ErrorApi?> = catalogoRepo.observeApiError()
 
     fun observeProductsError(): Flow<String?> = catalogoRepo.observeError()
 
+    suspend fun refreshProductsResult(): ResultWrapper<List<Product>> = catalogoRepo.refreshProductsResult()
+
     suspend fun refreshProducts(): List<Product> = catalogoRepo.refreshProducts()
+
+    fun scheduleBackgroundCatalogSync(force: Boolean = false): Boolean =
+        ProgramadorSincronizacionProductos.solicitarSincronizacionInmediata(
+            context = appContext,
+            forceReplace = force
+        )
+
+    fun observeBackgroundCatalogSync(): Flow<Boolean> =
+        ProgramadorSincronizacionProductos.observarSincronizacionActiva(appContext)
 
     /** Descarga el catálogo publicado desde el backend como modelos inmutables [Product]. */
     suspend fun fetchPublishedProducts(): List<Product> = catalogoRepo.fetchProductsFromBackend()
 
+    suspend fun getProductByIdResult(productId: String): ResultWrapper<Product> =
+        catalogoRepo.getProductByIdResult(productId)
+
     suspend fun getProductById(productId: String): Product? = catalogoRepo.getProductById(productId)
+
+    suspend fun getRecommendedProductsResult(productId: String, limit: Int = 12): ResultWrapper<List<Product>> =
+        catalogoRepo.getRecommendedProductsResult(productId, limit)
 
     suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<Product> =
         catalogoRepo.getRecommendedProducts(productId, limit)
 
     fun observeAnnouncements(): Flow<List<Announcement>> = anunciosRepo.observeAnnouncements()
 
+    suspend fun refreshAnnouncementsResult(): ResultWrapper<List<Announcement>> =
+        anunciosRepo.refreshAnnouncementsResult()
+
     suspend fun refreshAnnouncements(): List<Announcement> = anunciosRepo.refreshAnnouncements()
 
     fun observeCategories(): Flow<List<CategoryItem>> = categoriasRepo.observeCategories()
+
+    suspend fun fetchCategoriesResult(force: Boolean = true): ResultWrapper<List<CategoryItem>> =
+        categoriasRepo.fetchCategoriesResult(force)
 
     suspend fun loadCategoriesOnce(): List<CategoryItem> = categoriasRepo.loadCategoriesOnce()
 
@@ -103,9 +151,13 @@ class EleganRepository internal constructor(
 
     fun observeCart(): Flow<List<CartItem>> = carritoRepo.observeCart()
 
+    fun observeCartApiError(): Flow<ErrorApi?> = carritoRepo.observeCartApiError()
+
     fun observeCartError(): Flow<String?> = carritoRepo.observeCartError()
 
     fun clearCartError() = carritoRepo.clearCartError()
+
+    suspend fun refreshCartResult(): ResultWrapper<List<CartItem>> = carritoRepo.refreshCartResult()
 
     suspend fun refreshCart(): List<CartItem> = carritoRepo.refreshCart()
 
@@ -177,6 +229,10 @@ class EleganRepository internal constructor(
         guardadosYLikesRepo.startPendingShareSync(scope)
 
     fun observeOrders(): Flow<List<Order>> = pedidosRepo.observeOrders()
+
+    fun observeOrdersApiError(): Flow<ErrorApi?> = pedidosRepo.observeOrdersApiError()
+
+    suspend fun refreshOrdersResult(): ResultWrapper<List<Order>> = pedidosRepo.refreshOrdersResult()
 
     suspend fun refreshOrders(): List<Order> = pedidosRepo.refreshOrders()
 

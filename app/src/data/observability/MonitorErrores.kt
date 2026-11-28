@@ -1,6 +1,7 @@
 package com.example.data.observability
 
 import android.app.Application
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.example.BuildConfig
@@ -30,7 +31,12 @@ object MonitorErrores {
     private var monitoreoRemotoActivo: Boolean = false
 
     fun inicializar(application: Application) {
+        inicializar(application as Context)
+    }
+
+    fun inicializar(context: Context) {
         if (!inicializado.compareAndSet(false, true)) return
+        val appContext = context.applicationContext
 
         if ("robolectric".equals(Build.FINGERPRINT, ignoreCase = true)) {
             monitoreoRemotoActivo = false
@@ -50,7 +56,7 @@ object MonitorErrores {
         }
 
         try {
-            SentryAndroid.init(application) { options ->
+            SentryAndroid.init(appContext) { options ->
                 options.dsn = dsn
                 options.environment = if (BuildConfig.DEBUG) "debug" else "production"
                 options.release = "${BuildConfig.APPLICATION_ID}@${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}"
@@ -73,7 +79,14 @@ object MonitorErrores {
         }
     }
 
+    fun estaInicializado(): Boolean = inicializado.get()
+
     fun estaActivo(): Boolean = monitoreoRemotoActivo
+
+    internal fun reiniciarParaPruebas() {
+        inicializado.set(false)
+        monitoreoRemotoActivo = false
+    }
 
     fun registrarError(
         tag: String,

@@ -1,10 +1,12 @@
 package com.example.data.repository
 
+import com.example.data.error.ApiParsingException
+import com.example.data.error.ErrorApi
+import com.example.data.error.ResultWrapper
+import com.example.data.error.safeApiCall
 import com.example.data.model.CategoryItem
 import com.example.data.model.resolveBackendMediaUrl
-import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,40 +26,51 @@ internal class RepositorioCategorias(
 
     private val fetchMutex = Mutex()
     private val categoriesFlow = MutableStateFlow<List<CategoryItem>>(emptyList())
+    private val lastErrorFlow = MutableStateFlow<ErrorApi?>(null)
 
     @Volatile
     private var hasLoadedSuccessfully = false
 
     fun observeCategories(): Flow<List<CategoryItem>> = categoriesFlow.asStateFlow()
 
-    suspend fun loadCategoriesOnce(): List<CategoryItem> = fetchInternal(force = false)
+    fun observeApiError(): Flow<ErrorApi?> = lastErrorFlow.asStateFlow()
 
-    suspend fun refreshCategories(): List<CategoryItem> = fetchInternal(force = true)
+    suspend fun loadCategoriesOnce(): List<CategoryItem> =
+        fetchCategoriesResult(force = false).getOrElse { categoriesFlow.value }
 
-    private suspend fun fetchInternal(force: Boolean): List<CategoryItem> = fetchMutex.withLock {
-        if (!force && hasLoadedSuccessfully) {
-            return@withLock categoriesFlow.value
-        }
-        try {
-            val payload = fetchRemotePayload()
-            val parsed = extractCategoriesJson(payload)
-            if (parsed != null) {
-                categoriesFlow.value = parsed
-                hasLoadedSuccessfully = true
+    suspend fun refreshCategories(): List<CategoryItem> =
+        fetchCategoriesResult(force = true).getOrElse { categoriesFlow.value }
+
+    suspend fun fetchCategoriesResult(force: Boolean = true): ResultWrapper<List<CategoryItem>> =
+        fetchMutex.withLock {
+            if (!force && hasLoadedSuccessfully) {
+                return@withLock ResultWrapper.Success(categoriesFlow.value)
             }
-            categoriesFlow.value
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            MonitorErrores.registrarAdvertencia(
+            val result = safeApiCall(
                 tag = "EleganCategories",
-                mensaje = "No se pudieron obtener las categorías del backend.",
-                error = e,
-                extras = mapOf("operation" to "fetchCategories", "force" to force.toString())
-            )
-            categoriesFlow.value
+                operation = "fetchCategories",
+                extras = mapOf("force" to force.toString())
+            ) {
+                val payload = fetchRemotePayload()
+                extractCategoriesJson(payload)
+                    ?: throw ApiParsingException(
+                        message = "El formato de categorías recibido del servidor no es válido.",
+                        fieldOrContext = "categories"
+                    )
+            }
+            when (result) {
+                is ResultWrapper.Success -> {
+                    categoriesFlow.value = result.data
+                    hasLoadedSuccessfully = true
+                    lastErrorFlow.value = null
+                }
+                is ResultWrapper.Error -> {
+                    lastErrorFlow.value = result.error
+                }
+                ResultWrapper.Loading -> Unit
+            }
+            result
         }
-    }
 }
 
 private suspend fun fetchCategoriesPayloadFromBackend(): Any = withContext(Dispatchers.IO) {

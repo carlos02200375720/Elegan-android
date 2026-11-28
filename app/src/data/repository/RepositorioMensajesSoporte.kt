@@ -2,15 +2,14 @@ package com.example.data.repository
 
 import android.content.Context
 import android.os.Build
+import com.example.data.error.safeApiCall
 import com.example.data.model.SupportMessage
 import com.example.data.model.resolveBackendMediaUrl
-import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.MobileSession
 import java.time.Instant
 import java.util.UUID
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -58,10 +57,13 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
         messagesFlow.collect { emit(it) }
     }
 
-    suspend fun refreshMessages(): List<SupportMessage> = withContext(Dispatchers.IO) {
+    suspend fun refreshMessages(): List<SupportMessage> {
         ensureInitialized()
-        val token = activeBackendToken() ?: return@withContext messagesList.toList()
-        try {
+        val token = activeBackendToken() ?: return messagesList.toList()
+        return safeApiCall(
+            tag = "EleganMessages",
+            operation = "refreshMessages"
+        ) {
             val response = ApiAutenticacionMovil.service.getMessages("Bearer $token")
             val remoteMessages = extractMessagesJson(response, optionalUserId(appContext).orEmpty())
             synchronized(this) {
@@ -74,17 +76,7 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                 messagesFlow.value = messagesList.toList()
             }
             messagesList.toList()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            MonitorErrores.registrarAdvertencia(
-                tag = "EleganMessages",
-                mensaje = "No se pudieron obtener mensajes desde el backend.",
-                error = e,
-                extras = mapOf("operation" to "refreshMessages")
-            )
-            messagesList.toList()
-        }
+        }.getOrElse { messagesList.toList() }
     }
 
     suspend fun sendSupportMessage(
@@ -111,15 +103,19 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                     "El adjunto debe tener una URL segura (HTTPS). Vuelve a seleccionarlo e inténtalo otra vez."
                 )
             }
-            try {
-                // POST /api/movil/messages acepta exclusivamente el campo "text".
-                // El modelo Pydantic del backend usa extra="forbid"; enviar alias
-                // adicionales provoca HTTP 422 y el mensaje nunca llega a MongoDB.
-                if (clean.isBlank() || cleanMedia.isNotBlank()) {
-                    throw IllegalArgumentException(
-                        "El backend de soporte solo acepta mensajes de texto sin adjuntos por ahora."
-                    )
-                }
+            // POST /api/movil/messages acepta exclusivamente el campo "text".
+            // El modelo Pydantic del backend usa extra="forbid"; enviar alias
+            // adicionales provoca HTTP 422 y el mensaje nunca llega a MongoDB.
+            if (clean.isBlank() || cleanMedia.isNotBlank()) {
+                throw IllegalArgumentException(
+                    "El backend de soporte solo acepta mensajes de texto sin adjuntos por ahora."
+                )
+            }
+            val delivered = safeApiCall(
+                tag = "EleganMessages",
+                operation = "sendSupportMessage",
+                extras = mapOf("hasMedia" to cleanMedia.isNotBlank().toString())
+            ) {
                 val payload = mapOf("text" to clean)
                 val response = ApiAutenticacionMovil.service.sendMessage("Bearer $token", payload)
                 val remoteAfter = extractMessagesJson(response, optionalUserId(appContext).orEmpty())
@@ -129,28 +125,13 @@ internal class RepositorioMensajesSoporte(private val appContext: Context) {
                         messagesList.addAll(remoteAfter)
                         messagesFlow.value = messagesList.toList()
                     }
-                    return@withContext
+                    return@safeApiCall true
                 }
                 val refreshed = refreshMessages()
-                if (refreshed.any { it.text == clean || (cleanMedia.isNotBlank() && it.mediaUrl == cleanMedia) }) {
-                    return@withContext
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                MonitorErrores.registrarAdvertencia(
-                    tag = "EleganMessages",
-                    mensaje = "No se pudo enviar el mensaje al backend. No se marcará como enviado.",
-                    error = e,
-                    extras = mapOf(
-                        "operation" to "sendSupportMessage",
-                        "hasMedia" to cleanMedia.isNotBlank().toString()
-                    )
-                )
-                // No crear mensajes/respuestas ficticias localmente cuando hay una
-                // sesión autenticada: eso ocultaba el HTTP 422 y daba la impresión
-                // de que soporte había recibido el mensaje.
-                throw e
+                refreshed.any { it.text == clean || (cleanMedia.isNotBlank() && it.mediaUrl == cleanMedia) }
+            }.getOrThrow()
+            if (delivered) {
+                return@withContext
             }
         }
 

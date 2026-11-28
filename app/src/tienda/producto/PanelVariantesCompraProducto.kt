@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -54,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.R
+import com.example.data.media.ConfiguracionCacheImagenesCoil
 import com.example.data.model.Product
 import com.example.data.model.ProductShippingMethod
 import com.example.data.model.productColors
@@ -81,10 +83,16 @@ fun PanelVariantesCompraProducto(
     onBuyNow: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val sizes = remember(product) { product.productSizes() }
     val colors = remember(product) { product.productColors() }
     val thumbnailUrl = remember(product) { getProductGalleryImages(product).firstOrNull().orEmpty() }
+    val thumbnailRequest = remember(thumbnailUrl, context) {
+        thumbnailUrl.takeIf { it.isNotBlank() }?.let { url ->
+            ConfiguracionCacheImagenesCoil.peticionMiniaturaCompacta(context, url)
+        }
+    }
     val selectedShipping = remember(shippingMethods, selectedShippingId) {
         shippingMethods.firstOrNull { it.id == selectedShippingId }
     }
@@ -173,9 +181,9 @@ fun PanelVariantesCompraProducto(
                             .background(Color(0xFFF0EBE3)),
                         contentAlignment = Alignment.Center
                     ) {
-                        if (thumbnailUrl.isNotBlank()) {
+                        if (thumbnailRequest != null) {
                             AsyncImage(
-                                model = thumbnailUrl,
+                                model = thumbnailRequest,
                                 contentDescription = product.productName(),
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier.matchParentSize()

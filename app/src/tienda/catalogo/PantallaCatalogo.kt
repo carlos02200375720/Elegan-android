@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 import com.example.data.model.CategoryItem
 import com.example.data.model.Product
 import com.example.data.model.productCategory
@@ -42,6 +46,11 @@ import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productDescription
 import com.example.data.model.productId
 import com.example.data.model.productName
+import com.example.ui.components.BannerCatalogoSinConexion
+import com.example.ui.components.ErrorCargaSiguientePagina
+import com.example.ui.components.FinCatalogoPaginado
+import com.example.ui.components.IndicadorCargaSiguientePagina
+import com.example.ui.components.IndicadorSincronizacionEnSegundoPlano
 import com.example.ui.components.LocalEleganNotifier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -87,13 +96,26 @@ fun CatalogoScreen(
     onToggleSaveProduct: (String) -> Unit = {},
     isLoadingProducts: Boolean = false,
     productsError: String? = null,
-    onRefreshProducts: () -> Unit = {}
+    onRefreshProducts: () -> Unit = {},
+    pagedProducts: LazyPagingItems<Product>? = null,
+    searchQuery: String? = null,
+    onSearchQueryChange: ((String) -> Unit)? = null
 ) {
-    var searchQuery by remember { mutableStateOf("") }
+    var localSearchQuery by remember { mutableStateOf("") }
+    val activeSearchQuery = searchQuery ?: localSearchQuery
+    val handleSearchQueryChange: (String) -> Unit = { newQuery ->
+        if (onSearchQueryChange != null) {
+            onSearchQueryChange(newQuery)
+        } else {
+            localSearchQuery = newQuery
+        }
+    }
+
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val notifier = LocalEleganNotifier.current
     val categoryListState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
 
     val resolvedCategoryTitles = remember(categories, categoryTitleById) {
         if (categoryTitleById.isNotEmpty() || categories.isEmpty()) {
@@ -104,18 +126,24 @@ fun CatalogoScreen(
     }
 
     val filteredProducts by produceState(
-        initialValue = if (searchQuery.isBlank() && selectedCategory == null) {
+        initialValue = if (pagedProducts != null) {
+            emptyList()
+        } else if (activeSearchQuery.isBlank() && selectedCategory == null) {
             products
-        } else if (searchQuery.isBlank() && products.size <= 200) {
+        } else if (activeSearchQuery.isBlank() && products.size <= 200) {
             filtrarProductosCatalogo(products, resolvedCategoryTitles, selectedCategory, "")
         } else {
             products
         },
-        key1 = products,
-        key2 = resolvedCategoryTitles,
-        key3 = selectedCategory to searchQuery
+        key1 = pagedProducts != null,
+        key2 = products to resolvedCategoryTitles,
+        key3 = selectedCategory to activeSearchQuery
     ) {
-        val cleanQuery = searchQuery.trim()
+        if (pagedProducts != null) {
+            value = emptyList()
+            return@produceState
+        }
+        val cleanQuery = activeSearchQuery.trim()
         if (cleanQuery.isEmpty() && selectedCategory == null) {
             value = products
             return@produceState
@@ -133,13 +161,32 @@ fun CatalogoScreen(
         }
     }
 
+    val coverSourceProducts = remember(pagedProducts?.itemSnapshotList, products) {
+        val pagedSnapshot = pagedProducts?.itemSnapshotList?.items.orEmpty()
+        if (pagedSnapshot.isNotEmpty()) pagedSnapshot else products
+    }
+    val prefetchProducts = if (pagedProducts != null) {
+        pagedProducts.itemSnapshotList.items
+    } else {
+        filteredProducts
+    }
+    val gridHeaderItemCount = remember(categories.isNotEmpty()) {
+        (if (categories.isNotEmpty()) 1 else 0) + 1
+    }
+
+    EfectoPrecargaMiniaturasCatalogo(
+        gridState = gridState,
+        products = prefetchProducts,
+        headerItemCount = gridHeaderItemCount
+    )
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CabeceraBusquedaCatalogo(
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
+                searchQuery = activeSearchQuery,
+                onSearchQueryChange = handleSearchQueryChange,
                 cartItemCount = cartItemCount,
                 onNavigateToMenu = onNavigateToMenu,
                 onNavigateToCart = onNavigateToCart
@@ -171,6 +218,7 @@ fun CatalogoScreen(
             val rowGap = if (isCompact) 10.dp else 14.dp
 
             LazyVerticalGrid(
+                state = gridState,
                 columns = GridCells.Fixed(columnsCount),
                 modifier = Modifier
                     .fillMaxSize()
@@ -191,12 +239,35 @@ fun CatalogoScreen(
                             selectedCategory = selectedCategory,
                             categoryListState = categoryListState,
                             onCategoryChange = onCategoryChange,
-                            products = products
+                            products = coverSourceProducts
                         )
                     }
                 }
 
+                val refreshState = pagedProducts?.loadState?.refresh
+                val appendState = pagedProducts?.loadState?.append
+                val visibleCount = pagedProducts?.itemCount ?: filteredProducts.size
+                val isInitialLoading = if (pagedProducts != null) {
+                    refreshState is LoadState.Loading && pagedProducts.itemCount == 0
+                } else {
+                    isLoadingProducts && products.isEmpty()
+                }
+                val initialErrorMessage = if (pagedProducts != null) {
+                    (refreshState as? LoadState.Error)?.let { err ->
+                        err.error.localizedMessage?.takeIf { it.isNotBlank() }
+                            ?: "No se pudo cargar el catálogo desde el servidor."
+                    }
+                } else {
+                    if (products.isEmpty()) productsError else null
+                }
+
                 item(span = { GridItemSpan(maxLineSpan) }) {
+                    val countText = when {
+                        isInitialLoading -> "Cargando prendas..."
+                        pagedProducts != null && appendState != null && !appendState.endOfPaginationReached ->
+                            "$visibleCount+ prendas encontradas"
+                        else -> "$visibleCount prendas encontradas"
+                    }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -205,7 +276,7 @@ fun CatalogoScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "${filteredProducts.size} prendas encontradas",
+                            text = countText,
                             style = MaterialTheme.typography.bodySmall.copy(
                                 color = Color.Gray,
                                 fontWeight = FontWeight.Medium,
@@ -217,52 +288,144 @@ fun CatalogoScreen(
                     }
                 }
 
-                if (filteredProducts.isEmpty()) {
+                if (visibleCount == 0) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         EstadoVacioCatalogo(
                             isCompact = isCompact,
-                            isLoading = isLoadingProducts && products.isEmpty(),
-                            errorMessage = if (products.isEmpty()) productsError else null,
-                            hasActiveFilters = searchQuery.isNotBlank() || selectedCategory != null,
-                            onRetry = onRefreshProducts,
+                            isLoading = isInitialLoading,
+                            errorMessage = initialErrorMessage,
+                            hasActiveFilters = activeSearchQuery.isNotBlank() || selectedCategory != null,
+                            onRetry = {
+                                pagedProducts?.retry()
+                                onRefreshProducts()
+                            },
                             onResetFilters = {
-                                searchQuery = ""
+                                handleSearchQueryChange("")
                                 onCategoryChange(null)
                             }
                         )
                     }
                 }
 
-                items(filteredProducts, key = { it.productId() }) { product ->
-                    val prodId = product.productId()
-                    val isSaved = savedProductIds.contains(prodId)
-                    val categoryLabel = product.productCategoryDisplayName(resolvedCategoryTitles)
-                    ProductGridCard(
-                        product = product,
-                        isSaved = isSaved,
-                        onClick = { onProductClick(product) },
-                        categoryLabel = categoryLabel,
-                        onToggleSave = {
-                            val willSave = !isSaved
-                            val notifySaved = {
-                                val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
-                                if (notifier != null) {
-                                    notifier.show(msg)
-                                } else {
-                                    scope.launch { snackbarHostState.showSnackbar(msg) }
+                if (visibleCount > 0) {
+                    val isBackgroundSyncing = if (pagedProducts != null) {
+                        refreshState is LoadState.Loading
+                    } else {
+                        isLoadingProducts
+                    }
+                    val hasOfflineRefreshError = if (pagedProducts != null) {
+                        refreshState is LoadState.Error
+                    } else {
+                        !productsError.isNullOrBlank()
+                    }
+                    if (isBackgroundSyncing) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            IndicadorSincronizacionEnSegundoPlano()
+                        }
+                    } else if (hasOfflineRefreshError) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            BannerCatalogoSinConexion(
+                                onRetry = {
+                                    pagedProducts?.refresh()
+                                    onRefreshProducts()
                                 }
-                            }
-                            if (!isAuthenticated) {
-                                onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                            )
+                        }
+                    }
+                }
+
+                if (pagedProducts != null) {
+                    items(
+                        count = pagedProducts.itemCount,
+                        key = pagedProducts.itemKey { it.productId() }
+                    ) { index ->
+                        val product = pagedProducts[index] ?: return@items
+                        val prodId = product.productId()
+                        val isSaved = savedProductIds.contains(prodId)
+                        val categoryLabel = product.productCategoryDisplayName(resolvedCategoryTitles)
+                        ProductGridCard(
+                            product = product,
+                            isSaved = isSaved,
+                            onClick = { onProductClick(product) },
+                            categoryLabel = categoryLabel,
+                            onToggleSave = {
+                                val willSave = !isSaved
+                                val notifySaved = {
+                                    val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
+                                    if (notifier != null) {
+                                        notifier.show(msg)
+                                    } else {
+                                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                                    }
+                                }
+                                if (!isAuthenticated) {
+                                    onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                                        onToggleSaveProduct(prodId)
+                                        notifySaved()
+                                    }
+                                } else {
                                     onToggleSaveProduct(prodId)
                                     notifySaved()
                                 }
-                            } else {
-                                onToggleSaveProduct(prodId)
-                                notifySaved()
+                            }
+                        )
+                    }
+
+                    when (appendState) {
+                        is LoadState.Loading -> {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                IndicadorCargaSiguientePagina()
                             }
                         }
-                    )
+                        is LoadState.Error -> {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                ErrorCargaSiguientePagina(
+                                    message = appendState.error.localizedMessage,
+                                    onRetry = { pagedProducts.retry() }
+                                )
+                            }
+                        }
+                        is LoadState.NotLoading -> {
+                            if (appendState.endOfPaginationReached && pagedProducts.itemCount > 0) {
+                                item(span = { GridItemSpan(maxLineSpan) }) {
+                                    FinCatalogoPaginado()
+                                }
+                            }
+                        }
+                        null -> Unit
+                    }
+                } else {
+                    items(filteredProducts, key = { it.productId() }) { product ->
+                        val prodId = product.productId()
+                        val isSaved = savedProductIds.contains(prodId)
+                        val categoryLabel = product.productCategoryDisplayName(resolvedCategoryTitles)
+                        ProductGridCard(
+                            product = product,
+                            isSaved = isSaved,
+                            onClick = { onProductClick(product) },
+                            categoryLabel = categoryLabel,
+                            onToggleSave = {
+                                val willSave = !isSaved
+                                val notifySaved = {
+                                    val msg = if (willSave) "Guardado en tu colección" else "Eliminado de guardados"
+                                    if (notifier != null) {
+                                        notifier.show(msg)
+                                    } else {
+                                        scope.launch { snackbarHostState.showSnackbar(msg) }
+                                    }
+                                }
+                                if (!isAuthenticated) {
+                                    onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                                        onToggleSaveProduct(prodId)
+                                        notifySaved()
+                                    }
+                                } else {
+                                    onToggleSaveProduct(prodId)
+                                    notifySaved()
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

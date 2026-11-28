@@ -70,4 +70,10 @@
     <string name="producto_panel_buy_now">Comprar Ahora</string>
     <string name="producto_panel_estimated_total">Total: %1$s</string>
     <string name="producto_recommended_title">Productos recomendados</string>
+
+    <!-- Catálogo sin conexión y sincronización en segundo plano -->
+    <string name="catalog_offline_banner_title">Mostrando catálogo guardado sin conexión</string>
+    <string name="catalog_offline_banner_retry">Reintentar</string>
+    <string name="catalog_offline_banner_cd">Sin conexión a internet</string>
+    <string name="catalog_background_syncing">Sincronizando catálogo…</string>
 </resources>
