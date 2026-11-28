@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
 import com.example.data.local.AlmacenBloqueoTransferencia
+import com.example.data.local.AlmacenPreferenciasUsuario
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.AuthUser
 import com.example.data.remote.ClienteHttpElegan
@@ -24,8 +25,7 @@ import com.example.data.remote.MobileSession
 import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.attemptAutoSignIn
 import com.example.ui.auth.signOutUser
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainApp() {
@@ -37,16 +37,14 @@ fun MainApp() {
     var isGuest by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
-        val (cachedUser, pendingLock, userHasTransferLock) = withContext(Dispatchers.IO) {
-            val user = MobileSession.user(context)
-            val anyLock = AlmacenBloqueoTransferencia.tieneBloqueoActivo(context)
-            val userLock = if (user != null) {
-                AlmacenBloqueoTransferencia.cargar(context, user.id) != null
-            } else {
-                false
-            }
-            Triple(user, anyLock, userLock)
+        val cachedUser = MobileSession.userAsync(context)
+        val pendingLock = AlmacenBloqueoTransferencia.tieneBloqueoActivoAsync(context)
+        val userHasTransferLock = if (cachedUser != null) {
+            AlmacenBloqueoTransferencia.cargarAsync(context, cachedUser.id) != null
+        } else {
+            false
         }
+
         hasPendingTransferLock = pendingLock
         if (cachedUser == null) {
             isSessionReady = true
@@ -58,8 +56,10 @@ fun MainApp() {
             attemptAutoSignIn(
                 context = context,
                 onAuthSuccess = {
-                    currentUser = MobileSession.user(context) ?: cachedUser
-                    isSessionReady = true
+                    coroutineScope.launch {
+                        currentUser = MobileSession.userAsync(context) ?: cachedUser
+                        isSessionReady = true
+                    }
                 },
                 onUnauthenticated = {
                     currentUser = null
@@ -75,6 +75,7 @@ fun MainApp() {
             if (currentUser != null) {
                 currentUser = null
                 isGuest = false
+                AlmacenPreferenciasUsuario.guardarModoInvitado(context, false)
             }
         }
     }
@@ -108,9 +109,17 @@ fun MainApp() {
             AuthScreen(
                 onAuthSuccess = {
                     isGuest = false
-                    currentUser = MobileSession.user(context)
+                    coroutineScope.launch {
+                        AlmacenPreferenciasUsuario.guardarModoInvitado(context, false)
+                        currentUser = MobileSession.userAsync(context)
+                    }
                 },
-                onGuestContinue = { isGuest = true }
+                onGuestContinue = {
+                    isGuest = true
+                    coroutineScope.launch {
+                        AlmacenPreferenciasUsuario.guardarModoInvitado(context, true)
+                    }
+                }
             )
         }
         else -> {
@@ -118,11 +127,17 @@ fun MainApp() {
                 isAuthenticated = currentUser != null,
                 onAuthenticated = {
                     isGuest = false
-                    currentUser = MobileSession.user(context)
+                    coroutineScope.launch {
+                        AlmacenPreferenciasUsuario.guardarModoInvitado(context, false)
+                        currentUser = MobileSession.userAsync(context)
+                    }
                 },
                 onSignOut = {
                     if (isGuest) {
                         isGuest = false
+                        coroutineScope.launch {
+                            AlmacenPreferenciasUsuario.guardarModoInvitado(context, false)
+                        }
                     } else {
                         signOutUser(
                             context = context,
@@ -132,9 +147,12 @@ fun MainApp() {
                     }
                 },
                 onAccountDeleted = {
-                    AlmacenBloqueoTransferencia.limpiar(context)
                     currentUser = null
                     isGuest = false
+                    coroutineScope.launch {
+                        AlmacenBloqueoTransferencia.limpiarAsync(context)
+                        AlmacenPreferenciasUsuario.limpiarPreferencias(context, conservarVisitorId = false)
+                    }
                 }
             )
         }

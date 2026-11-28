@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.ButtonDefaults
@@ -77,40 +76,34 @@ internal fun TarjetaSoporteVipPerfil(
 }
 
 @Composable
-internal fun BotonCerrarSesionPerfil(
+internal fun BotonRegistroInvitadoPerfil(
     horizontalPad: Dp,
-    isAuthenticated: Boolean = true,
-    onRequireAuth: () -> Unit = {},
-    onSignOut: () -> Unit
+    onRequireAuth: () -> Unit
 ) {
     Spacer(modifier = Modifier.height(10.dp))
     TextButton(
-        onClick = if (isAuthenticated) onSignOut else onRequireAuth,
+        onClick = onRequireAuth,
         modifier = Modifier
             .fillMaxWidth()
             .widthIn(max = 680.dp)
             .padding(horizontal = horizontalPad)
             .height(48.dp)
-            .testTag(if (isAuthenticated) "sign_out_button" else "guest_register_button"),
+            .testTag("guest_register_button"),
         colors = ButtonDefaults.textButtonColors(
-            contentColor = if (isAuthenticated) Color(0xFFB00020) else EleganBurgundy
+            contentColor = EleganBurgundy
         )
     ) {
         Icon(
-            imageVector = if (isAuthenticated) {
-                Icons.AutoMirrored.Filled.ExitToApp
-            } else {
-                Icons.Default.PersonAdd
-            },
+            imageVector = Icons.Default.PersonAdd,
             contentDescription = null,
             modifier = Modifier.size(18.dp)
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = if (isAuthenticated) "Cerrar Sesión" else "Crear Cuenta o Iniciar Sesión",
+            text = "Crear Cuenta o Iniciar Sesión",
             fontWeight = FontWeight.Bold,
             fontSize = 15.sp
         )
     }
-    Spacer(modifier = Modifier.height(30.dp))
+    Spacer(modifier = Modifier.height(20.dp))
 }

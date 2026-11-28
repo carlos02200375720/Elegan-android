@@ -38,6 +38,8 @@ fun CategoriaScreen(
     categories: List<CategoryItem>,
     products: List<Product>,
     onCategorySelected: (String) -> Unit,
+    isAuthenticated: Boolean = true,
+    onSignOut: () -> Unit = {},
     onDeleteAccount: () -> Unit = {},
     deleteAccountError: String? = null,
     onDismissDeleteAccountError: () -> Unit = {},
@@ -117,7 +119,9 @@ fun CategoriaScreen(
                 item {
                     SeccionLegalYCuentaMenu(
                         isCompact = isCompact,
+                        isAuthenticated = isAuthenticated,
                         onOpenLegalDoc = { activeLegalDoc = it },
+                        onSignOut = onSignOut,
                         onRequestDeleteAccount = { showDeleteAccountDialog = true }
                     )
                 }

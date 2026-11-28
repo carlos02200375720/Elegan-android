@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.PrivacyTip
@@ -26,9 +28,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.ui.components.LegalDocType
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
@@ -36,7 +40,9 @@ import com.example.ui.theme.EleganCharcoal
 @Composable
 internal fun SeccionLegalYCuentaMenu(
     isCompact: Boolean,
+    isAuthenticated: Boolean = true,
     onOpenLegalDoc: (LegalDocType) -> Unit,
+    onSignOut: () -> Unit = {},
     onRequestDeleteAccount: () -> Unit
 ) {
     Spacer(modifier = Modifier.height(6.dp))
@@ -77,6 +83,22 @@ internal fun SeccionLegalYCuentaMenu(
                 onClick = { onOpenLegalDoc(LegalDocType.TERMS_AND_CONDITIONS) }
             )
 
+            if (isAuthenticated) {
+                HorizontalDivider(color = Color(0xFFEDE6DF))
+
+                FilaAccionLegalMenu(
+                    icon = Icons.AutoMirrored.Filled.ExitToApp,
+                    title = stringResource(R.string.menu_sign_out),
+                    tint = Color(0xFFB00020),
+                    textColor = Color(0xFFB00020),
+                    fontWeight = FontWeight.SemiBold,
+                    showArrow = false,
+                    isCompact = isCompact,
+                    testTag = "menu_sign_out_item",
+                    onClick = onSignOut
+                )
+            }
+
             HorizontalDivider(color = Color(0xFFEDE6DF))
 
             FilaAccionLegalMenu(
@@ -111,6 +133,7 @@ private fun FilaAccionLegalMenu(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 48.dp)
             .clickable(onClick = onClick)
             .padding(horizontal = if (isCompact) 12.dp else 16.dp, vertical = 14.dp)
             .testTag(testTag),

@@ -45,6 +45,7 @@ internal fun NavGraphBuilder.registrarRutasSecundarias(
     onTransferLockChanged: (EstadoBloqueoTransferencia) -> Unit,
     onTransferLockCleared: () -> Unit,
     onTransferPaymentConfirmed: () -> Unit,
+    onSignOut: () -> Unit,
     onAccountDeleted: () -> Unit
 ) {
     composable<RutaApp.Categoria> {
@@ -69,6 +70,8 @@ internal fun NavGraphBuilder.registrarRutasSecundarias(
                     catalogoViewModel.setCategory(cat)
                     onNavigateTo(RutaApp.Catalogo)
                 },
+                isAuthenticated = isAuthenticated,
+                onSignOut = onSignOut,
                 deleteAccountError = accountDeletionError,
                 onDismissDeleteAccountError = { accountDeletionError = null },
                 onDeleteAccount = {

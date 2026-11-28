@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.os.Build
+import com.example.data.local.AlmacenPreferenciasUsuario
 import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareDao
 import com.example.data.local.PendingVisitorShareEntity
@@ -47,20 +48,9 @@ internal class RepositorioGuardadosYLikes(
     private val shareMutexes = ConcurrentHashMap<String, Mutex>()
     private val pendingShareDao: PendingVisitorShareDao by lazy { pendingShareDaoProvider() }
     private val pendingSharesFlushMutex = Mutex()
-    private val visitorPrefs by lazy {
-        appContext.applicationContext.getSharedPreferences("elegan_visitor_shares", Context.MODE_PRIVATE)
-    }
 
     @Volatile
     private var likesLoadedToken: String? = null
-
-    private fun getOrCreateVisitorId(): String {
-        val existing = visitorPrefs.getString("visitor_id", null)?.takeIf { it.isNotBlank() }
-        if (existing != null) return existing
-        val created = UUID.randomUUID().toString()
-        visitorPrefs.edit().putString("visitor_id", created).apply()
-        return created
-    }
 
     /**
      * Envía al backend los eventos pendientes almacenados en Room sin exigir token de sesión
@@ -526,7 +516,7 @@ internal class RepositorioGuardadosYLikes(
         if (token == null) {
             val previousSharesCount = statsRepo.statsFlow.value[productId]?.sharesCount ?: 0L
             val eventId = UUID.randomUUID().toString()
-            val visitorId = getOrCreateVisitorId()
+            val visitorId = AlmacenPreferenciasUsuario.obtenerOGenerarVisitorId(appContext)
             pendingShareDao.insertPendingShare(
                 PendingVisitorShareEntity(
                     eventId = eventId,

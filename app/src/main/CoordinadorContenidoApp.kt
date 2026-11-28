@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,6 +43,7 @@ import com.example.ui.viewmodel.CatalogoViewModel
 import com.example.ui.viewmodel.InteraccionesViewModel
 import com.example.ui.viewmodel.PerfilYSoporteViewModel
 import com.example.ui.viewmodel.rememberEleganViewModelFactory
+import kotlinx.coroutines.launch
 
 @Composable
 fun AppContent(
@@ -57,11 +59,21 @@ fun AppContent(
     onAccountDeleted: () -> Unit = onSignOut
 ) {
     val context = LocalContext.current
-    val currentUserId = remember(isAuthenticated) { MobileSession.userId(context) }
+    val coroutineScope = rememberCoroutineScope()
+    val currentUserId = remember(isAuthenticated) {
+        MobileSession.cachedSession(context)?.userId ?: MobileSession.userId(context)
+    }
     val initialTransferLock = remember(currentUserId) {
-        AlmacenBloqueoTransferencia.cargar(context, currentUserId)
+        AlmacenBloqueoTransferencia.obtenerDesdeCache(context, currentUserId)
+            ?: AlmacenBloqueoTransferencia.cargar(context, currentUserId)
     }
     var activeTransferLock by remember(currentUserId) { mutableStateOf(initialTransferLock) }
+
+    LaunchedEffect(currentUserId) {
+        AlmacenBloqueoTransferencia.observarBloqueo(context, currentUserId).collect { lock ->
+            activeTransferLock = lock
+        }
+    }
 
     fun syncAccountData() {
         interaccionesViewModel.refreshInteractions()
@@ -99,7 +111,7 @@ fun AppContent(
                 }
             }
         )
-        RealtimeEvents.start(MobileSession.token(context))
+        RealtimeEvents.start(MobileSession.tokenAsync(context))
         try {
             RealtimeEvents.events.collect { event ->
                 coordinadorTiempoReal.procesarEvento(event)
@@ -278,6 +290,16 @@ fun AppContent(
                         )
                     }
                 ) {
+                    val handleSignOut: () -> Unit = {
+                        if (isAuthenticated) {
+                            perfilYSoporteViewModel.clearUserSessionData(
+                                onCleared = { carritoYPedidosViewModel.clearOrderState() },
+                                onComplete = onSignOut
+                            )
+                        } else {
+                            onSignOut()
+                        }
+                    }
                     registrarRutasConBarraInferior(
                         catalogoViewModel = catalogoViewModel,
                         interaccionesViewModel = interaccionesViewModel,
@@ -288,16 +310,7 @@ fun AppContent(
                         onNavigateTo = ::navigateTo,
                         requestedProfileSection = { requestedProfileSection },
                         onProfileSectionConsumed = { requestedProfileSection = null },
-                        onSignOut = {
-                            if (isAuthenticated) {
-                                perfilYSoporteViewModel.clearUserSessionData(
-                                    onCleared = { carritoYPedidosViewModel.clearOrderState() },
-                                    onComplete = onSignOut
-                                )
-                            } else {
-                                onSignOut()
-                            }
-                        }
+                        onSignOut = handleSignOut
                     )
                     registrarRutasSecundarias(
                         catalogoViewModel = catalogoViewModel,
@@ -315,14 +328,19 @@ fun AppContent(
                         },
                         onTransferLockChanged = { activeTransferLock = it },
                         onTransferLockCleared = {
-                            AlmacenBloqueoTransferencia.limpiar(context)
                             activeTransferLock = null
+                            coroutineScope.launch {
+                                AlmacenBloqueoTransferencia.limpiarAsync(context)
+                            }
                         },
                         onTransferPaymentConfirmed = {
-                            AlmacenBloqueoTransferencia.limpiar(context)
                             activeTransferLock = null
+                            coroutineScope.launch {
+                                AlmacenBloqueoTransferencia.limpiarAsync(context)
+                            }
                             navigateTo(RutaApp.Gracia)
                         },
+                        onSignOut = handleSignOut,
                         onAccountDeleted = onAccountDeleted
                     )
                 }

@@ -59,7 +59,7 @@ fun PerfilScreen(
     onNavigateToCategoryMenu: () -> Unit = {},
     requestedSection: String? = null,
     onRequestedSectionConsumed: () -> Unit = {},
-    onSignOut: () -> Unit
+    onSignOut: () -> Unit = {}
 ) {
     val fallbackName = sessionUserName.takeIf { it.isNotBlank() }
     val fallbackEmail = sessionUserEmail.takeIf { it.isNotBlank() }
@@ -116,7 +116,7 @@ fun PerfilScreen(
                 modifier = Modifier.fillMaxSize().background(Color.White).testTag("perfil_screen"),
                 state = listState,
                 horizontalAlignment = Alignment.CenterHorizontally,
-                contentPadding = PaddingValues(bottom = 16.dp),
+                contentPadding = PaddingValues(bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(if (isCompact) 12.dp else 16.dp)
             ) {
                 item {
@@ -227,15 +227,15 @@ fun PerfilScreen(
                     )
                 }
 
-                item {
-                    BotonCerrarSesionPerfil(
-                        horizontalPad = horizontalPad,
-                        isAuthenticated = isAuthenticated,
-                        onRequireAuth = {
-                            onRequireAuth("Crea tu cuenta para guardar favoritos, pedidos y datos de envío.") {}
-                        },
-                        onSignOut = onSignOut
-                    )
+                if (!isAuthenticated) {
+                    item {
+                        BotonRegistroInvitadoPerfil(
+                            horizontalPad = horizontalPad,
+                            onRequireAuth = {
+                                onRequireAuth("Crea tu cuenta para guardar favoritos, pedidos y datos de envío.") {}
+                            }
+                        )
+                    }
                 }
             }
 

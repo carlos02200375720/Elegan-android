@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <!-- Nunca respaldar la sesión cifrada ni el estado temporal del checkout. -->
+    <!-- Nunca respaldar la sesión cifrada ni el estado temporal del checkout (SharedPreferences heredados y DataStore). -->
     <exclude domain="sharedpref" path="elegan_mobile_session.xml" />
     <exclude domain="sharedpref" path="elegan_transfer_lock_state.xml" />
+    <exclude domain="file" path="datastore/elegan_mobile_session.preferences_pb" />
+    <exclude domain="file" path="datastore/elegan_transfer_lock_state.preferences_pb" />
     <!-- El comprobante pendiente puede contener datos personales. -->
     <exclude domain="file" path="pending_transfer_proof/" />
     <!-- Excluir bases de datos locales temporales (Room y caché multimedia). -->

@@ -11,6 +11,7 @@ import com.example.data.remote.RestablecerContrasenaRequest
 import com.example.data.remote.SolicitarRecuperacionRequest
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
@@ -23,6 +24,14 @@ class RepositorioAutenticacion internal constructor(
     private val apiProvider: () -> EleganAuthApi
 ) {
     constructor() : this(apiProvider = { ApiAutenticacionMovil.service })
+
+    fun observarUsuarioActual(context: Context): Flow<AuthUser?> = MobileSession.observeUser(context)
+
+    fun observarTokenActual(context: Context): Flow<String?> = MobileSession.observeToken(context)
+
+    suspend fun usuarioActualAsync(context: Context): AuthUser? = MobileSession.userAsync(context)
+
+    suspend fun limpiarSesionAsync(context: Context) = MobileSession.clearAsync(context)
 
     fun usuarioActual(context: Context): AuthUser? = MobileSession.user(context)
 

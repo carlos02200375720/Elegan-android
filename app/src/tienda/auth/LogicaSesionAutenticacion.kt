@@ -132,12 +132,12 @@ fun attemptAutoSignIn(
             throw e
         } catch (e: HttpException) {
             if (e.code() == 401 || e.code() == 403) {
-                authRepository.limpiarSesion(context)
+                authRepository.limpiarSesionAsync(context)
             }
             onUnauthenticated()
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("Auth", "No se pudo validar la sesión con el backend.", e)
-            if (authRepository.usuarioActual(context) != null) onAuthSuccess() else onUnauthenticated()
+            if (authRepository.usuarioActualAsync(context) != null) onAuthSuccess() else onUnauthenticated()
         }
     }
 }
@@ -156,7 +156,7 @@ fun signOutUser(
             throw e
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
-            authRepository.limpiarSesion(context)
+            authRepository.limpiarSesionAsync(context)
             onSignOutComplete()
         }
     }

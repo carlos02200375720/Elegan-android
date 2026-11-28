@@ -76,4 +76,7 @@
     <string name="catalog_offline_banner_retry">Reintentar</string>
     <string name="catalog_offline_banner_cd">Sin conexión a internet</string>
     <string name="catalog_background_syncing">Sincronizando catálogo…</string>
+
+    <!-- Menú de categorías y cuenta -->
+    <string name="menu_sign_out">Cerrar Sesión</string>
 </resources>
