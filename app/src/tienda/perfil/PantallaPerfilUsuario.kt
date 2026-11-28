@@ -30,13 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.Order
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.UserProfile
-import com.example.data.remote.MobileSession
 import com.example.ui.components.LocalEleganNotifier
 import com.example.ui.components.SavedPublicationsGrid
 import kotlinx.coroutines.launch
@@ -46,13 +44,15 @@ import kotlinx.coroutines.launch
 fun PerfilScreen(
     userProfile: UserProfile?,
     orders: List<Order>,
-    savedProducts: List<ProductJson> = emptyList(),
-    catalogProducts: List<ProductJson> = emptyList(),
+    savedProducts: List<Product> = emptyList(),
+    catalogProducts: List<Product> = emptyList(),
     cartItemCount: Long = 0L,
+    sessionUserName: String = "",
+    sessionUserEmail: String = "",
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onNavigateToCart: () -> Unit = {},
-    onProductClick: (ProductJson) -> Unit = {},
+    onProductClick: (Product) -> Unit = {},
     onExploreClick: () -> Unit = {},
     onSaveProfile: (String, String, String, String, String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToChats: () -> Unit,
@@ -61,14 +61,14 @@ fun PerfilScreen(
     onRequestedSectionConsumed: () -> Unit = {},
     onSignOut: () -> Unit
 ) {
-    val context = LocalContext.current
-    val user = remember(userProfile, isAuthenticated) { MobileSession.user(context) }
+    val fallbackName = sessionUserName.takeIf { it.isNotBlank() }
+    val fallbackEmail = sessionUserEmail.takeIf { it.isNotBlank() }
 
-    var name by remember(userProfile, isAuthenticated) {
-        mutableStateOf(userProfile?.displayName ?: user?.name.orEmpty())
+    var name by remember(userProfile, isAuthenticated, fallbackName) {
+        mutableStateOf(userProfile?.displayName?.takeIf { it.isNotBlank() } ?: fallbackName.orEmpty())
     }
-    var email by remember(userProfile, isAuthenticated) {
-        mutableStateOf(userProfile?.email ?: user?.email.orEmpty())
+    var email by remember(userProfile, isAuthenticated, fallbackEmail) {
+        mutableStateOf(userProfile?.email?.takeIf { it.isNotBlank() } ?: fallbackEmail.orEmpty())
     }
     var phone by remember(userProfile) { mutableStateOf(userProfile?.phone ?: "") }
     var address by remember(userProfile) { mutableStateOf(userProfile?.address ?: "") }
@@ -122,12 +122,12 @@ fun PerfilScreen(
                 item {
                     TarjetaIdentidadPerfil(
                         displayName = (
-                            userProfile?.displayName
-                                ?: user?.name
+                            userProfile?.displayName?.takeIf { it.isNotBlank() }
+                                ?: fallbackName
                                 ?: if (isAuthenticated) "Caballero Elegan" else "Visitante Elegan"
                             ).trim(),
-                        email = userProfile?.email
-                            ?: user?.email
+                        email = userProfile?.email?.takeIf { it.isNotBlank() }
+                            ?: fallbackEmail
                             ?: if (isAuthenticated) "" else "Explora libremente · Crea tu cuenta al interactuar",
                         isCompact = isCompact
                     )
@@ -173,12 +173,11 @@ fun PerfilScreen(
                                         onStartEdit = { isEditingDelivery = true },
                                         onSaveClick = {
                                             val executeSave: () -> Unit = {
-                                                val registeredUser = MobileSession.user(context)
                                                 val cleanPhone = phone.trim()
                                                 val cleanAddress = address.trim()
                                                 val cleanCity = city.trim()
-                                                val cleanName = name.trim().ifBlank { registeredUser?.name.orEmpty().trim() }
-                                                val cleanEmail = email.trim().ifBlank { registeredUser?.email.orEmpty().trim() }
+                                                val cleanName = name.trim().ifBlank { fallbackName.orEmpty().trim() }
+                                                val cleanEmail = email.trim().ifBlank { fallbackEmail.orEmpty().trim() }
                                                 if (cleanName.isBlank() || cleanEmail.isBlank()) {
                                                     val msg = "El nombre y el correo son obligatorios."
                                                     if (notifier != null) notifier.show(msg)

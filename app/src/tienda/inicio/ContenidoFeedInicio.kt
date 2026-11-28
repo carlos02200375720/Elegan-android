@@ -29,9 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.example.R
-import com.example.data.model.AnnouncementJson
+import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationStats
 import com.example.data.model.productHasVideo
 import com.example.data.model.productId
@@ -41,9 +41,9 @@ import com.example.ui.theme.EleganCharcoal
 @Composable
 internal fun ContenidoFeedInicio(
     listState: LazyListState,
-    featuredProducts: List<ProductJson>,
+    featuredProducts: List<Product>,
     categories: List<CategoryItem> = emptyList(),
-    announcements: List<AnnouncementJson> = emptyList(),
+    announcements: List<Announcement> = emptyList(),
     savedProductIds: Set<String>,
     localSavedProductIds: Set<String>,
     publicationStats: Map<String, PublicationStats>,
@@ -55,11 +55,11 @@ internal fun ContenidoFeedInicio(
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)?,
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
-    onOpenCommentsForProduct: (ProductJson) -> Unit,
-    onShareProduct: (ProductJson) -> Unit,
+    onOpenCommentsForProduct: (Product) -> Unit,
+    onShareProduct: (Product) -> Unit,
     onNavigateToCatalogo: (String?) -> Unit,
-    onAnnouncementClick: (AnnouncementJson) -> Unit,
-    onNavigateToProduct: (ProductJson) -> Unit,
+    onAnnouncementClick: (Announcement) -> Unit,
+    onNavigateToProduct: (Product) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToChats: () -> Unit,
     modifier: Modifier = Modifier

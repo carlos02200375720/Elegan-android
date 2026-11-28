@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -41,13 +41,13 @@ fun CategoryStoriesSection(
     categories: List<CategoryItem>,
     onNavigateToCatalogo: (String?) -> Unit,
     onNavigateToMenu: () -> Unit,
-    products: List<ProductJson> = emptyList(),
+    products: List<Product> = emptyList(),
     modifier: Modifier = Modifier,
     availableWidth: Dp? = null
 ) {
     if (categories.isEmpty()) return
     val coverByCategoryId = remember(categories, products) {
-        categories.associate { cat -> cat.id to resolveCategoryCoverImage(cat, products) }
+        resolveCategoryCoverImages(categories, products)
     }
 
     if (availableWidth != null) {

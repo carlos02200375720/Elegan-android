@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.data.model.toProduct
 import com.example.ui.formatearDescuentoRd
 import com.example.ui.formatearEnvioRd
 import com.example.ui.formatearMonedaRD
@@ -59,7 +60,7 @@ class ExampleUnitTest {
     )
     assertEquals("", com.example.data.model.resolveBackendMediaUrl("http://cdn.elegan.com/img.jpg"))
 
-    val productWithMixedGallery: com.example.data.model.ProductJson = mapOf(
+    val productWithMixedGallery: com.example.data.model.Product = mapOf(
       "id" to "prod_mixed_media",
       "name" to "Camisa Oxford",
       "imageUrl" to "https://cdn.elegan.com/cover.jpg",
@@ -70,7 +71,7 @@ class ExampleUnitTest {
         mapOf("name" to "Etiqueta sin URL"),
         mapOf("url" to "https://cdn.elegan.com/clip.mov?alt=media", "type" to "video")
       )
-    )
+    ).toProduct()
 
     val galleryImages = com.example.ui.getProductGalleryImages(productWithMixedGallery)
     assertEquals(

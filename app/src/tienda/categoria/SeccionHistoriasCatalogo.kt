@@ -27,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,7 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
 
@@ -46,10 +47,13 @@ fun CatalogoCategoryStoriesSection(
     selectedCategory: String?,
     categoryListState: LazyListState,
     onCategoryChange: (String?) -> Unit,
-    products: List<ProductJson> = emptyList(),
+    products: List<Product> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     if (categories.isEmpty()) return
+    val coverByCategoryId = remember(categories, products) {
+        resolveCategoryCoverImages(categories, products)
+    }
     LaunchedEffect(selectedCategory, categories) {
         val index = if (selectedCategory == null) -1 else categories.indexOfFirst { it.id == selectedCategory }
         if (index >= 0) categoryListState.animateScrollToItem(index)
@@ -141,7 +145,7 @@ fun CatalogoCategoryStoriesSection(
                         category = cat,
                         cardWidth = cardWidth,
                         isSelected = isSelected,
-                        imageUrl = resolveCategoryCoverImage(cat, products),
+                        imageUrl = coverByCategoryId[cat.id],
                         onClick = { onCategoryChange(cat.id) }
                     )
                 }

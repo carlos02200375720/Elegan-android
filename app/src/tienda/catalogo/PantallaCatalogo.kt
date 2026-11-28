@@ -21,9 +21,9 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -36,25 +36,49 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategory
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productDescription
 import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.ui.components.LocalEleganNotifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+internal fun filtrarProductosCatalogo(
+    products: List<Product>,
+    categoryTitleById: Map<String, String>,
+    selectedCategory: String?,
+    query: String
+): List<Product> {
+    val cleanQuery = query.trim()
+    if (selectedCategory == null && cleanQuery.isEmpty()) return products
+    return products.filter { prod ->
+        val categoryId = prod.productCategory()
+        val matchesCat = selectedCategory == null || categoryId == selectedCategory
+        if (!matchesCat) return@filter false
+        if (cleanQuery.isEmpty()) return@filter true
+        val categoryTitle = prod.productCategoryDisplayName(categoryTitleById)
+        prod.productName().contains(cleanQuery, ignoreCase = true) ||
+            prod.productDescription().contains(cleanQuery, ignoreCase = true) ||
+            categoryTitle.contains(cleanQuery, ignoreCase = true)
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogoScreen(
-    products: List<ProductJson>,
+    products: List<Product>,
     categories: List<CategoryItem> = emptyList(),
+    categoryTitleById: Map<String, String> = emptyMap(),
     selectedCategory: String?,
     onCategoryChange: (String?) -> Unit,
     onNavigateToMenu: () -> Unit,
-    onProductClick: (ProductJson) -> Unit,
-    onQuickAddToCart: (ProductJson) -> Unit = {},
+    onProductClick: (Product) -> Unit,
+    onQuickAddToCart: (Product) -> Unit = {},
     cartItemCount: Long = 0L,
     onNavigateToCart: () -> Unit = {},
     savedProductIds: Set<String> = emptySet(),
@@ -71,16 +95,41 @@ fun CatalogoScreen(
     val notifier = LocalEleganNotifier.current
     val categoryListState = rememberLazyListState()
 
-    val filteredProducts = remember(products, categories, selectedCategory, searchQuery) {
-        products.filter { prod ->
-            val categoryId = prod.productCategory()
-            val categoryTitle = prod.productCategoryDisplayName(categories)
-            val matchesCat = selectedCategory == null || categoryId == selectedCategory
-            val matchesQuery = searchQuery.isBlank() ||
-                prod.productName().contains(searchQuery, ignoreCase = true) ||
-                prod.productDescription().contains(searchQuery, ignoreCase = true) ||
-                categoryTitle.contains(searchQuery, ignoreCase = true)
-            matchesCat && matchesQuery
+    val resolvedCategoryTitles = remember(categories, categoryTitleById) {
+        if (categoryTitleById.isNotEmpty() || categories.isEmpty()) {
+            categoryTitleById
+        } else {
+            categories.associate { it.id to it.title.trim() }
+        }
+    }
+
+    val filteredProducts by produceState(
+        initialValue = if (searchQuery.isBlank() && selectedCategory == null) {
+            products
+        } else if (searchQuery.isBlank() && products.size <= 200) {
+            filtrarProductosCatalogo(products, resolvedCategoryTitles, selectedCategory, "")
+        } else {
+            products
+        },
+        key1 = products,
+        key2 = resolvedCategoryTitles,
+        key3 = selectedCategory to searchQuery
+    ) {
+        val cleanQuery = searchQuery.trim()
+        if (cleanQuery.isEmpty() && selectedCategory == null) {
+            value = products
+            return@produceState
+        }
+        if (cleanQuery.isNotEmpty()) {
+            delay(220L)
+        }
+        value = withContext(Dispatchers.Default) {
+            filtrarProductosCatalogo(
+                products = products,
+                categoryTitleById = resolvedCategoryTitles,
+                selectedCategory = selectedCategory,
+                query = cleanQuery
+            )
         }
     }
 
@@ -187,7 +236,7 @@ fun CatalogoScreen(
                 items(filteredProducts, key = { it.productId() }) { product ->
                     val prodId = product.productId()
                     val isSaved = savedProductIds.contains(prodId)
-                    val categoryLabel = product.productCategoryDisplayName(categories)
+                    val categoryLabel = product.productCategoryDisplayName(resolvedCategoryTitles)
                     ProductGridCard(
                         product = product,
                         isSaved = isSaved,

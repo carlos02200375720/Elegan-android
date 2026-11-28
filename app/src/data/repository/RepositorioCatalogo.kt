@@ -1,8 +1,7 @@
 package com.example.data.repository
 
-import com.example.data.model.ProductJson
-import com.example.data.model.productId
-import com.example.data.model.productName
+import com.example.data.model.Product
+import com.example.data.model.toProduct
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.CancellationException
@@ -17,17 +16,17 @@ import kotlinx.coroutines.withContext
 internal class RepositorioCatalogo {
 
     private val fetchMutex = Mutex()
-    private val productsFlow = MutableStateFlow<List<ProductJson>>(emptyList())
+    private val productsFlow = MutableStateFlow<List<Product>>(emptyList())
     private val isLoadingFlow = MutableStateFlow(false)
     private val errorFlow = MutableStateFlow<String?>(null)
 
-    fun observeProducts(): Flow<List<ProductJson>> = productsFlow.asStateFlow()
+    fun observeProducts(): Flow<List<Product>> = productsFlow.asStateFlow()
 
     fun observeLoading(): Flow<Boolean> = isLoadingFlow.asStateFlow()
 
     fun observeError(): Flow<String?> = errorFlow.asStateFlow()
 
-    suspend fun refreshProducts(): List<ProductJson> = fetchMutex.withLock {
+    suspend fun refreshProducts(): List<Product> = fetchMutex.withLock {
         isLoadingFlow.value = true
         errorFlow.value = null
         try {
@@ -45,21 +44,21 @@ internal class RepositorioCatalogo {
         }
     }
 
-    suspend fun fetchProductsFromBackend(): List<ProductJson> = withContext(Dispatchers.IO) {
+    suspend fun fetchProductsFromBackend(): List<Product> = withContext(Dispatchers.IO) {
         val response = ApiAutenticacionMovil.service.products()
         val items = extractJsonItems(response)
         productsFlow.value = items
         items
     }
 
-    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<ProductJson> =
+    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<Product> =
         withContext(Dispatchers.IO) {
             if (productId.isBlank()) return@withContext emptyList()
             val response = ApiAutenticacionMovil.service.recommendedProducts(productId, limit)
             extractJsonItems(response)
         }
 
-    suspend fun getProductById(productId: String): ProductJson? = withContext(Dispatchers.IO) {
+    suspend fun getProductById(productId: String): Product? = withContext(Dispatchers.IO) {
         if (productId.isBlank()) return@withContext null
         try {
             val response = ApiAutenticacionMovil.service.productById(productId)
@@ -67,20 +66,18 @@ internal class RepositorioCatalogo {
                 ?: (response["product"] as? Map<*, *>)
                 ?: (response["data"] as? Map<*, *>)
                 ?: response
-            val typed: ProductJson = candidate.entries
-                .mapNotNull { (k, v) -> k?.toString()?.let { it to v } }
-                .toMap()
-            typed.takeIf { it.productId().isNotBlank() && it.productName().isNotBlank() }
+            val parsed = candidate.toProduct()
+            parsed.takeIf { it.id.isNotBlank() && it.name.isNotBlank() }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("EleganCatalog", "No se pudo consultar el producto $productId desde el backend.", e)
-            productsFlow.value.find { it.productId() == productId }
+            productsFlow.value.find { it.id == productId }
         }
     }
 }
 
-internal fun extractJsonItems(response: Map<String, Any?>): List<ProductJson> {
+internal fun extractJsonItems(response: Map<String, Any?>): List<Product> {
     val rawList = (response["items"] as? List<*>)
         ?: (response["products"] as? List<*>)
         ?: (response["data"] as? List<*>)
@@ -88,9 +85,7 @@ internal fun extractJsonItems(response: Map<String, Any?>): List<ProductJson> {
 
     return rawList.mapNotNull { entry ->
         val map = entry as? Map<*, *> ?: return@mapNotNull null
-        val typed: ProductJson = map.entries
-            .mapNotNull { (k, v) -> k?.toString()?.let { it to v } }
-            .toMap()
-        typed.takeIf { it.productId().isNotBlank() && it.productName().isNotBlank() }
+        val parsed = map.toProduct()
+        parsed.takeIf { it.id.isNotBlank() && it.name.isNotBlank() }
     }
 }

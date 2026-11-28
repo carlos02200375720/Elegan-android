@@ -158,6 +158,7 @@ internal fun CicloVidaMediaPlayer(
             state.isDisposed = true
             state.isPrepared = false
             state.hasStarted = false
+            GestorVideoActivo.liberarSiEsActivo(state)
             player?.let { activePlayer ->
                 if (state.playerRef === activePlayer) {
                     state.textureViewRef?.let { textureView ->

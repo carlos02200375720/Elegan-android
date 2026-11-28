@@ -83,10 +83,12 @@ object MonitorErrores {
     ) {
         if (error is CancellationException) return
 
-        if (error != null) {
-            Log.e(tag, mensaje, error)
-        } else {
-            Log.e(tag, mensaje)
+        runCatching {
+            if (error != null) {
+                Log.e(tag, mensaje, error)
+            } else {
+                Log.e(tag, mensaje)
+            }
         }
 
         if (!monitoreoRemotoActivo) return
@@ -118,10 +120,12 @@ object MonitorErrores {
     ) {
         if (error is CancellationException) return
 
-        if (error != null) {
-            Log.w(tag, mensaje, error)
-        } else {
-            Log.w(tag, mensaje)
+        runCatching {
+            if (error != null) {
+                Log.w(tag, mensaje, error)
+            } else {
+                Log.w(tag, mensaje)
+            }
         }
 
         if (!monitoreoRemotoActivo) return

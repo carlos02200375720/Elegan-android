@@ -1,6 +1,6 @@
 package com.example
 
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productId
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.AuthUser
@@ -82,12 +82,12 @@ class PruebasSesionYAplicacionTest {
         MobileSession.clear(context)
 
         val repo = EleganRepository(context)
-        val sampleProduct: ProductJson = mapOf(
-            "id" to "backend_prod_delete_test",
-            "name" to "Camisa Sartorial",
-            "category" to "camisa",
-            "price" to 89.0,
-            "imageUrl" to "https://cdn.example.com/camisa.jpg"
+        val sampleProduct = Product(
+            id = "backend_prod_delete_test",
+            name = "Camisa Sartorial",
+            categoryId = "camisa",
+            price = 89.0,
+            imageUrl = "https://cdn.example.com/camisa.jpg"
         )
         repo.addToCart(sampleProduct, "M", 1L, "Negro")
         repo.setProductSaved(sampleProduct.productId(), true)

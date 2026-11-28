@@ -46,7 +46,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.data.model.Order
 import com.example.data.model.OrderItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productId
 import com.example.data.model.productImageUrl
 import com.example.data.model.productName
@@ -61,7 +61,7 @@ import com.example.ui.theme.EleganMuted
 @Composable
 internal fun SeccionPedidosPerfil(
     orders: List<Order>,
-    catalogProducts: List<ProductJson> = emptyList()
+    catalogProducts: List<Product> = emptyList()
 ) {
     val catalogImageById = remember(catalogProducts) {
         catalogProducts.mapNotNull { product ->

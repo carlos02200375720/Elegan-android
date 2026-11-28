@@ -1,7 +1,7 @@
 package com.example
 
 import android.net.Uri
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
@@ -113,11 +113,11 @@ class PruebasPerfilPedidosYSoporteTest {
             apiProvider = { fakeApi },
             tokenProvider = { null }
         )
-        val product: ProductJson = mapOf(
-            "id" to "prod_sync_1",
-            "name" to "Mocasín Italiano",
-            "price" to 210.0,
-            "imageUrl" to "https://cdn.example.com/mocasin.jpg"
+        val product = Product(
+            id = "prod_sync_1",
+            name = "Mocasín Italiano",
+            price = 210.0,
+            imageUrl = "https://cdn.example.com/mocasin.jpg"
         )
         val unauthAdd = runCatching { unauthCarritoRepo.addToCart(product, "42", 1L, "Negro") }
         assertTrue(unauthAdd.isFailure)

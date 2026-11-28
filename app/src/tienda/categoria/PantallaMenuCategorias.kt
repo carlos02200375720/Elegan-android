@@ -27,7 +27,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategory
 import com.example.ui.components.LegalDocType
 import com.example.ui.components.LegalDocumentDialog
@@ -36,7 +36,7 @@ import com.example.ui.components.LegalDocumentDialog
 @Composable
 fun CategoriaScreen(
     categories: List<CategoryItem>,
-    products: List<ProductJson>,
+    products: List<Product>,
     onCategorySelected: (String) -> Unit,
     onDeleteAccount: () -> Unit = {},
     deleteAccountError: String? = null,
@@ -47,6 +47,9 @@ fun CategoriaScreen(
 
     var activeLegalDoc by remember { mutableStateOf<LegalDocType?>(null) }
     var showDeleteAccountDialog by remember { mutableStateOf(false) }
+    val productCountByCategory = remember(products) {
+        products.groupingBy { it.productCategory() }.eachCount()
+    }
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -98,7 +101,7 @@ fun CategoriaScreen(
                     }
                 } else {
                     itemsIndexed(categories, key = { _, item -> item.id }) { index, catItem ->
-                        val count = products.count { it.productCategory() == catItem.id }
+                        val count = productCountByCategory[catItem.id] ?: 0
                         TarjetaCategoriaMenu(
                             catItem = catItem,
                             productCount = count,

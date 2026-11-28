@@ -8,7 +8,7 @@ import android.os.Build
 import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareDao
 import com.example.data.local.PendingVisitorShareEntity
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationStats
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
@@ -185,7 +185,7 @@ internal class RepositorioGuardadosYLikes(
 
     fun observePublicationStats(): Flow<Map<String, PublicationStats>> = statsRepo.statsFlow
 
-    fun syncCountsFromProducts(products: List<ProductJson>) {
+    fun syncCountsFromProducts(products: List<Product>) {
         statsRepo.syncCountsFromProducts(products)
     }
 
@@ -450,9 +450,11 @@ internal class RepositorioGuardadosYLikes(
     suspend fun refreshPublicationCounts(productIds: Collection<String>) {
         val ids = normalizeProductIds(productIds)
         if (ids.isEmpty()) return
-        refreshPublicationLikeCounts(ids)
-        refreshPublicationSaveCounts(ids)
-        refreshPublicationShareCounts(ids)
+        kotlinx.coroutines.coroutineScope {
+            launch { refreshPublicationLikeCounts(ids) }
+            launch { refreshPublicationSaveCounts(ids) }
+            launch { refreshPublicationShareCounts(ids) }
+        }
     }
 
     suspend fun togglePublicationLike(productId: String): Boolean = withContext(Dispatchers.IO) {

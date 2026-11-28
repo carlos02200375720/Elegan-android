@@ -96,7 +96,31 @@ internal class EstadoReproductorVideo(
         }
     }
 
+    /**
+     * Libera el reproductor cuando otro video toma el protagonismo o al salir de foco,
+     * devolviendo inmediatamente los decodificadores hardware (`MediaCodec`).
+     */
+    fun liberarReproductor() {
+        isPlaying = false
+        hasStarted = false
+        showOverlayControls = true
+        pausarSiEsPosible()
+        shouldLoadPlayer = false
+        isFirstFrameRendered = false
+        GestorVideoActivo.liberarSiEsActivo(this)
+    }
+
+    internal fun liberarPorReemplazo() {
+        isPlaying = false
+        hasStarted = false
+        showOverlayControls = true
+        pausarSiEsPosible()
+        shouldLoadPlayer = false
+        isFirstFrameRendered = false
+    }
+
     fun repetirVideo() {
+        GestorVideoActivo.reclamarReproduccion(this)
         isCompleted = false
         shouldLoadPlayer = true
         isPlaying = true
@@ -105,6 +129,7 @@ internal class EstadoReproductorVideo(
     }
 
     fun iniciarReproduccion() {
+        GestorVideoActivo.reclamarReproduccion(this)
         shouldLoadPlayer = true
         isPlaying = true
         showOverlayControls = false
@@ -118,6 +143,7 @@ internal class EstadoReproductorVideo(
     }
 
     fun reintentarCarga() {
+        GestorVideoActivo.reclamarReproduccion(this)
         hasError = false
         isPrepared = false
         isCompleted = false
@@ -156,6 +182,7 @@ internal fun EfectoFocoYControlesVideo(
     LaunchedEffect(isFocused, autoPlay) {
         if (isFocused) {
             if (autoPlay) {
+                GestorVideoActivo.reclamarReproduccion(state)
                 state.shouldLoadPlayer = true
                 state.isPlaying = true
                 state.showOverlayControls = false
@@ -169,12 +196,9 @@ internal fun EfectoFocoYControlesVideo(
                 }
             }
         } else if (wasFocused || autoPlay) {
-            state.isPlaying = false
-            state.showOverlayControls = true
-            state.pausarSiEsPosible()
-            if (autoPlay) {
-                state.shouldLoadPlayer = false
-            }
+            // Libera el ExoPlayer al salir del foco incluso cuando autoPlay == false
+            // para evitar acumular decodificadores MediaCodec al desplazarse por miles de tarjetas.
+            state.liberarReproductor()
         }
         wasFocused = isFocused
     }

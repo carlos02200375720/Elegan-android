@@ -1,28 +1,20 @@
-package com.example.ui
+package com.example.data.local
 
 import android.content.Context
 import android.net.Uri
-import android.os.Build
 import android.os.Looper
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
-import android.util.Base64
 import android.webkit.MimeTypeMap
+import androidx.compose.runtime.Immutable
 import com.example.data.model.BankAccountInfo
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import java.io.File
-import java.nio.charset.StandardCharsets
-import java.security.KeyStore
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
 import org.json.JSONArray
 import org.json.JSONObject
 
+@Immutable
 data class EstadoBloqueoTransferencia(
     val userId: String = "",
     val subtotal: Double = 0.0,
@@ -41,6 +33,11 @@ data class EstadoBloqueoTransferencia(
     val bankAccounts: List<BankAccountInfo> = emptyList()
 )
 
+/**
+ * Almacén persistente cifrado para el estado de bloqueo de transferencia bancaria.
+ * Vive en `data.local` y reutiliza [CifradoKeystoreAesGcm] con el mismo alias y formato
+ * para mantener compatibilidad total con instalaciones existentes y reglas de backup.
+ */
 object AlmacenBloqueoTransferencia {
     private const val PREFS_NAME = "elegan_transfer_lock_state"
     private const val PROOF_DIR_NAME = "pending_transfer_proof"
@@ -64,76 +61,16 @@ object AlmacenBloqueoTransferencia {
     private const val KEY_PROOF_FILE_PATH = "payment_proof_file_path"
     private const val KEY_BANK_ACCOUNTS_JSON = "bank_accounts_json"
 
-    private const val ANDROID_KEYSTORE = "AndroidKeyStore"
     private const val KEY_ALIAS = "elegan_transfer_state_aes_key_v1"
-    private const val CIPHER_TRANSFORMATION = "AES/GCM/NoPadding"
-    private const val GCM_IV_LENGTH_BYTES = 12
-    private const val GCM_TAG_LENGTH_BITS = 128
-    private const val ENCRYPTED_PREFIX = "v1:"
+
+    private val cifrador = CifradoKeystoreAesGcm(keyAlias = KEY_ALIAS)
     private val lock = Any()
     private val cleanupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var cachedSecretKey: SecretKey? = null
     private var cachedEncryptedRaw: String? = null
     private var cachedEstado: EstadoBloqueoTransferencia? = null
 
     private fun prefs(context: Context) =
         context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
-    private fun isRobolectric(): Boolean =
-        "robolectric".equals(Build.FINGERPRINT, ignoreCase = true)
-
-    private fun obtenerOCrearClave(): SecretKey {
-        cachedSecretKey?.let { return it }
-
-        val keyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
-        val existing = (keyStore.getEntry(KEY_ALIAS, null) as? KeyStore.SecretKeyEntry)?.secretKey
-        if (existing != null) {
-            cachedSecretKey = existing
-            return existing
-        }
-
-        val spec = KeyGenParameterSpec.Builder(
-            KEY_ALIAS,
-            KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT
-        )
-            .setBlockModes(KeyProperties.BLOCK_MODE_GCM)
-            .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-            .setKeySize(256)
-            .build()
-
-        return KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, ANDROID_KEYSTORE)
-            .apply { init(spec) }
-            .generateKey()
-            .also { cachedSecretKey = it }
-    }
-
-    private fun cifrarEstado(plainText: String): String {
-        // Robolectric no implementa AndroidKeyStore; este bypass solo existe en pruebas JVM.
-        if (isRobolectric()) return plainText
-
-        val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, obtenerOCrearClave())
-        val iv = cipher.iv
-        require(iv != null && iv.size == GCM_IV_LENGTH_BYTES) { "IV AES-GCM inválido." }
-        val encrypted = cipher.doFinal(plainText.toByteArray(StandardCharsets.UTF_8))
-        val payload = ByteArray(iv.size + encrypted.size)
-        System.arraycopy(iv, 0, payload, 0, iv.size)
-        System.arraycopy(encrypted, 0, payload, iv.size, encrypted.size)
-        return ENCRYPTED_PREFIX + Base64.encodeToString(payload, Base64.NO_WRAP)
-    }
-
-    private fun descifrarEstado(stored: String): String {
-        if (isRobolectric()) return stored
-        require(stored.startsWith(ENCRYPTED_PREFIX)) { "Formato de estado de transferencia no reconocido." }
-
-        val payload = Base64.decode(stored.removePrefix(ENCRYPTED_PREFIX), Base64.NO_WRAP)
-        require(payload.size > GCM_IV_LENGTH_BYTES) { "Estado de transferencia cifrado incompleto." }
-        val iv = payload.copyOfRange(0, GCM_IV_LENGTH_BYTES)
-        val encrypted = payload.copyOfRange(GCM_IV_LENGTH_BYTES, payload.size)
-        val cipher = Cipher.getInstance(CIPHER_TRANSFORMATION)
-        cipher.init(Cipher.DECRYPT_MODE, obtenerOCrearClave(), GCMParameterSpec(GCM_TAG_LENGTH_BITS, iv))
-        return String(cipher.doFinal(encrypted), StandardCharsets.UTF_8)
-    }
 
     private fun estadoComoJson(estado: EstadoBloqueoTransferencia): String {
         val accounts = JSONArray().apply {
@@ -176,14 +113,16 @@ object AlmacenBloqueoTransferencia {
                 val account = accountsJson.optJSONObject(index) ?: continue
                 val id = account.optString("id", "")
                 if (id.isBlank()) continue
-                add(BankAccountInfo(
-                    id = id,
-                    bankName = account.optString("bankName", ""),
-                    accountNumber = account.optString("accountNumber", ""),
-                    accountType = account.optString("accountType", ""),
-                    holderName = account.optString("holderName", ""),
-                    holderDocument = account.optString("holderDocument", "")
-                ))
+                add(
+                    BankAccountInfo(
+                        id = id,
+                        bankName = account.optString("bankName", ""),
+                        accountNumber = account.optString("accountNumber", ""),
+                        accountType = account.optString("accountType", ""),
+                        holderName = account.optString("holderName", ""),
+                        holderDocument = account.optString("holderDocument", "")
+                    )
+                )
             }
         }
 
@@ -219,15 +158,17 @@ object AlmacenBloqueoTransferencia {
             if (encrypted == cachedEncryptedRaw && cachedEstado != null) {
                 return cachedEstado
             }
-            return runCatching { jsonAEstado(descifrarEstado(encrypted)) }
+            return runCatching {
+                val plain = cifrador.descifrar(encrypted)
+                    ?: error("Formato de estado de transferencia no reconocido.")
+                jsonAEstado(plain)
+            }
                 .onSuccess { decoded ->
                     cachedEncryptedRaw = encrypted
                     cachedEstado = decoded
                 }
                 .getOrElse {
-                    // Si el contenido fue alterado o la clave dejó de estar disponible, no se usa
-                    // información incompleta ni se deja un bloqueo ilegible permanentemente.
-                    cachedSecretKey = null
+                    cifrador.limpiarCacheClave()
                     cachedEncryptedRaw = null
                     cachedEstado = null
                     sp.edit().clear().apply()
@@ -243,14 +184,16 @@ object AlmacenBloqueoTransferencia {
                     val account = array.optJSONObject(index) ?: continue
                     val id = account.optString("id", "")
                     if (id.isBlank()) continue
-                    add(BankAccountInfo(
-                        id = id,
-                        bankName = account.optString("bankName", ""),
-                        accountNumber = account.optString("accountNumber", ""),
-                        accountType = account.optString("accountType", ""),
-                        holderName = account.optString("holderName", ""),
-                        holderDocument = account.optString("holderDocument", "")
-                    ))
+                    add(
+                        BankAccountInfo(
+                            id = id,
+                            bankName = account.optString("bankName", ""),
+                            accountNumber = account.optString("accountNumber", ""),
+                            accountType = account.optString("accountType", ""),
+                            holderName = account.optString("holderName", ""),
+                            holderDocument = account.optString("holderDocument", "")
+                        )
+                    )
                 }
             }
         }.getOrDefault(emptyList())
@@ -285,7 +228,7 @@ object AlmacenBloqueoTransferencia {
     }
 
     fun guardar(context: Context, estado: EstadoBloqueoTransferencia) = synchronized(lock) {
-        val encrypted = cifrarEstado(estadoComoJson(estado))
+        val encrypted = cifrador.cifrar(estadoComoJson(estado))
         cachedEncryptedRaw = encrypted
         cachedEstado = estado
         prefs(context).edit()
@@ -303,7 +246,20 @@ object AlmacenBloqueoTransferencia {
 
         val validProofPath = estado.paymentProofFilePath
             ?.takeIf { it.isNotBlank() }
-            ?.let { path -> File(path).takeIf { it.isFile && it.length() > 0L }?.absolutePath }
+            ?.let { path ->
+                val file = File(path)
+                val proofDir = File(context.applicationContext.filesDir, PROOF_DIR_NAME).canonicalPath
+                val fileCanonical = runCatching { file.canonicalPath }.getOrNull()
+                if (fileCanonical != null &&
+                    fileCanonical.startsWith(proofDir + File.separator) &&
+                    file.isFile &&
+                    file.length() > 0L
+                ) {
+                    file.absolutePath
+                } else {
+                    null
+                }
+            }
 
         estado.copy(paymentProofFilePath = validProofPath)
     }
@@ -355,7 +311,7 @@ object AlmacenBloqueoTransferencia {
         cachedEstado = null
         prefs(context).edit().clear().apply()
         val appCtx = context.applicationContext
-        if (isRobolectric() || Looper.myLooper() != Looper.getMainLooper()) {
+        if (cifrador.isRobolectric() || Looper.myLooper() != Looper.getMainLooper()) {
             eliminarCopiaComprobante(appCtx)
         } else {
             cleanupScope.launch {

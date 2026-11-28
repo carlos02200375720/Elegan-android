@@ -47,7 +47,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Precision
-import com.example.data.model.AnnouncementJson
+import com.example.data.model.Announcement
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementId
 import com.example.data.model.announcementImageUrl
@@ -60,8 +60,8 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 internal fun SeccionAnunciosInicio(
-    announcements: List<AnnouncementJson>,
-    onAnnouncementClick: (AnnouncementJson) -> Unit,
+    announcements: List<Announcement>,
+    onAnnouncementClick: (Announcement) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (announcements.isEmpty()) return

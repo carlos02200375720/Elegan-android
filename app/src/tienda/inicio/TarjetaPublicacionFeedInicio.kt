@@ -5,7 +5,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.painter.Painter
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationStats
 import com.example.data.model.productCommentCount
 import com.example.data.model.productId
@@ -13,7 +13,7 @@ import com.example.ui.components.LocalEleganNotifier
 
 @Composable
 internal fun ElementoPublicacionFeedInicio(
-    product: ProductJson,
+    product: Product,
     index: Int,
     stats: PublicationStats?,
     isLiked: Boolean,
@@ -22,9 +22,9 @@ internal fun ElementoPublicacionFeedInicio(
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)?,
     onToggleLocalSave: (String, Boolean) -> Unit,
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
-    onOpenComments: (ProductJson) -> Unit,
-    onShareProduct: (ProductJson) -> Unit,
-    onNavigateToProduct: (ProductJson) -> Unit,
+    onOpenComments: (Product) -> Unit,
+    onShareProduct: (Product) -> Unit,
+    onNavigateToProduct: (Product) -> Unit,
     isCompact: Boolean,
     brandLogoPainter: Painter,
     modifier: Modifier = Modifier,

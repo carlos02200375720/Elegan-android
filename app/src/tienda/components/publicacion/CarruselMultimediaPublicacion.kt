@@ -39,7 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.imageLoader
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.ui.theme.EleganBurgundy
@@ -49,7 +49,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun CarruselMultimediaPublicacion(
-    product: ProductJson,
+    product: Product,
     mediaItems: List<GalleryMediaItem>,
     ratio: Float,
     priceText: String,

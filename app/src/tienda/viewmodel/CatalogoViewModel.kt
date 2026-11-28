@@ -1,99 +1,137 @@
 package com.example.ui.viewmodel
 
-import com.example.data.model.AnnouncementJson
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productId
+import com.example.data.model.productInStock
 import com.example.data.observability.MonitorErrores
 import com.example.data.repository.EleganRepository
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-internal class ControladorCatalogoYAnuncios(
+/**
+ * ViewModel dedicado a los flujos de Inicio, Catálogo, Categorías y Detalle de Producto.
+ * Recibe [EleganRepository] por inyección en constructor sin depender de `AndroidViewModel`.
+ */
+class CatalogoViewModel(
     private val repository: EleganRepository,
-    private val scope: CoroutineScope
-) {
+    autoLoad: Boolean = true,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default
+) : ViewModel() {
+
     private val _selectedCategory = MutableStateFlow<String?>(null)
     val selectedCategory: StateFlow<String?> = _selectedCategory.asStateFlow()
 
-    private val _selectedProduct = MutableStateFlow<ProductJson?>(null)
-    val selectedProduct: StateFlow<ProductJson?> = _selectedProduct.asStateFlow()
+    private val _selectedProduct = MutableStateFlow<Product?>(null)
+    val selectedProduct: StateFlow<Product?> = _selectedProduct.asStateFlow()
 
-    private val _recommendedProducts = MutableStateFlow<List<ProductJson>>(emptyList())
-    val recommendedProducts: StateFlow<List<ProductJson>> = _recommendedProducts.asStateFlow()
+    private val _recommendedProducts = MutableStateFlow<List<Product>>(emptyList())
+    val recommendedProducts: StateFlow<List<Product>> = _recommendedProducts.asStateFlow()
     private var requestedRecommendationsFor: String = ""
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    val products: StateFlow<List<ProductJson>> = repository.observeProducts()
+    val products: StateFlow<List<Product>> = repository.observeProducts()
         .stateIn(
-            scope = scope,
+            scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
-    val announcements: StateFlow<List<AnnouncementJson>> = repository.observeAnnouncements()
+    val inStockProducts: StateFlow<List<Product>> = products
+        .map { list -> list.filter(Product::productInStock) }
+        .flowOn(computationDispatcher)
         .stateIn(
-            scope = scope,
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyList()
+        )
+
+    val announcements: StateFlow<List<Announcement>> = repository.observeAnnouncements()
+        .stateIn(
+            scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
     val categories: StateFlow<List<CategoryItem>> = repository.observeCategories()
         .stateIn(
-            scope = scope,
+            scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
-    val isLoading: StateFlow<Boolean> = repository.observeProductsLoading()
+    val categoryTitleById: StateFlow<Map<String, String>> = categories
+        .map { list -> list.associate { it.id to it.title.trim() } }
+        .flowOn(computationDispatcher)
         .stateIn(
-            scope = scope,
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = emptyMap()
+        )
+
+    val isLoadingProducts: StateFlow<Boolean> = repository.observeProductsLoading()
+        .stateIn(
+            scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = false
         )
 
-    val error: StateFlow<String?> = repository.observeProductsError()
+    val productsError: StateFlow<String?> = repository.observeProductsError()
         .stateIn(
-            scope = scope,
+            scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = null
         )
 
+    init {
+        if (autoLoad) {
+            refreshProducts()
+            refreshAnnouncements()
+            loadCategoriesOnce()
+        }
+    }
+
     fun refreshProducts() {
-        scope.launch {
+        viewModelScope.launch {
             repository.refreshProducts()
         }
     }
 
     fun refreshAnnouncements() {
-        scope.launch {
+        viewModelScope.launch {
             repository.refreshAnnouncements()
         }
     }
 
     fun loadCategoriesOnce() {
-        scope.launch {
+        viewModelScope.launch {
             repository.loadCategoriesOnce()
         }
     }
 
     fun refreshCategories() {
-        scope.launch {
+        viewModelScope.launch {
             repository.refreshCategories()
         }
     }
 
     fun refreshSelectedProduct() {
         val productId = _selectedProduct.value?.productId()?.takeIf { it.isNotBlank() } ?: return
-        scope.launch {
+        viewModelScope.launch {
             try {
                 val fresh = repository.getProductById(productId)
                 if (fresh != null && _selectedProduct.value?.productId() == productId) {
@@ -102,7 +140,11 @@ internal class ControladorCatalogoYAnuncios(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                MonitorErrores.registrarAdvertencia("EleganCatalog", "No se pudo actualizar el producto abierto en tiempo real.", e)
+                MonitorErrores.registrarAdvertencia(
+                    "EleganCatalog",
+                    "No se pudo actualizar el producto abierto en tiempo real.",
+                    e
+                )
             }
         }
     }
@@ -119,7 +161,7 @@ internal class ControladorCatalogoYAnuncios(
         requestedRecommendationsFor = productId
         _recommendedProducts.value = emptyList()
         if (productId.isBlank()) return
-        scope.launch {
+        viewModelScope.launch {
             try {
                 val result = repository.getRecommendedProducts(productId)
                     .filter { it.productId() != productId }
@@ -141,11 +183,11 @@ internal class ControladorCatalogoYAnuncios(
         }
     }
 
-    fun selectProduct(product: ProductJson) {
+    fun selectProduct(product: Product) {
         _selectedProduct.value = product
         val productId = product.productId()
         if (productId.isNotBlank()) {
-            scope.launch {
+            viewModelScope.launch {
                 try {
                     val fresh = repository.getProductById(productId)
                     if (fresh != null && _selectedProduct.value?.productId() == productId) {
@@ -181,7 +223,7 @@ internal class ControladorCatalogoYAnuncios(
             onFound()
             return
         }
-        scope.launch {
+        viewModelScope.launch {
             try {
                 val remoteProduct = repository.getProductById(cleanId)
                 if (remoteProduct != null) {
@@ -205,5 +247,6 @@ internal class ControladorCatalogoYAnuncios(
 
     fun clearSelection() {
         _selectedProduct.value = null
+        _recommendedProducts.value = emptyList()
     }
 }

@@ -18,9 +18,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.example.data.model.AnnouncementJson
+import com.example.data.model.Announcement
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.UserProfile
@@ -34,10 +34,13 @@ import com.example.ui.components.LocalEleganNotifier
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun InicioScreen(
-    featuredProducts: List<ProductJson>,
+    featuredProducts: List<Product>,
     categories: List<CategoryItem> = emptyList(),
-    announcements: List<AnnouncementJson> = emptyList(),
+    announcements: List<Announcement> = emptyList(),
     userProfile: UserProfile? = null,
+    currentUserId: String = "",
+    sessionUserName: String = "",
+    sessionUserEmail: String = "",
     cartItemCount: Long = 0L,
     savedProductIds: Set<String> = emptySet(),
     onToggleSaveProduct: ((String, (Result<Boolean>) -> Unit) -> Unit)? = null,
@@ -49,17 +52,20 @@ fun InicioScreen(
     onToggleLike: (String, (Result<Boolean>) -> Unit) -> Unit,
     onOpenComments: (String?) -> Unit,
     onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
+    onReportComment: (String, (Result<Unit>) -> Unit) -> Unit = { _, onResult -> onResult(Result.success(Unit)) },
+    onBlockUser: (String, (Result<Unit>) -> Unit) -> Unit = { _, onResult -> onResult(Result.success(Unit)) },
     onRecordShare: (String, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCatalogo: (String?) -> Unit,
-    onAnnouncementClick: (AnnouncementJson) -> Unit = {},
-    onNavigateToProduct: (ProductJson) -> Unit,
+    onAnnouncementClick: (Announcement) -> Unit = {},
+    onNavigateToProduct: (Product) -> Unit,
     onNavigateToMenu: () -> Unit,
     onNavigateToCategoryMenu: () -> Unit = onNavigateToMenu,
     onNavigateToChats: () -> Unit,
     onNavigateToCart: () -> Unit = {},
     isLoadingProducts: Boolean = false,
     productsError: String? = null,
-    onRefreshProducts: () -> Unit = {}
+    onRefreshProducts: () -> Unit = {},
+    onVisibleProductsChanged: (List<String>) -> Unit = {}
 ) {
     val prefetchStrategy = remember { LazyListPrefetchStrategy(nestedPrefetchItemCount = 3) }
     val listState = rememberLazyListState(prefetchStrategy = prefetchStrategy)
@@ -76,7 +82,7 @@ fun InicioScreen(
     }
     val focusedProductIdState = remember { mutableStateOf<String?>(null) }
     var localSavedProductIds by remember { mutableStateOf(setOf<String>()) }
-    var activeCommentProduct by remember { mutableStateOf<ProductJson?>(null) }
+    var activeCommentProduct by remember { mutableStateOf<Product?>(null) }
     var pendingShareProductId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingShareRequestId by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -99,14 +105,20 @@ fun InicioScreen(
         videoProductIds = videoProductIds,
         focusedProductIdState = focusedProductIdState
     )
+    EfectoConteosVisiblesInicio(
+        listState = listState,
+        featuredProducts = featuredProducts,
+        headerItemCount = headerItemCount,
+        onVisibleProductsChanged = onVisibleProductsChanged
+    )
     EfectoPrecargaImagenesInicio(
         listState = listState,
         featuredProducts = featuredProducts,
         headerItemCount = headerItemCount
     )
 
-    val displayName = remember(context, userProfile) {
-        resolverNombreSaludoInicio(context, userProfile)
+    val displayName = remember(userProfile, sessionUserName, sessionUserEmail) {
+        resolverNombreSaludoInicio(userProfile, sessionUserName, sessionUserEmail)
     }
     val onToggleLocalSave = remember {
         { productId: String, willSave: Boolean ->
@@ -118,13 +130,13 @@ fun InicioScreen(
         }
     }
     val onOpenCommentsForProduct = remember(onOpenComments) {
-        { prod: ProductJson ->
+        { prod: Product ->
             activeCommentProduct = prod
             onOpenComments(prod.productId())
         }
     }
     val onShareProduct = remember(context) {
-        { prod: ProductJson ->
+        { prod: Product ->
             val productId = prod.productId()
             pendingShareProductId = productId
             pendingShareRequestId = lanzarSelectorCompartirPublicacion(
@@ -182,13 +194,16 @@ fun InicioScreen(
             product = prod,
             displayName = displayName,
             comments = publicationComments,
+            currentUserId = currentUserId,
             isAuthenticated = isAuthenticated,
             onRequireAuth = onRequireAuth,
             onDismiss = {
                 activeCommentProduct = null
                 onOpenComments(null)
             },
-            onSubmitComment = onSubmitComment
+            onSubmitComment = onSubmitComment,
+            onReportComment = onReportComment,
+            onBlockUser = onBlockUser
         )
     }
 }

@@ -13,11 +13,11 @@ import androidx.compose.ui.test.performScrollTo
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.UserProfile
+import com.example.data.local.AlmacenBloqueoTransferencia
+import com.example.data.local.EstadoBloqueoTransferencia
 import com.example.data.remote.AuthResponse
 import com.example.data.remote.AuthUser
 import com.example.data.remote.MobileSession
-import com.example.ui.AlmacenBloqueoTransferencia
-import com.example.ui.EstadoBloqueoTransferencia
 import com.example.ui.GraciaScreen
 import com.example.ui.VerificasionScreen
 import com.example.ui.theme.EleganTheme

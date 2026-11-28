@@ -27,7 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productShippingMethods
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productColors
@@ -38,18 +38,18 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ProductoScreen(
-    product: ProductJson,
+    product: Product,
     cartItemCount: Long,
     isSaved: Boolean = false,
     onToggleSave: ((Result<Boolean>) -> Unit) -> Unit = {},
-    onAddToCart: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
-    onBuyNow: (ProductJson, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
+    onAddToCart: (Product, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
+    onBuyNow: (Product, String, String, Long, (Result<Unit>) -> Unit) -> Unit,
     onNavigateToCart: () -> Unit,
     onBack: () -> Unit,
     categories: List<CategoryItem> = emptyList(),
-    recommendedProducts: List<ProductJson> = emptyList(),
+    recommendedProducts: List<Product> = emptyList(),
     savedProductIds: Set<String> = emptySet(),
-    onSelectRecommendedProduct: (ProductJson) -> Unit = {},
+    onSelectRecommendedProduct: (Product) -> Unit = {},
     onToggleSaveRecommended: (String, (Result<Boolean>) -> Unit) -> Unit = { _, _ -> }
 ) {
     BackHandler { onBack() }
@@ -61,7 +61,7 @@ fun ProductoScreen(
         mutableStateOf(shippingMethods.firstOrNull()?.id.orEmpty())
     }
     val productForCart = remember(product, selectedShippingId) {
-        product + ("selectedShippingId" to selectedShippingId)
+        product.copy(selectedShippingId = selectedShippingId)
     }
     var selectedSize by remember(productId) { mutableStateOf(defaultSize) }
     var selectedColor by remember(productId) { mutableStateOf(product.productColors().firstOrNull().orEmpty()) }

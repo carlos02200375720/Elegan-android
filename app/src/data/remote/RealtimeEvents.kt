@@ -12,23 +12,17 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 
 data class RealtimeEvent(val collection: String, val operation: String)
 
 object RealtimeEvents {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(0, TimeUnit.MILLISECONDS)
-        .retryOnConnectionFailure(true)
-        .build()
+    private val client get() = ClienteHttpElegan.realtimeClient
     private val mutableEvents = MutableSharedFlow<RealtimeEvent>(replay = 1, extraBufferCapacity = 64)
     val events = mutableEvents.asSharedFlow()
     private var connectionJob: Job? = null

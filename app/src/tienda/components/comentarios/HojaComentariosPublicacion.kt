@@ -19,7 +19,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,38 +27,33 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationComment
 import com.example.data.model.productId
 import com.example.data.model.productName
-import com.example.data.observability.MonitorErrores
-import com.example.data.remote.ApiAutenticacionMovil
-import com.example.data.remote.MobileSession
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
 import com.example.ui.components.EleganNotificationHost
 import com.example.ui.components.EleganNotificationState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PublicationCommentsBottomSheet(
-    product: ProductJson,
+    product: Product,
     displayName: String,
     comments: List<PublicationComment>,
+    currentUserId: String = "",
     isAuthenticated: Boolean = true,
     onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
     onDismiss: () -> Unit,
-    onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit
+    onSubmitComment: (String, String, String, (Result<Unit>) -> Unit) -> Unit,
+    onReportComment: (String, (Result<Unit>) -> Unit) -> Unit = { _, onResult -> onResult(Result.success(Unit)) },
+    onBlockUser: (String, (Result<Unit>) -> Unit) -> Unit = { _, onResult -> onResult(Result.success(Unit)) }
 ) {
-    val context = LocalContext.current
     val commentsNotifier = remember { EleganNotificationState() }
     var newCommentText by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
     var blockedUserIds by remember { mutableStateOf(setOf<String>()) }
     var pendingBlock by remember { mutableStateOf<PublicationComment?>(null) }
-    val scope = rememberCoroutineScope()
     // skipPartiallyExpanded = true garantiza que abra completamente y no a medias
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -81,11 +75,7 @@ fun PublicationCommentsBottomSheet(
         if (trimmed.isNotEmpty() && !isSubmitting) {
             if (!isAuthenticated) {
                 onRequireAuth("Regístrate para comentar en las publicaciones.") {
-                    val registeredAuthor = MobileSession.user(context)?.name
-                        ?.trim()
-                        ?.takeIf { it.isNotBlank() }
-                        ?: displayName
-                    dispatchComment(trimmed, registeredAuthor)
+                    dispatchComment(trimmed, displayName)
                 }
             } else {
                 dispatchComment(trimmed, displayName)
@@ -134,26 +124,15 @@ fun PublicationCommentsBottomSheet(
                 ListaComentariosPublicacion(
                     comments = comments.filterNot { it.userId in blockedUserIds },
                     modifier = Modifier.weight(1f),
-                    currentUserId = MobileSession.userId(context).orEmpty(),
+                    currentUserId = currentUserId,
                     onReport = { comment ->
                         if (!isAuthenticated) {
                             onRequireAuth("Inicia sesión para reportar comentarios.") {}
                         } else {
-                            scope.launch {
-                                try {
-                                    val token = MobileSession.token(context)
-                                        ?.takeIf { it.isNotBlank() && !it.startsWith("local_session_") }
-                                        ?: throw IllegalStateException("Inicia sesión para reportar.")
-                                    ApiAutenticacionMovil.service.reportComment(
-                                        authorization = "Bearer $token",
-                                        commentId = comment.id,
-                                        request = mapOf("reason" to "Contenido inapropiado")
-                                    )
+                            onReportComment(comment.id) { result ->
+                                result.onSuccess {
                                     commentsNotifier.show("Reporte enviado para revisión")
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (error: Exception) {
-                                    MonitorErrores.registrarAdvertencia("EleganComments", "No se pudo enviar el reporte del comentario.", error)
+                                }.onFailure { error ->
                                     commentsNotifier.show(error.message ?: "No se pudo enviar el reporte")
                                 }
                             }
@@ -183,21 +162,11 @@ fun PublicationCommentsBottomSheet(
                     confirmButton = {
                         TextButton(onClick = {
                             pendingBlock = null
-                            scope.launch {
-                                try {
-                                    val token = MobileSession.token(context)
-                                        ?.takeIf { it.isNotBlank() && !it.startsWith("local_session_") }
-                                        ?: throw IllegalStateException("Inicia sesión para bloquear.")
-                                    ApiAutenticacionMovil.service.blockUser(
-                                        authorization = "Bearer $token",
-                                        userId = target.userId
-                                    )
+                            onBlockUser(target.userId) { result ->
+                                result.onSuccess {
                                     blockedUserIds = blockedUserIds + target.userId
                                     commentsNotifier.show("Usuario bloqueado")
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (error: Exception) {
-                                    MonitorErrores.registrarAdvertencia("EleganComments", "No se pudo bloquear al usuario.", error)
+                                }.onFailure { error ->
                                     commentsNotifier.show(error.message ?: "No se pudo bloquear al usuario")
                                 }
                             }

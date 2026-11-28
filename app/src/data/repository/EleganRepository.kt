@@ -2,62 +2,98 @@ package com.example.data.repository
 
 import android.content.Context
 import android.net.Uri
-import com.example.data.model.AnnouncementJson
+import com.example.data.model.Announcement
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
+import com.example.data.model.CashOnDeliveryConfig
 import com.example.data.model.CategoryItem
 import com.example.data.model.Order
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.PublicationComment
 import com.example.data.model.PublicationStats
 import com.example.data.model.SupportMessage
 import com.example.data.model.UserProfile
+import com.example.data.remote.AuthUser
+import com.example.data.remote.MobileSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 
-class EleganRepository(context: Context) {
-    private val appContext = context.applicationContext
-
-    private val catalogoRepo = RepositorioCatalogo()
-    private val categoriasRepo = RepositorioCategorias()
-    private val anunciosRepo = RepositorioAnuncios()
-    private val mediaRepo = RepositorioMedia(appContext)
-    private val carritoRepo = RepositorioCarrito(appContext)
-    private val estadisticasRepo = RepositorioEstadisticasPublicaciones()
-    private val guardadosYLikesRepo = RepositorioGuardadosYLikes(appContext, estadisticasRepo)
-    private val comentariosRepo = RepositorioComentarios(
-        appContext = appContext,
-        statsRepo = estadisticasRepo
+class EleganRepository internal constructor(
+    private val appContext: Context,
+    private val catalogoRepo: RepositorioCatalogo,
+    private val categoriasRepo: RepositorioCategorias,
+    private val anunciosRepo: RepositorioAnuncios,
+    private val mediaRepo: RepositorioMedia,
+    private val carritoRepo: RepositorioCarrito,
+    private val estadisticasRepo: RepositorioEstadisticasPublicaciones,
+    private val guardadosYLikesRepo: RepositorioGuardadosYLikes,
+    private val comentariosRepo: RepositorioComentarios,
+    private val pedidosRepo: RepositorioPedidos,
+    private val mensajesRepo: RepositorioMensajesSoporte,
+    private val perfilYCuentaRepo: RepositorioPerfilYCuenta
+) {
+    constructor(context: Context) : this(
+        appContext = context.applicationContext,
+        catalogoRepo = RepositorioCatalogo(),
+        categoriasRepo = RepositorioCategorias(),
+        anunciosRepo = RepositorioAnuncios(),
+        mediaRepo = RepositorioMedia(context.applicationContext),
+        carritoRepo = RepositorioCarrito(context.applicationContext),
+        estadisticasRepo = RepositorioEstadisticasPublicaciones()
     )
-    private val pedidosRepo = RepositorioPedidos(appContext, carritoRepo)
-    private val mensajesRepo = RepositorioMensajesSoporte(appContext)
-    private val perfilYCuentaRepo = RepositorioPerfilYCuenta(
+
+    private constructor(
+        appContext: Context,
+        catalogoRepo: RepositorioCatalogo,
+        categoriasRepo: RepositorioCategorias,
+        anunciosRepo: RepositorioAnuncios,
+        mediaRepo: RepositorioMedia,
+        carritoRepo: RepositorioCarrito,
+        estadisticasRepo: RepositorioEstadisticasPublicaciones,
+        guardadosYLikesRepo: RepositorioGuardadosYLikes = RepositorioGuardadosYLikes(appContext, estadisticasRepo),
+        comentariosRepo: RepositorioComentarios = RepositorioComentarios(appContext = appContext, statsRepo = estadisticasRepo),
+        pedidosRepo: RepositorioPedidos = RepositorioPedidos(appContext, carritoRepo),
+        mensajesRepo: RepositorioMensajesSoporte = RepositorioMensajesSoporte(appContext)
+    ) : this(
         appContext = appContext,
+        catalogoRepo = catalogoRepo,
+        categoriasRepo = categoriasRepo,
+        anunciosRepo = anunciosRepo,
+        mediaRepo = mediaRepo,
         carritoRepo = carritoRepo,
+        estadisticasRepo = estadisticasRepo,
         guardadosYLikesRepo = guardadosYLikesRepo,
+        comentariosRepo = comentariosRepo,
         pedidosRepo = pedidosRepo,
-        mensajesRepo = mensajesRepo
+        mensajesRepo = mensajesRepo,
+        perfilYCuentaRepo = RepositorioPerfilYCuenta(
+            appContext = appContext,
+            carritoRepo = carritoRepo,
+            guardadosYLikesRepo = guardadosYLikesRepo,
+            pedidosRepo = pedidosRepo,
+            mensajesRepo = mensajesRepo
+        )
     )
 
-    fun observeProducts(): Flow<List<ProductJson>> = catalogoRepo.observeProducts()
+    fun observeProducts(): Flow<List<Product>> = catalogoRepo.observeProducts()
 
     fun observeProductsLoading(): Flow<Boolean> = catalogoRepo.observeLoading()
 
     fun observeProductsError(): Flow<String?> = catalogoRepo.observeError()
 
-    suspend fun refreshProducts(): List<ProductJson> = catalogoRepo.refreshProducts()
+    suspend fun refreshProducts(): List<Product> = catalogoRepo.refreshProducts()
 
-    /** Descarga el catálogo publicado desde el backend; conserva cada producto en formato JSON crudo. */
-    suspend fun fetchPublishedProducts(): List<ProductJson> = catalogoRepo.fetchProductsFromBackend()
+    /** Descarga el catálogo publicado desde el backend como modelos inmutables [Product]. */
+    suspend fun fetchPublishedProducts(): List<Product> = catalogoRepo.fetchProductsFromBackend()
 
-    suspend fun getProductById(productId: String): ProductJson? = catalogoRepo.getProductById(productId)
+    suspend fun getProductById(productId: String): Product? = catalogoRepo.getProductById(productId)
 
-    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<ProductJson> =
+    suspend fun getRecommendedProducts(productId: String, limit: Int = 12): List<Product> =
         catalogoRepo.getRecommendedProducts(productId, limit)
 
-    fun observeAnnouncements(): Flow<List<AnnouncementJson>> = anunciosRepo.observeAnnouncements()
+    fun observeAnnouncements(): Flow<List<Announcement>> = anunciosRepo.observeAnnouncements()
 
-    suspend fun refreshAnnouncements(): List<AnnouncementJson> = anunciosRepo.refreshAnnouncements()
+    suspend fun refreshAnnouncements(): List<Announcement> = anunciosRepo.refreshAnnouncements()
 
     fun observeCategories(): Flow<List<CategoryItem>> = categoriasRepo.observeCategories()
 
@@ -74,7 +110,7 @@ class EleganRepository(context: Context) {
     suspend fun refreshCart(): List<CartItem> = carritoRepo.refreshCart()
 
     suspend fun addToCart(
-        product: ProductJson,
+        product: Product,
         selectedSize: String,
         quantity: Long = 1L,
         selectedColor: String = ""
@@ -100,7 +136,7 @@ class EleganRepository(context: Context) {
     suspend fun refreshPublicationCounts(productIds: Collection<String>) =
         guardadosYLikesRepo.refreshPublicationCounts(productIds)
 
-    fun syncPublicationCountsFromProducts(products: List<ProductJson>) =
+    fun syncPublicationCountsFromProducts(products: List<Product>) =
         guardadosYLikesRepo.syncCountsFromProducts(products)
 
     suspend fun setProductSaved(productId: String, isSaved: Boolean): Boolean =
@@ -124,6 +160,13 @@ class EleganRepository(context: Context) {
     suspend fun addPublicationComment(productId: String, displayName: String, text: String) =
         comentariosRepo.addPublicationComment(productId, displayName, text)
 
+    suspend fun reportPublicationComment(
+        commentId: String,
+        reason: String = "Contenido inapropiado"
+    ) = comentariosRepo.reportComment(commentId, reason)
+
+    suspend fun blockUser(userId: String) = comentariosRepo.blockUser(userId)
+
     suspend fun recordPublicationShare(productId: String): Long =
         guardadosYLikesRepo.recordPublicationShare(productId)
 
@@ -140,7 +183,7 @@ class EleganRepository(context: Context) {
     suspend fun validateCoupon(code: String, selectedCartItemIds: List<String>): Map<String, Any?> =
         pedidosRepo.validateCoupon(code, selectedCartItemIds)
 
-    suspend fun getCashOnDeliveryConfig(): Map<String, Any?> = pedidosRepo.getCashOnDeliveryConfig()
+    suspend fun getCashOnDeliveryConfig(): CashOnDeliveryConfig = pedidosRepo.getCashOnDeliveryConfig()
 
     suspend fun getBankAccounts(): List<BankAccountInfo> = pedidosRepo.getBankAccounts()
 
@@ -184,6 +227,10 @@ class EleganRepository(context: Context) {
 
     suspend fun saveUserProfile(name: String, email: String, phone: String, address: String, city: String) =
         perfilYCuentaRepo.saveUserProfile(name, email, phone, address, city)
+
+    fun currentSessionUser(): AuthUser? = MobileSession.user(appContext)
+
+    fun currentSessionUserId(): String? = MobileSession.userId(appContext)
 
     suspend fun clearUserSessionData() = perfilYCuentaRepo.clearUserSessionData()
 

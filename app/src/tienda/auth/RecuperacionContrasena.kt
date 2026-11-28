@@ -34,28 +34,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.observability.MonitorErrores
-import com.example.data.remote.ApiAutenticacionMovil
-import com.example.data.remote.RestablecerContrasenaRequest
-import com.example.data.remote.SolicitarRecuperacionRequest
+import com.example.data.di.obtenerContenedorElegan
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganCharcoal
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import retrofit2.HttpException
 
 @Composable
 internal fun DialogoRecuperacionContrasena(
     onDismiss: () -> Unit,
     onPasswordReset: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var email by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
@@ -213,70 +207,22 @@ internal fun DialogoRecuperacionContrasena(
                 enabled = !loading,
                 modifier = Modifier.testTag("password_recovery_confirm_btn"),
                 onClick = {
-                    val correo = email.trim()
-                    when {
-                        !codeSent && (!correo.contains("@") || !correo.contains(".")) ->
-                            error = "Escribe un correo electrónico válido."
-                        codeSent && code.length != 6 ->
-                            error = "Escribe el código de 6 dígitos."
-                        codeSent && newPassword.length < 8 ->
-                            error = "La nueva contraseña debe tener al menos 8 caracteres."
-                        else -> {
-                            loading = true
-                            error = null
-                            info = null
-                            scope.launch {
-                                try {
-                                    withContext(Dispatchers.IO) {
-                                        if (!codeSent) {
-                                            ApiAutenticacionMovil.service.requestPasswordReset(
-                                                SolicitarRecuperacionRequest(correo)
-                                            )
-                                        } else {
-                                            ApiAutenticacionMovil.service.resetPassword(
-                                                RestablecerContrasenaRequest(correo, code, newPassword)
-                                            )
-                                        }
-                                    }
-                                    if (!codeSent) {
-                                        codeSent = true
-                                        info = "Si el correo corresponde a una cuenta compatible, recibirás el código. Revisa también spam."
-                                    } else {
-                                        onPasswordReset()
-                                        onDismiss()
-                                    }
-                                } catch (e: CancellationException) {
-                                    throw e
-                                } catch (e: Exception) {
-                                    val httpCode = (e as? HttpException)?.code()
-                                    MonitorErrores.registrarError(
-                                        tag = "PasswordRecovery",
-                                        mensaje = if (!codeSent) {
-                                            "Error al solicitar código de recuperación de contraseña"
-                                        } else {
-                                            "Error al restablecer la contraseña"
-                                        },
-                                        error = e,
-                                        extras = buildMap {
-                                            put("step", if (!codeSent) "request_reset" else "confirm_reset")
-                                            if (httpCode != null) put("httpCode", httpCode.toString())
-                                        }
-                                    )
-                                    error = when (httpCode) {
-                                        400 -> if (!codeSent) {
-                                            "Revisa el correo electrónico ingresado e inténtalo de nuevo."
-                                        } else {
-                                            "El código no es válido o ha vencido. Solicita uno nuevo."
-                                        }
-                                        503 -> "El servicio de correo no está configurado o no está disponible. Inténtalo más tarde."
-                                        else -> "No se pudo completar la solicitud. Comprueba tu conexión e inténtalo de nuevo."
-                                    }
-                                } finally {
-                                    loading = false
-                                }
-                            }
-                        }
-                    }
+                    ejecutarPasoRecuperacionContrasena(
+                        scope = scope,
+                        codeSent = codeSent,
+                        email = email,
+                        code = code,
+                        newPassword = newPassword,
+                        onLoadingChange = { loading = it },
+                        onError = { error = it },
+                        onInfo = { info = it },
+                        onCodeSentSuccess = { codeSent = true },
+                        onPasswordResetSuccess = {
+                            onPasswordReset()
+                            onDismiss()
+                        },
+                        authRepository = context.obtenerContenedorElegan().authRepository
+                    )
                 }
             ) {
                 Text(if (codeSent) "Guardar contraseña" else "Enviar código")

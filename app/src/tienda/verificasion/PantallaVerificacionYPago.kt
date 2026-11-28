@@ -40,10 +40,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import com.example.data.local.AlmacenBloqueoTransferencia
+import com.example.data.local.EstadoBloqueoTransferencia
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
 import com.example.data.model.UserProfile
-import com.example.data.remote.MobileSession
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -54,6 +55,9 @@ fun VerificasionScreen(
     cartItems: List<CartItem>, subtotal: Double, discount: Double, shipping: Double, total: Double,
     cashOnDeliveryEnabled: Boolean = false, cashOnDeliveryMessage: String = "",
     userProfile: UserProfile?, bankAccounts: List<BankAccountInfo> = emptyList(),
+    currentUserId: String = "",
+    sessionUserName: String = "",
+    sessionUserEmail: String = "",
     isSubmittingPayment: Boolean = false, paymentError: String? = null,
     onDismissPaymentError: () -> Unit = {},
     couponCode: String = "",
@@ -67,7 +71,12 @@ fun VerificasionScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val estado = rememberEstadoFormularioVerificacion(userProfile, restoredTransferLock)
+    val estado = rememberEstadoFormularioVerificacion(
+        userProfile = userProfile,
+        restoredTransferLock = restoredTransferLock,
+        sessionUserName = sessionUserName,
+        sessionUserEmail = sessionUserEmail
+    )
     LaunchedEffect(cashOnDeliveryEnabled) {
         if (!cashOnDeliveryEnabled) {
             estado.showCashOnDeliveryPage = false
@@ -99,7 +108,7 @@ fun VerificasionScreen(
         accounts: List<BankAccountInfo> = bankAccounts,
         orderId: String? = pendingTransferOrderId
     ): EstadoBloqueoTransferencia = EstadoBloqueoTransferencia(
-        userId = MobileSession.userId(context).orEmpty(),
+        userId = currentUserId.ifBlank { userProfile?.userId.orEmpty() },
         subtotal = subtotal,
         discount = discount,
         shipping = shipping,

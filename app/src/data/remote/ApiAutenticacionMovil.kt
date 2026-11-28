@@ -3,9 +3,7 @@ package com.example.data.remote
 import com.example.BuildConfig
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
-import java.util.concurrent.TimeUnit
 import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.http.Body
@@ -282,14 +280,6 @@ internal interface EleganAuthApi {
 }
 
 internal object ApiAutenticacionMovil {
-    private val okHttpClient: OkHttpClient by lazy {
-        OkHttpClient.Builder()
-            .connectTimeout(25, TimeUnit.SECONDS)
-            .readTimeout(25, TimeUnit.SECONDS)
-            .writeTimeout(25, TimeUnit.SECONDS)
-            .build()
-    }
-
     private val moshi: Moshi by lazy {
         Moshi.Builder()
             .add(KotlinJsonAdapterFactory())
@@ -299,21 +289,16 @@ internal object ApiAutenticacionMovil {
     val service: EleganAuthApi by lazy {
         Retrofit.Builder()
             .baseUrl(BuildConfig.ELEGAN_API_BASE_URL)
-            .client(okHttpClient)
+            .client(ClienteHttpElegan.apiClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(EleganAuthApi::class.java)
     }
 
     val uploadService: EleganAuthApi by lazy {
-        val uploadClient = okHttpClient.newBuilder()
-            .readTimeout(180, TimeUnit.SECONDS)
-            .writeTimeout(180, TimeUnit.SECONDS)
-            .build()
-
         Retrofit.Builder()
             .baseUrl(BuildConfig.ELEGAN_API_BASE_URL)
-            .client(uploadClient)
+            .client(ClienteHttpElegan.uploadClient)
             .addConverterFactory(MoshiConverterFactory.create(moshi))
             .build()
             .create(EleganAuthApi::class.java)

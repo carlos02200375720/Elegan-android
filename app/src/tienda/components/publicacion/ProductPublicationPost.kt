@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productDescription
 import com.example.data.model.productHasVideo
@@ -28,7 +28,7 @@ import com.example.data.model.productVideoUrl
 
 @Composable
 fun ProductPublicationPost(
-    product: ProductJson,
+    product: Product,
     index: Int,
     isLiked: Boolean,
     isSaved: Boolean,
@@ -151,7 +151,7 @@ fun ProductPublicationPost(
 
 @Composable
 fun ProductHomeCard(
-    product: ProductJson,
+    product: Product,
     onClick: () -> Unit
 ) {
     ProductPublicationPost(

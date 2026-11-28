@@ -1,7 +1,7 @@
 package com.example.ui
 
 import androidx.compose.runtime.Immutable
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.esUrlDeVideo
 import com.example.data.model.productGalleryVideoUrls
 import com.example.data.model.productHasVideo
@@ -21,7 +21,7 @@ sealed interface GalleryMediaItem {
 /**
  * Retorna la lista unificada de elementos multimedia (video y fotos) obtenidos del backend.
  */
-fun getProductMediaItems(product: ProductJson): List<GalleryMediaItem> {
+fun getProductMediaItems(product: Product): List<GalleryMediaItem> {
     val items = mutableListOf<GalleryMediaItem>()
     val imageUrl = product.productImageUrl()
     val productImgs = product.productImages()
@@ -62,7 +62,7 @@ fun getProductMediaItems(product: ProductJson): List<GalleryMediaItem> {
 /**
  * Retorna únicamente las imágenes reales del producto provistas por el backend.
  */
-fun getProductGalleryImages(product: ProductJson): List<String> {
+fun getProductGalleryImages(product: Product): List<String> {
     val videoUrlSet = product.productGalleryVideoUrls().toSet()
     val imageUrl = product.productImageUrl()
     return (listOfNotNull(

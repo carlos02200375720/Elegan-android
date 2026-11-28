@@ -93,6 +93,38 @@ internal class RepositorioComentarios(
             else statsRepo.incrementComments(productId)
         }
 
+    suspend fun reportComment(
+        commentId: String,
+        reason: String = "Contenido inapropiado"
+    ) = withContext(Dispatchers.IO) {
+        val cleanCommentId = commentId.trim()
+        require(cleanCommentId.isNotBlank()) { "El comentario no es válido." }
+        val token = activeBackendToken()
+            ?: throw IllegalStateException("Inicia sesión para reportar.")
+        ApiAutenticacionMovil.service.reportComment(
+            authorization = "Bearer $token",
+            commentId = cleanCommentId,
+            request = mapOf("reason" to reason.trim().ifBlank { "Contenido inapropiado" })
+        )
+    }
+
+    suspend fun blockUser(userId: String) = withContext(Dispatchers.IO) {
+        val cleanUserId = userId.trim()
+        require(cleanUserId.isNotBlank()) { "El usuario no es válido." }
+        val token = activeBackendToken()
+            ?: throw IllegalStateException("Inicia sesión para bloquear.")
+        ApiAutenticacionMovil.service.blockUser(
+            authorization = "Bearer $token",
+            userId = cleanUserId
+        )
+        commentsCache.forEach { (productId, list) ->
+            val removed = synchronized(list) { list.removeAll { it.userId == cleanUserId } }
+            if (removed) {
+                commentsUpdated.tryEmit(productId)
+            }
+        }
+    }
+
     private fun appendComment(comment: PublicationComment) {
         val list = commentsCache.computeIfAbsent(comment.productId) { mutableListOf() }
         synchronized(list) {

@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.R
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.ProductShippingMethod
 import com.example.data.model.productColors
 import com.example.data.model.productName
@@ -66,7 +66,7 @@ import com.example.ui.theme.EleganCharcoal
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PanelVariantesCompraProducto(
-    product: ProductJson,
+    product: Product,
     selectedSize: String,
     onSelectSize: (String) -> Unit,
     selectedColor: String,

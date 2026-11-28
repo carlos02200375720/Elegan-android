@@ -1,260 +1,260 @@
 package com.example
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScaffoldDefaults
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
 import com.example.data.model.AnnouncementDestination
 import com.example.data.model.announcementDestination
 import com.example.data.model.productColors
-import com.example.data.model.productInStock
+import com.example.data.model.productId
 import com.example.data.model.productSizes
 import com.example.ui.CatalogoScreen
 import com.example.ui.InicioScreen
 import com.example.ui.PerfilScreen
-import com.example.ui.viewmodel.EleganViewModel
+import com.example.ui.viewmodel.CarritoYPedidosViewModel
+import com.example.ui.viewmodel.CatalogoViewModel
+import com.example.ui.viewmodel.InteraccionesViewModel
+import com.example.ui.viewmodel.PerfilYSoporteViewModel
 
-@Composable
-internal fun PantallasConBarraInferior(
-    screen: Screen,
-    viewModel: EleganViewModel,
-    isAuthenticated: Boolean = true,
-    onRequireAuth: (String, () -> Unit) -> Unit = { _, action -> action() },
-    onNavigateTo: (Screen) -> Unit,
-    requestedProfileSection: String? = null,
-    onProfileSectionConsumed: () -> Unit = {},
+internal fun NavGraphBuilder.registrarRutasConBarraInferior(
+    catalogoViewModel: CatalogoViewModel,
+    interaccionesViewModel: InteraccionesViewModel,
+    carritoYPedidosViewModel: CarritoYPedidosViewModel,
+    perfilYSoporteViewModel: PerfilYSoporteViewModel,
+    isAuthenticated: Boolean,
+    onRequireAuth: (String, () -> Unit) -> Unit,
+    onNavigateTo: (RutaApp) -> Unit,
+    requestedProfileSection: () -> String?,
+    onProfileSectionConsumed: () -> Unit,
     onSignOut: () -> Unit
 ) {
-    val products by viewModel.products.collectAsStateWithLifecycle()
-    val announcements by viewModel.announcements.collectAsStateWithLifecycle()
-    val categories by viewModel.categories.collectAsStateWithLifecycle()
-    val cartItems by viewModel.cartItems.collectAsStateWithLifecycle()
-    val orders by viewModel.orders.collectAsStateWithLifecycle()
-    val userProfile by viewModel.userProfile.collectAsStateWithLifecycle()
-    val savedProductIds by viewModel.savedProductIds.collectAsStateWithLifecycle()
-    val savedProducts by viewModel.savedProducts.collectAsStateWithLifecycle()
-    val publicationStats by viewModel.publicationStats.collectAsStateWithLifecycle()
-    val likedPublicationIds by viewModel.likedPublicationIds.collectAsStateWithLifecycle()
-    val publicationComments by viewModel.publicationComments.collectAsStateWithLifecycle()
-    val selectedCategory by viewModel.selectedCategory.collectAsStateWithLifecycle()
-    val isLoadingProducts by viewModel.isLoadingProducts.collectAsStateWithLifecycle()
-    val productsError by viewModel.productsError.collectAsStateWithLifecycle()
+    composable<RutaApp.Inicio> {
+        val inStockProducts by catalogoViewModel.inStockProducts.collectAsStateWithLifecycle()
+        val announcements by catalogoViewModel.announcements.collectAsStateWithLifecycle()
+        val categories by catalogoViewModel.categories.collectAsStateWithLifecycle()
+        val isLoadingProducts by catalogoViewModel.isLoadingProducts.collectAsStateWithLifecycle()
+        val productsError by catalogoViewModel.productsError.collectAsStateWithLifecycle()
+        val cartItems by carritoYPedidosViewModel.cartItems.collectAsStateWithLifecycle()
+        val userProfile by perfilYSoporteViewModel.userProfile.collectAsStateWithLifecycle()
+        val sessionUser by perfilYSoporteViewModel.sessionUser.collectAsStateWithLifecycle()
+        val savedProductIds by interaccionesViewModel.savedProductIds.collectAsStateWithLifecycle()
+        val publicationStats by interaccionesViewModel.publicationStats.collectAsStateWithLifecycle()
+        val likedPublicationIds by interaccionesViewModel.likedPublicationIds.collectAsStateWithLifecycle()
+        val publicationComments by interaccionesViewModel.publicationComments.collectAsStateWithLifecycle()
 
-    val inStockProducts = remember(products) { products.filter { it.productInStock() } }
-    val totalCartCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
-
-    LaunchedEffect(screen) {
-        if (screen == Screen.PERFIL) {
-            viewModel.refreshOrders()
-        }
-    }
-
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        bottomBar = {
-            EleganBottomBar(
-                currentScreen = screen,
-                cartItemCount = totalCartCount,
-                onNavigateToInicio = { onNavigateTo(Screen.INICIO) },
-                onNavigateToCatalogo = {
-                    viewModel.setCategory(null)
-                    onNavigateTo(Screen.CATALOGO)
-                },
-                onNavigateToCarrito = { onNavigateTo(Screen.CARRITO) },
-                onNavigateToChats = { onNavigateTo(Screen.CHATS) },
-                onNavigateToPerfil = { onNavigateTo(Screen.PERFIL) }
-            )
-        },
-        containerColor = Color.White
-    ) { innerPadding ->
+        val totalCartCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
         val topAndHorizontalInsets = ScaffoldDefaults.contentWindowInsets
             .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
 
-        AnimatedContent(
-            targetState = screen,
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .consumeWindowInsets(innerPadding),
-            transitionSpec = { obtenerTransicionPantalla(initialState, targetState) },
-            label = "tab_content_transition"
-        ) { targetTab ->
-            val tabContentModifier = if (targetTab == Screen.PERFIL) {
-                Modifier.fillMaxSize()
-            } else {
-                Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(topAndHorizontalInsets)
-            }
-
-            Box(modifier = tabContentModifier) {
-                when (targetTab) {
-                    Screen.INICIO -> {
-                        InicioScreen(
-                            featuredProducts = inStockProducts,
-                            categories = categories,
-                            announcements = announcements,
-                            userProfile = userProfile,
-                            cartItemCount = totalCartCount,
-                            savedProductIds = savedProductIds,
-                            publicationStats = publicationStats,
-                            likedPublicationIds = likedPublicationIds,
-                            publicationComments = publicationComments,
-                            isAuthenticated = isAuthenticated,
-                            onRequireAuth = onRequireAuth,
-                            onToggleLike = { id, onResult ->
-                                onRequireAuth("Regístrate para dar me gusta a tus publicaciones favoritas.") {
-                                    viewModel.togglePublicationLike(id, onResult)
-                                }
-                            },
-                            onOpenComments = viewModel::openPublicationComments,
-                            onSubmitComment = { productId, displayName, text, onResult ->
-                                onRequireAuth("Regístrate para comentar en las publicaciones.") {
-                                    viewModel.addPublicationComment(productId, displayName, text, onResult)
-                                }
-                            },
-                            onRecordShare = { productId, onResult ->
-                                viewModel.recordPublicationShare(productId, onResult)
-                            },
-                            onToggleSaveProduct = { id, onResult ->
-                                onRequireAuth("Regístrate para guardar publicaciones en tu perfil.") {
-                                    viewModel.toggleSaveProduct(id, onResult)
-                                }
-                            },
-                            onNavigateToCatalogo = { cat ->
-                                viewModel.setCategory(cat)
-                                onNavigateTo(Screen.CATALOGO)
-                            },
-                            onAnnouncementClick = { announcement ->
-                                when (val destination = announcement.announcementDestination()) {
-                                    is AnnouncementDestination.Product -> {
-                                        viewModel.selectProductById(
-                                            productId = destination.productId,
-                                            onFound = { onNavigateTo(Screen.PRODUCTO) },
-                                            onNotFound = {
-                                                viewModel.setCategory(null)
-                                                onNavigateTo(Screen.CATALOGO)
-                                            }
-                                        )
-                                    }
-                                    is AnnouncementDestination.Category -> {
-                                        val resolvedCategoryId = categories
-                                            .firstOrNull { it.id == destination.categoryId }?.id
-                                            ?: categories.firstOrNull {
-                                                it.id.equals(destination.categoryId, ignoreCase = true)
-                                            }?.id
-                                            ?: destination.categoryId
-                                        viewModel.setCategory(resolvedCategoryId)
-                                        onNavigateTo(Screen.CATALOGO)
-                                    }
-                                    AnnouncementDestination.None -> {
-                                        viewModel.setCategory(null)
-                                        onNavigateTo(Screen.CATALOGO)
-                                    }
-                                }
-                            },
-                            onNavigateToProduct = { prod ->
-                                viewModel.selectProduct(prod)
-                                onNavigateTo(Screen.PRODUCTO)
-                            },
-                            onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
-                            onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
-                            onNavigateToChats = { onNavigateTo(Screen.CHATS) },
-                            onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
-                            isLoadingProducts = isLoadingProducts,
-                            productsError = productsError,
-                            onRefreshProducts = {
-                                viewModel.refreshProducts()
-                                viewModel.refreshCategories()
-                            }
-                        )
+                .windowInsetsPadding(topAndHorizontalInsets)
+        ) {
+            InicioScreen(
+                featuredProducts = inStockProducts,
+                categories = categories,
+                announcements = announcements,
+                userProfile = userProfile,
+                currentUserId = sessionUser?.effectiveId.orEmpty(),
+                sessionUserName = sessionUser?.name.orEmpty(),
+                sessionUserEmail = sessionUser?.email.orEmpty(),
+                cartItemCount = totalCartCount,
+                savedProductIds = savedProductIds,
+                publicationStats = publicationStats,
+                likedPublicationIds = likedPublicationIds,
+                publicationComments = publicationComments,
+                isAuthenticated = isAuthenticated,
+                onRequireAuth = onRequireAuth,
+                onToggleLike = { id, onResult ->
+                    onRequireAuth("Regístrate para dar me gusta a tus publicaciones favoritas.") {
+                        interaccionesViewModel.togglePublicationLike(id, onResult)
                     }
-
-                    Screen.CATALOGO -> {
-                        BackHandler { onNavigateTo(Screen.INICIO) }
-                        CatalogoScreen(
-                            products = inStockProducts,
-                            categories = categories,
-                            selectedCategory = selectedCategory,
-                            onCategoryChange = { viewModel.setCategory(it) },
-                            onNavigateToMenu = { onNavigateTo(Screen.CATEGORIA) },
-                            onProductClick = { prod ->
-                                viewModel.selectProduct(prod)
-                                onNavigateTo(Screen.PRODUCTO)
-                            },
-                            onQuickAddToCart = { prod ->
-                                onRequireAuth("Regístrate para agregar productos a tu carrito.") {
-                                    val defaultSize = prod.productSizes().firstOrNull() ?: "Estándar"
-                                    val defaultColor = prod.productColors().firstOrNull().orEmpty()
-                                    viewModel.addToCart(prod, defaultSize, 1L, defaultColor)
-                                }
-                            },
-                            cartItemCount = totalCartCount,
-                            onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
-                            savedProductIds = savedProductIds,
-                            isAuthenticated = isAuthenticated,
-                            onRequireAuth = onRequireAuth,
-                            onToggleSaveProduct = { id ->
-                                onRequireAuth("Regístrate para guardar prendas en tu colección.") {
-                                    viewModel.toggleSaveProduct(id)
-                                }
-                            },
-                            isLoadingProducts = isLoadingProducts,
-                            productsError = productsError,
-                            onRefreshProducts = {
-                                viewModel.refreshProducts()
-                                viewModel.refreshCategories()
-                            }
-                        )
+                },
+                onOpenComments = interaccionesViewModel::openPublicationComments,
+                onSubmitComment = { productId, displayName, text, onResult ->
+                    onRequireAuth("Regístrate para comentar en las publicaciones.") {
+                        interaccionesViewModel.addPublicationComment(productId, displayName, text, onResult)
                     }
-
-                    Screen.PERFIL -> {
-                        BackHandler { onNavigateTo(Screen.INICIO) }
-                        PerfilScreen(
-                            userProfile = userProfile,
-                            orders = orders,
-                            savedProducts = savedProducts,
-                            catalogProducts = products,
-                            cartItemCount = totalCartCount,
-                            isAuthenticated = isAuthenticated,
-                            onRequireAuth = onRequireAuth,
-                            onNavigateToCart = { onNavigateTo(Screen.CARRITO) },
-                            onProductClick = { prod ->
-                                viewModel.selectProduct(prod)
-                                onNavigateTo(Screen.PRODUCTO)
-                            },
-                            onExploreClick = { onNavigateTo(Screen.INICIO) },
-                            onSaveProfile = { nm, em, ph, ad, ct, onResult ->
-                                onRequireAuth("Regístrate para guardar tus datos de entrega.") {
-                                    viewModel.saveProfile(nm, em, ph, ad, ct, onResult)
-                                }
-                            },
-                            onNavigateToChats = { onNavigateTo(Screen.CHATS) },
-                            onNavigateToCategoryMenu = { onNavigateTo(Screen.CATEGORIA) },
-                            requestedSection = requestedProfileSection,
-                            onRequestedSectionConsumed = onProfileSectionConsumed,
-                            onSignOut = onSignOut
-                        )
+                },
+                onReportComment = { commentId, onResult ->
+                    onRequireAuth("Inicia sesión para reportar comentarios.") {
+                        interaccionesViewModel.reportPublicationComment(commentId, onResult = onResult)
                     }
+                },
+                onBlockUser = { userId, onResult ->
+                    onRequireAuth("Inicia sesión para bloquear usuarios.") {
+                        interaccionesViewModel.blockUser(userId, onResult)
+                    }
+                },
+                onRecordShare = { productId, onResult ->
+                    interaccionesViewModel.recordPublicationShare(productId, onResult)
+                },
+                onToggleSaveProduct = { id, onResult ->
+                    onRequireAuth("Regístrate para guardar publicaciones en tu perfil.") {
+                        interaccionesViewModel.toggleSaveProduct(id, onResult)
+                    }
+                },
+                onNavigateToCatalogo = { cat ->
+                    catalogoViewModel.setCategory(cat)
+                    onNavigateTo(RutaApp.Catalogo)
+                },
+                onAnnouncementClick = { announcement ->
+                    when (val destination = announcement.announcementDestination()) {
+                        is AnnouncementDestination.Product -> {
+                            catalogoViewModel.selectProductById(
+                                productId = destination.productId,
+                                onFound = { onNavigateTo(RutaApp.Producto(destination.productId)) },
+                                onNotFound = {
+                                    catalogoViewModel.setCategory(null)
+                                    onNavigateTo(RutaApp.Catalogo)
+                                }
+                            )
+                        }
+                        is AnnouncementDestination.Category -> {
+                            val resolvedCategoryId = categories
+                                .firstOrNull { it.id == destination.categoryId }?.id
+                                ?: categories.firstOrNull {
+                                    it.id.equals(destination.categoryId, ignoreCase = true)
+                                }?.id
+                                ?: destination.categoryId
+                            catalogoViewModel.setCategory(resolvedCategoryId)
+                            onNavigateTo(RutaApp.Catalogo)
+                        }
+                        AnnouncementDestination.None -> {
+                            catalogoViewModel.setCategory(null)
+                            onNavigateTo(RutaApp.Catalogo)
+                        }
+                    }
+                },
+                onNavigateToProduct = { prod ->
+                    catalogoViewModel.selectProduct(prod)
+                    onNavigateTo(RutaApp.Producto(prod.productId()))
+                },
+                onNavigateToMenu = { onNavigateTo(RutaApp.Categoria) },
+                onNavigateToCategoryMenu = { onNavigateTo(RutaApp.Categoria) },
+                onNavigateToChats = { onNavigateTo(RutaApp.Chats) },
+                onNavigateToCart = { onNavigateTo(RutaApp.Carrito) },
+                isLoadingProducts = isLoadingProducts,
+                productsError = productsError,
+                onRefreshProducts = {
+                    catalogoViewModel.refreshProducts()
+                    catalogoViewModel.refreshCategories()
+                },
+                onVisibleProductsChanged = interaccionesViewModel::onVisibleProductsChanged
+            )
+        }
+    }
 
-                    else -> {}
+    composable<RutaApp.Catalogo> {
+        val inStockProducts by catalogoViewModel.inStockProducts.collectAsStateWithLifecycle()
+        val categories by catalogoViewModel.categories.collectAsStateWithLifecycle()
+        val categoryTitleById by catalogoViewModel.categoryTitleById.collectAsStateWithLifecycle()
+        val selectedCategory by catalogoViewModel.selectedCategory.collectAsStateWithLifecycle()
+        val isLoadingProducts by catalogoViewModel.isLoadingProducts.collectAsStateWithLifecycle()
+        val productsError by catalogoViewModel.productsError.collectAsStateWithLifecycle()
+        val cartItems by carritoYPedidosViewModel.cartItems.collectAsStateWithLifecycle()
+        val savedProductIds by interaccionesViewModel.savedProductIds.collectAsStateWithLifecycle()
+
+        val totalCartCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
+        val topAndHorizontalInsets = ScaffoldDefaults.contentWindowInsets
+            .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal)
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(topAndHorizontalInsets)
+        ) {
+            CatalogoScreen(
+                products = inStockProducts,
+                categories = categories,
+                categoryTitleById = categoryTitleById,
+                selectedCategory = selectedCategory,
+                onCategoryChange = { catalogoViewModel.setCategory(it) },
+                onNavigateToMenu = { onNavigateTo(RutaApp.Categoria) },
+                onProductClick = { prod ->
+                    catalogoViewModel.selectProduct(prod)
+                    onNavigateTo(RutaApp.Producto(prod.productId()))
+                },
+                onQuickAddToCart = { prod ->
+                    onRequireAuth("Regístrate para agregar productos a tu carrito.") {
+                        val defaultSize = prod.productSizes().firstOrNull() ?: "Estándar"
+                        val defaultColor = prod.productColors().firstOrNull().orEmpty()
+                        carritoYPedidosViewModel.addToCart(prod, defaultSize, 1L, defaultColor)
+                    }
+                },
+                cartItemCount = totalCartCount,
+                onNavigateToCart = { onNavigateTo(RutaApp.Carrito) },
+                savedProductIds = savedProductIds,
+                isAuthenticated = isAuthenticated,
+                onRequireAuth = onRequireAuth,
+                onToggleSaveProduct = { id ->
+                    onRequireAuth("Regístrate para guardar prendas en tu colección.") {
+                        interaccionesViewModel.toggleSaveProduct(id)
+                    }
+                },
+                isLoadingProducts = isLoadingProducts,
+                productsError = productsError,
+                onRefreshProducts = {
+                    catalogoViewModel.refreshProducts()
+                    catalogoViewModel.refreshCategories()
                 }
-            }
+            )
+        }
+    }
+
+    composable<RutaApp.Perfil> {
+        val products by catalogoViewModel.products.collectAsStateWithLifecycle()
+        val cartItems by carritoYPedidosViewModel.cartItems.collectAsStateWithLifecycle()
+        val orders by carritoYPedidosViewModel.orders.collectAsStateWithLifecycle()
+        val userProfile by perfilYSoporteViewModel.userProfile.collectAsStateWithLifecycle()
+        val sessionUser by perfilYSoporteViewModel.sessionUser.collectAsStateWithLifecycle()
+        val savedProducts by interaccionesViewModel.savedProducts.collectAsStateWithLifecycle()
+
+        val totalCartCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
+
+        LaunchedEffect(Unit) {
+            carritoYPedidosViewModel.refreshOrders()
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            PerfilScreen(
+                userProfile = userProfile,
+                orders = orders,
+                savedProducts = savedProducts,
+                catalogProducts = products,
+                cartItemCount = totalCartCount,
+                sessionUserName = sessionUser?.name.orEmpty(),
+                sessionUserEmail = sessionUser?.email.orEmpty(),
+                isAuthenticated = isAuthenticated,
+                onRequireAuth = onRequireAuth,
+                onNavigateToCart = { onNavigateTo(RutaApp.Carrito) },
+                onProductClick = { prod ->
+                    catalogoViewModel.selectProduct(prod)
+                    onNavigateTo(RutaApp.Producto(prod.productId()))
+                },
+                onExploreClick = { onNavigateTo(RutaApp.Inicio) },
+                onSaveProfile = { nm, em, ph, ad, ct, onResult ->
+                    onRequireAuth("Regístrate para guardar tus datos de entrega.") {
+                        perfilYSoporteViewModel.saveProfile(nm, em, ph, ad, ct, onResult)
+                    }
+                },
+                onNavigateToChats = { onNavigateTo(RutaApp.Chats) },
+                onNavigateToCategoryMenu = { onNavigateTo(RutaApp.Categoria) },
+                requestedSection = requestedProfileSection(),
+                onRequestedSectionConsumed = onProfileSectionConsumed,
+                onSignOut = onSignOut
+            )
         }
     }
 }

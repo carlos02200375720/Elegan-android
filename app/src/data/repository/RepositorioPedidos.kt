@@ -4,10 +4,12 @@ import android.content.Context
 import android.os.Build
 import com.example.data.model.BankAccountInfo
 import com.example.data.model.CartItem
+import com.example.data.model.CashOnDeliveryConfig
 import com.example.data.model.Order
 import com.example.data.model.OrderItem
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.model.parseWholeMoney
+import com.example.data.model.toCashOnDeliveryConfig
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import com.example.data.remote.EleganAuthApi
@@ -88,8 +90,8 @@ internal class RepositorioPedidos(
         }
     }
 
-    suspend fun getCashOnDeliveryConfig(): Map<String, Any?> = withContext(Dispatchers.IO) {
-        apiProvider().getCashOnDeliveryConfig()
+    suspend fun getCashOnDeliveryConfig(): CashOnDeliveryConfig = withContext(Dispatchers.IO) {
+        apiProvider().getCashOnDeliveryConfig().toCashOnDeliveryConfig()
     }
 
     suspend fun getBankAccounts(): List<BankAccountInfo> = withContext(Dispatchers.IO) {

@@ -14,4 +14,4 @@ Contiene todas las pantallas, componentes, temas y modelos de vista de la tienda
 - auth/ (AuthScreen.kt)
 - components/ (EleganVideoPlayer.kt)
 - theme/ (Color.kt, Theme.kt, Type.kt)
-- viewmodel/ (EleganViewModel.kt)
+- viewmodel/ (CatalogoViewModel.kt, InteraccionesViewModel.kt, CarritoYPedidosViewModel.kt, PerfilYSoporteViewModel.kt, FabricaViewModelsElegan.kt)

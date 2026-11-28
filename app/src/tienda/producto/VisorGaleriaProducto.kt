@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.imageLoader
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
 import com.example.data.model.productName
@@ -48,7 +48,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 @Composable
 fun VisorGaleriaProducto(
-    product: ProductJson,
+    product: Product,
     mediaItems: List<GalleryMediaItem>,
     pagerState: PagerState,
     categoryLabel: String = product.productCategoryDisplayName()

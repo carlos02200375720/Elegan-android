@@ -4,9 +4,9 @@ Esta es la carpeta física oficial de datos para la aplicación Elegan:
 `app/src/data/`
 
 ## Estructura
-- `model/Models.kt`: alias JSON crudos (`ProductJson`, `AnnouncementJson`), modelos de cuentas bancarias y pedidos/perfil/chat.
+- `model/Models.kt`: modelos inmutables tipados (`Product`, `Announcement`, `CashOnDeliveryConfig`, cuentas bancarias, pedidos, perfil y chat) con mapeadores `toProduct()`, `toAnnouncement()` y `toCashOnDeliveryConfig()`.
 - `remote/ApiAutenticacionMovil.kt`: cliente Retrofit conectado a las 24 rutas bajo `/api/movil/` (`auth`, `products`, `announcements`, `cart`, `saved`, `usuario`, `orders`, `payments` (transferencia y contra entrega), `messages`, `media`).
 - `remote/MobileSession.kt` y `remote/AlmacenCifradoSesion.kt`: gestión de sesión autenticada contra el backend (cifrado local con `AndroidKeyStore` y AES-256-GCM únicamente para el token JWT y la identidad de sesión).
-- `repository/RepositorioCatalogo.kt` y `RepositorioAnuncios.kt`: consumen `GET /api/movil/products`, `GET /api/movil/products/{product_id}` y `GET /api/movil/announcements` directamente en JSON crudo sin almacenamiento local.
+- `repository/RepositorioCatalogo.kt` y `RepositorioAnuncios.kt`: consumen `GET /api/movil/products`, `GET /api/movil/products/{product_id}` y `GET /api/movil/announcements` y los mapean una sola vez a modelos inmutables `Product` y `Announcement` sin almacenamiento local.
 - `repository/RepositorioCarrito.kt`, `RepositorioGuardadosYLikes.kt`, `RepositorioPedidos.kt`, `RepositorioMensajesSoporte.kt` y `RepositorioMedia.kt`: sincronizan carrito, guardados, pedidos por transferencia bancaria y contra entrega, historial de órdenes, mensajes de soporte y carga de comprobantes y multimedia con el backend.
 - `repository/EleganRepository.kt`: fachada principal de repositorios sin almacenamiento local de catálogo.

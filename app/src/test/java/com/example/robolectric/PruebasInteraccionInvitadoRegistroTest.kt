@@ -16,8 +16,10 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.example.data.model.AnnouncementDestination
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.announcementDestination
+import com.example.data.model.toAnnouncement
+import com.example.data.model.toProduct
 import com.example.ui.CatalogoScreen
 import com.example.ui.ChatsScreen
 import com.example.ui.InicioScreen
@@ -53,14 +55,15 @@ class PruebasInteraccionInvitadoRegistroTest {
         restaurarImageLoaderPruebas()
     }
 
-    private fun crearProductoEjemplo(id: String = "prod-invitado-1"): ProductJson = mapOf(
-        "id" to id,
-        "name" to "Camisa Sartorial Oxford",
-        "description" to "Corte elegante de algodón peinado.",
-        "category" to "cat-camisas",
-        "price" to 75.0,
-        "inStock" to true,
-        "imageUrl" to "https://cdn.example.com/camisa.jpg"
+    private fun crearProductoEjemplo(id: String = "prod-invitado-1"): Product = Product(
+        id = id,
+        name = "Camisa Sartorial Oxford",
+        description = "Corte elegante de algodón peinado.",
+        categoryId = "cat-camisas",
+        price = 75.0,
+        inStock = true,
+        imageUrl = "https://cdn.example.com/camisa.jpg",
+        images = listOf("https://cdn.example.com/camisa.jpg")
     )
 
     private fun crearCategoriasEjemplo(): List<CategoryItem> = listOf(
@@ -320,7 +323,7 @@ class PruebasInteraccionInvitadoRegistroTest {
     fun `inicio feed video does not autoplay and starts only when user taps play button`() {
         val videoUrl = "https://cdn.example.com/video.mp4"
 
-        val videoProduct: ProductJson = mapOf(
+        val videoProduct: Product = mapOf(
             "id" to "p-video-1",
             "name" to "Conjunto Punto",
             "description" to "Video de pasarela",
@@ -330,7 +333,7 @@ class PruebasInteraccionInvitadoRegistroTest {
             "hasVideo" to true,
             "videoUrl" to videoUrl,
             "imageUrl" to "https://cdn.example.com/poster.jpg"
-        )
+        ).toProduct()
 
         composeTestRule.setContent {
             EleganTheme {
@@ -378,7 +381,7 @@ class PruebasInteraccionInvitadoRegistroTest {
     fun `producto detail video does not autoplay and starts only when user clicks play`() {
         val videoUrl = "https://cdn.example.com/producto-detail.mp4"
 
-        val videoProduct: ProductJson = mapOf(
+        val videoProduct: Product = mapOf(
             "id" to "p-detail-video",
             "name" to "Conjunto Beige",
             "description" to "Detalle del producto",
@@ -388,7 +391,7 @@ class PruebasInteraccionInvitadoRegistroTest {
             "hasVideo" to true,
             "videoUrl" to videoUrl,
             "imageUrl" to "https://cdn.example.com/poster-detail.jpg"
-        )
+        ).toProduct()
 
         composeTestRule.setContent {
             EleganTheme {
@@ -438,7 +441,7 @@ class PruebasInteraccionInvitadoRegistroTest {
                 "badge" to "DESCUENTO",
                 "destinationType" to "category",
                 "destinationId" to categoryUuid
-            ),
+            ).toAnnouncement(),
             mapOf(
                 "id" to "ann-2",
                 "title" to "oferta",
@@ -446,7 +449,7 @@ class PruebasInteraccionInvitadoRegistroTest {
                 "badge" to "CUPON",
                 "destinationType" to "product",
                 "destinationId" to productUuid
-            )
+            ).toAnnouncement()
         )
 
         composeTestRule.setContent {

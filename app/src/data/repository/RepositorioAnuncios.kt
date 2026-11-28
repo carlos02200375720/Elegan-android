@@ -1,10 +1,7 @@
 package com.example.data.repository
 
-import com.example.data.model.AnnouncementJson
-import com.example.data.model.announcementActive
-import com.example.data.model.announcementId
-import com.example.data.model.announcementMessage
-import com.example.data.model.announcementTitle
+import com.example.data.model.Announcement
+import com.example.data.model.toAnnouncement
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
 import kotlinx.coroutines.CancellationException
@@ -19,11 +16,11 @@ import kotlinx.coroutines.withContext
 internal class RepositorioAnuncios {
 
     private val fetchMutex = Mutex()
-    private val announcementsFlow = MutableStateFlow<List<AnnouncementJson>>(emptyList())
+    private val announcementsFlow = MutableStateFlow<List<Announcement>>(emptyList())
 
-    fun observeAnnouncements(): Flow<List<AnnouncementJson>> = announcementsFlow.asStateFlow()
+    fun observeAnnouncements(): Flow<List<Announcement>> = announcementsFlow.asStateFlow()
 
-    suspend fun refreshAnnouncements(): List<AnnouncementJson> = fetchMutex.withLock {
+    suspend fun refreshAnnouncements(): List<Announcement> = fetchMutex.withLock {
         withContext(Dispatchers.IO) {
             try {
                 val response = ApiAutenticacionMovil.service.announcements()
@@ -45,7 +42,7 @@ internal class RepositorioAnuncios {
     }
 }
 
-internal fun extractAnnouncementsJson(response: Map<String, Any?>): List<AnnouncementJson> {
+internal fun extractAnnouncementsJson(response: Map<String, Any?>): List<Announcement> {
     val rawList = (response["items"] as? List<*>)
         ?: (response["announcements"] as? List<*>)
         ?: (response["data"] as? List<*>)
@@ -53,11 +50,9 @@ internal fun extractAnnouncementsJson(response: Map<String, Any?>): List<Announc
 
     return rawList.mapNotNull { entry ->
         val map = entry as? Map<*, *> ?: return@mapNotNull null
-        val typed: AnnouncementJson = map.entries
-            .mapNotNull { (k, v) -> k?.toString()?.let { it to v } }
-            .toMap()
-        val hasContent = typed.announcementTitle().isNotBlank() || typed.announcementMessage().isNotBlank()
-        val hasIdOrContent = typed.announcementId().isNotBlank() || hasContent
-        typed.takeIf { hasIdOrContent && hasContent && it.announcementActive() }
+        val parsed = map.toAnnouncement()
+        val hasContent = parsed.title.isNotBlank() || parsed.message.isNotBlank()
+        val hasIdOrContent = parsed.id.isNotBlank() || hasContent
+        parsed.takeIf { hasIdOrContent && hasContent && it.active }
     }
 }

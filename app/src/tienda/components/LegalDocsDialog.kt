@@ -31,11 +31,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -43,14 +40,15 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import com.example.data.observability.MonitorErrores
-import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.data.remote.ApiAutenticacionMovil
-import com.example.data.remote.RealtimeEvents
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.di.obtenerContenedorElegan
+import com.example.data.repository.EstadoDocumentoLegal
+import com.example.data.repository.RepositorioDocumentosLegales
 import com.example.ui.EleganTopBarShadow
 import com.example.ui.theme.EleganBurgundy
 import com.example.ui.theme.EleganBurgundyDark
@@ -61,56 +59,21 @@ enum class LegalDocType {
     TERMS_AND_CONDITIONS
 }
 
-private data class LegalDocument(
-    val title: String,
-    val subtitle: String,
-    val content: String
-)
-
 @Composable
 fun LegalDocumentDialog(
     docType: LegalDocType,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    repository: RepositorioDocumentosLegales = LocalContext.current.obtenerContenedorElegan().legalDocumentsRepository
 ) {
     val isPrivacy = docType == LegalDocType.PRIVACY_POLICY
     val documentType = if (isPrivacy) "privacy_policy" else "terms_and_conditions"
-    var document by remember(docType) { mutableStateOf<LegalDocument?>(null) }
-    var loading by remember(docType) { mutableStateOf(true) }
-    var error by remember(docType) { mutableStateOf("") }
-
-    LaunchedEffect(documentType) {
-        suspend fun loadDocument() {
-            loading = true
-            error = ""
-            try {
-                val response = ApiAutenticacionMovil.service.getLegalDocuments()
-                val items = response["items"] as? List<*> ?: emptyList<Any?>()
-                val item = items.filterIsInstance<Map<*, *>>()
-                    .firstOrNull { it["type"]?.toString() == documentType }
-                if (item == null) {
-                    error = "El documento todavía no está publicado."
-                } else {
-                    document = LegalDocument(
-                        title = item["title"]?.toString().orEmpty(),
-                        subtitle = item["subtitle"]?.toString().orEmpty(),
-                        content = item["content"]?.toString().orEmpty()
-                    )
-                }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                MonitorErrores.registrarAdvertencia("LegalDocs", "No se pudo cargar el documento legal $documentType.", e)
-                error = "No se pudo cargar el documento. Comprueba tu conexión e inténtalo de nuevo."
-            } finally {
-                loading = false
-            }
-        }
-
-        loadDocument()
-        RealtimeEvents.events.collect { event ->
-            if (event.collection == "legal_documents") loadDocument()
-        }
+    val documentFlow = remember(repository, documentType) {
+        repository.observarDocumento(documentType)
     }
+    val docState by documentFlow.collectAsStateWithLifecycle(initialValue = EstadoDocumentoLegal.Cargando)
+    val document = (docState as? EstadoDocumentoLegal.Exito)?.documento
+    val loading = docState is EstadoDocumentoLegal.Cargando
+    val error = (docState as? EstadoDocumentoLegal.Error)?.mensaje.orEmpty()
 
     Dialog(
         onDismissRequest = onDismiss,

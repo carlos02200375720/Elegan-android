@@ -1,13 +1,12 @@
 package com.example.ui.auth
 
 import android.content.Context
+import com.example.data.di.obtenerContenedorElegan
 import com.example.data.observability.MonitorErrores
-import com.example.data.remote.MobileSession
+import com.example.data.repository.RepositorioAutenticacion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 
 internal fun validarYEjecutarAutenticacion(
@@ -21,7 +20,8 @@ internal fun validarYEjecutarAutenticacion(
     acceptedTerms: Boolean,
     onLoadingChange: (Boolean) -> Unit,
     onError: (String?) -> Unit,
-    onAuthSuccess: () -> Unit
+    onAuthSuccess: () -> Unit,
+    authRepository: RepositorioAutenticacion = context.obtenerContenedorElegan().authRepository
 ) {
     val email = emailInput.trim()
     val name = nameInput.trim()
@@ -48,12 +48,10 @@ internal fun validarYEjecutarAutenticacion(
 
     coroutineScope.launch {
         try {
-            withContext(Dispatchers.IO) {
-                if (isRegister) {
-                    MobileSession.registerUser(context, name, email, passwordInput)
-                } else {
-                    MobileSession.loginUser(context, email, passwordInput)
-                }
+            if (isRegister) {
+                authRepository.registrar(context, name, email, passwordInput)
+            } else {
+                authRepository.iniciarSesion(context, email, passwordInput)
             }
             onAuthSuccess()
         } catch (e: CancellationException) {
@@ -67,28 +65,79 @@ internal fun validarYEjecutarAutenticacion(
     }
 }
 
+internal fun ejecutarPasoRecuperacionContrasena(
+    scope: CoroutineScope,
+    codeSent: Boolean,
+    email: String,
+    code: String,
+    newPassword: String,
+    onLoadingChange: (Boolean) -> Unit,
+    onError: (String?) -> Unit,
+    onInfo: (String?) -> Unit,
+    onCodeSentSuccess: () -> Unit,
+    onPasswordResetSuccess: () -> Unit,
+    authRepository: RepositorioAutenticacion = RepositorioAutenticacion()
+) {
+    val correo = email.trim()
+    when {
+        !codeSent && (!correo.contains("@") || !correo.contains(".")) -> {
+            onError("Escribe un correo electrónico válido.")
+            return
+        }
+        codeSent && code.length != 6 -> {
+            onError("Escribe el código de 6 dígitos.")
+            return
+        }
+        codeSent && newPassword.length < 8 -> {
+            onError("La nueva contraseña debe tener al menos 8 caracteres.")
+            return
+        }
+    }
+
+    onLoadingChange(true)
+    onError(null)
+    onInfo(null)
+    scope.launch {
+        try {
+            if (!codeSent) {
+                authRepository.solicitarCodigoRecuperacion(correo)
+                onCodeSentSuccess()
+                onInfo("Si el correo corresponde a una cuenta compatible, recibirás el código. Revisa también spam.")
+            } else {
+                authRepository.restablecerContrasena(correo, code, newPassword)
+                onPasswordResetSuccess()
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            onError(e.message ?: "No se pudo completar la solicitud. Comprueba tu conexión e inténtalo de nuevo.")
+        } finally {
+            onLoadingChange(false)
+        }
+    }
+}
+
 fun attemptAutoSignIn(
     context: Context,
     onAuthSuccess: () -> Unit,
     onUnauthenticated: () -> Unit,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    authRepository: RepositorioAutenticacion = context.obtenerContenedorElegan().authRepository
 ) {
     scope.launch {
         try {
-            withContext(Dispatchers.IO) {
-                MobileSession.validateSession(context)
-            }
+            authRepository.validarSesion(context)
             onAuthSuccess()
         } catch (e: CancellationException) {
             throw e
         } catch (e: HttpException) {
             if (e.code() == 401 || e.code() == 403) {
-                MobileSession.clear(context)
+                authRepository.limpiarSesion(context)
             }
             onUnauthenticated()
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("Auth", "No se pudo validar la sesión con el backend.", e)
-            if (MobileSession.user(context) != null) onAuthSuccess() else onUnauthenticated()
+            if (authRepository.usuarioActual(context) != null) onAuthSuccess() else onUnauthenticated()
         }
     }
 }
@@ -96,17 +145,18 @@ fun attemptAutoSignIn(
 fun signOutUser(
     context: Context,
     onSignOutComplete: () -> Unit,
-    scope: CoroutineScope
+    scope: CoroutineScope,
+    authRepository: RepositorioAutenticacion = context.obtenerContenedorElegan().authRepository
 ) {
     scope.launch {
         try {
-            withContext(Dispatchers.IO) { MobileSession.logout(context) }
+            authRepository.cerrarSesion(context)
             onSignOutComplete()
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             MonitorErrores.registrarAdvertencia("Auth", "No se pudo notificar el cierre de sesión al backend.", e)
-            MobileSession.clear(context)
+            authRepository.limpiarSesion(context)
             onSignOutComplete()
         }
     }

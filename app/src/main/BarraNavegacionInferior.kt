@@ -32,7 +32,7 @@ import com.example.ui.theme.EleganBurgundy
 
 @Composable
 internal fun EleganBottomBar(
-    currentScreen: Screen,
+    currentRoute: RutaApp,
     cartItemCount: Long,
     onNavigateToInicio: () -> Unit,
     onNavigateToCatalogo: () -> Unit,
@@ -68,7 +68,7 @@ internal fun EleganBottomBar(
                     windowInsets = WindowInsets(0, 0, 0, 0)
                 ) {
                     NavigationBarItem(
-                        selected = currentScreen == Screen.INICIO,
+                        selected = currentRoute == RutaApp.Inicio,
                         onClick = onNavigateToInicio,
                         icon = {
                             Icon(
@@ -82,7 +82,7 @@ internal fun EleganBottomBar(
                     )
 
                     NavigationBarItem(
-                        selected = currentScreen == Screen.CATALOGO,
+                        selected = currentRoute == RutaApp.Catalogo,
                         onClick = onNavigateToCatalogo,
                         icon = {
                             Icon(
@@ -96,7 +96,7 @@ internal fun EleganBottomBar(
                     )
 
                     NavigationBarItem(
-                        selected = currentScreen == Screen.CARRITO,
+                        selected = currentRoute == RutaApp.Carrito,
                         onClick = onNavigateToCarrito,
                         icon = {
                             if (cartItemCount > 0) {
@@ -129,7 +129,7 @@ internal fun EleganBottomBar(
                     )
 
                     NavigationBarItem(
-                        selected = currentScreen == Screen.CHATS,
+                        selected = currentRoute == RutaApp.Chats,
                         onClick = onNavigateToChats,
                         icon = {
                             Icon(
@@ -143,7 +143,7 @@ internal fun EleganBottomBar(
                     )
 
                     NavigationBarItem(
-                        selected = currentScreen == Screen.PERFIL,
+                        selected = currentRoute == RutaApp.Perfil,
                         onClick = onNavigateToPerfil,
                         icon = {
                             Icon(

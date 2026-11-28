@@ -42,7 +42,7 @@ import coil.compose.AsyncImagePainter
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Precision
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productId
 import com.example.data.model.productName
 import com.example.data.observability.MonitorErrores
@@ -79,7 +79,7 @@ internal fun construirPeticionImagenPublicacion(
 
 @Composable
 internal fun ElementoMultimediaPublicacion(
-    product: ProductJson,
+    product: Product,
     item: GalleryMediaItem?,
     page: Int,
     ratio: Float,

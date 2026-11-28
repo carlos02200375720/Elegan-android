@@ -27,7 +27,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productDescription
 import com.example.data.model.productName
 import com.example.data.model.productPrice
@@ -37,7 +37,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun BloqueDetalleProducto(
-    product: ProductJson
+    product: Product
 ) {
 
     Column(modifier = Modifier.padding(20.dp)) {

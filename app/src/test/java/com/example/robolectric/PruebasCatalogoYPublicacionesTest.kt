@@ -10,7 +10,8 @@ import com.example.data.local.EleganDatabase
 import com.example.data.local.PendingVisitorShareEntity
 import com.example.data.model.AnnouncementDestination
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
+import com.example.data.model.toProduct
 import com.example.data.model.announcementBadge
 import com.example.data.model.announcementCategory
 import com.example.data.model.announcementDestination
@@ -424,7 +425,7 @@ class PruebasCatalogoYPublicacionesTest {
         assertEquals(listOf("Camisa", "camisa"), extracted?.map { it.id })
         assertEquals(listOf("Camisas Mayúscula", "Camisas Minúscula"), extracted?.map { it.title })
 
-        val productWithoutCategory: ProductJson = mapOf("id" to "p_no_cat", "name" to "Traje")
+        val productWithoutCategory: Product = mapOf("id" to "p_no_cat", "name" to "Traje").toProduct()
         assertEquals("", productWithoutCategory.productCategory())
     }
 
@@ -587,7 +588,7 @@ class PruebasCatalogoYPublicacionesTest {
                     "id" to "prod_global",
                     "name" to "Abrigo Cachemira",
                     "commentsCount" to 3
-                )
+                ).toProduct()
             )
         )
         repo.refreshPublicationCounts(listOf("prod_global"))
@@ -854,25 +855,25 @@ class PruebasCatalogoYPublicacionesTest {
             CategoryItem(id = "Camisa", title = "Camisas Mayúscula"),
             CategoryItem(id = "camisa", title = "Camisas Minúscula")
         )
-        val uuidProduct: ProductJson = mapOf(
+        val uuidProduct: Product = mapOf(
             "id" to "p1",
             "name" to "Camisa Oxford",
             "category" to "c8d8cbe6-afab-4cff-a036-9a404c461e25"
-        )
+        ).toProduct()
         assertEquals("Camiza", uuidProduct.productCategoryDisplayName(categories))
         assertEquals("", uuidProduct.productCategoryDisplayName(emptyList()))
         assertEquals("c8d8cbe6-afab-4cff-a036-9a404c461e25", uuidProduct.productCategory())
 
-        val upperCaseProduct: ProductJson = mapOf("id" to "p2", "category" to "Camisa")
-        val lowerCaseProduct: ProductJson = mapOf("id" to "p3", "category" to "camisa")
+        val upperCaseProduct: Product = mapOf("id" to "p2", "category" to "Camisa").toProduct()
+        val lowerCaseProduct: Product = mapOf("id" to "p3", "category" to "camisa").toProduct()
         assertEquals("Camisas Mayúscula", upperCaseProduct.productCategoryDisplayName(categories))
         assertEquals("Camisas Minúscula", lowerCaseProduct.productCategoryDisplayName(categories))
 
-        val explicitNameProduct: ProductJson = mapOf(
+        val explicitNameProduct: Product = mapOf(
             "id" to "p4",
             "category" to "c8d8cbe6-afab-4cff-a036-9a404c461e25",
             "categoryName" to "Sastrería"
-        )
+        ).toProduct()
         assertEquals("Sastrería", explicitNameProduct.productCategoryDisplayName(emptyList()))
     }
 
@@ -986,7 +987,7 @@ class PruebasCatalogoYPublicacionesTest {
             com.example.data.model.resolveBackendMediaUrl("https://cdn.elegan.com/uploads/mi camisa 1.jpg")
         )
 
-        val productWithMixedGallery: ProductJson = mapOf(
+        val productWithMixedGallery: Product = mapOf(
             "id" to "prod_mixed_media",
             "name" to "Camisa Oxford",
             "imageUrl" to "https://cdn.elegan.com/cover.jpg",
@@ -997,7 +998,7 @@ class PruebasCatalogoYPublicacionesTest {
                 mapOf("name" to "Etiqueta sin URL"),
                 mapOf("url" to "https://cdn.elegan.com/clip.mov?alt=media", "type" to "video")
             )
-        )
+        ).toProduct()
 
         val galleryImages = com.example.ui.getProductGalleryImages(productWithMixedGallery)
         assertEquals(

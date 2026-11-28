@@ -22,17 +22,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.R
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
 import com.example.ui.theme.EleganCharcoal
 
 @Composable
 fun CarruselProductosRecomendados(
-    recommendedProducts: List<ProductJson>,
+    recommendedProducts: List<Product>,
     categories: List<CategoryItem>,
     savedProductIds: Set<String>,
-    onProductClick: (ProductJson) -> Unit,
+    onProductClick: (Product) -> Unit,
     onToggleSaveProduct: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {

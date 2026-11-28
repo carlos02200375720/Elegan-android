@@ -15,11 +15,42 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.Watch
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.example.data.model.CategoryItem
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategory
 import com.example.data.model.productImageUrl
 
-fun resolveCategoryCoverImage(category: CategoryItem, products: List<ProductJson>): String? {
+fun resolveCategoryCoverImages(
+    categories: List<CategoryItem>,
+    products: List<Product>
+): Map<String, String?> {
+    if (categories.isEmpty()) return emptyMap()
+    val result = HashMap<String, String?>(categories.size * 2)
+    val missingCategoryIds = HashSet<String>(categories.size)
+    for (category in categories) {
+        if (category.imageUrl.isNotBlank()) {
+            result[category.id] = category.imageUrl
+        } else {
+            result[category.id] = null
+            missingCategoryIds.add(category.id)
+        }
+    }
+    if (missingCategoryIds.isEmpty() || products.isEmpty()) return result
+
+    for (product in products) {
+        val catId = product.productCategory()
+        if (catId in missingCategoryIds) {
+            val imageUrl = product.productImageUrl()
+            if (imageUrl.isNotBlank()) {
+                result[catId] = imageUrl
+                missingCategoryIds.remove(catId)
+                if (missingCategoryIds.isEmpty()) break
+            }
+        }
+    }
+    return result
+}
+
+fun resolveCategoryCoverImage(category: CategoryItem, products: List<Product>): String? {
     if (category.imageUrl.isNotBlank()) return category.imageUrl
     val match = products.firstOrNull {
         it.productCategory() == category.id && it.productImageUrl().isNotBlank()

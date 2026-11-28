@@ -3,12 +3,6 @@ package com.example.data.model
 import androidx.compose.runtime.Immutable
 import com.example.BuildConfig
 
-/**
- * Representación directa de cada producto tal como llega en JSON desde el backend
- * (`GET api/movil/products` -> `{ items: [ ... ] }`), sin conversión a clase intermedia.
- */
-typealias ProductJson = Map<String, Any?>
-
 /** Lee únicamente importes enteros; los valores fraccionarios se rechazan. */
 fun parseWholeMoney(raw: Any?): Double? {
     val integer = when (raw) {
@@ -25,41 +19,12 @@ fun parseWholeMoney(raw: Any?): Double? {
     return integer.toDouble()
 }
 
-fun ProductJson.productId(): String =
-    firstNonBlankString("id", "_id")
-
-fun ProductJson.productName(): String =
-    firstNonBlankString("name", "title")
-
-fun ProductJson.productDescription(): String =
-    firstNonBlankString("description")
-
-fun ProductJson.productCategory(): String =
-    firstNonBlankString("category", "categoryId", "category_id")
-
 private val uuidCategoryPattern =
     Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 private val objectIdCategoryPattern = Regex("^[0-9a-fA-F]{24}$")
 
 private fun looksLikeOpaqueCategoryId(value: String): Boolean =
     uuidCategoryPattern.matches(value) || objectIdCategoryPattern.matches(value)
-
-fun ProductJson.productCategoryDisplayName(categories: List<CategoryItem> = emptyList()): String {
-    val explicitName = firstNonBlankString(
-        "categoryName",
-        "category_name",
-        "categoryTitle",
-        "category_title",
-        "categoryLabel",
-        "category_label"
-    )
-    if (explicitName.isNotBlank()) return explicitName
-    val rawCategory = productCategory()
-    if (rawCategory.isBlank()) return ""
-    val matchedTitle = categories.firstOrNull { it.id == rawCategory }?.title?.trim()
-    if (!matchedTitle.isNullOrBlank()) return matchedTitle
-    return if (looksLikeOpaqueCategoryId(rawCategory)) "" else rawCategory
-}
 
 @Immutable
 data class ProductShippingMethod(
@@ -70,63 +35,97 @@ data class ProductShippingMethod(
     val origin: String
 )
 
-fun ProductJson.productShippingMethods(): List<ProductShippingMethod> =
-    (this["shippingMethods"] as? List<*>)?.mapNotNull { entry ->
-        val method = entry as? Map<*, *> ?: return@mapNotNull null
-        val id = method["id"]?.toString()?.trim().orEmpty()
-        val name = method["name"]?.toString()?.trim().orEmpty()
-        val price = parseWholeMoney(method["price"]) ?: return@mapNotNull null
-        if (id.isBlank() || name.isBlank()) return@mapNotNull null
-        ProductShippingMethod(
-            id = id,
-            name = name,
-            price = price,
-            deliveryTime = method["deliveryTime"]?.toString().orEmpty(),
-            origin = method["origin"]?.toString().orEmpty()
-        )
-    } ?: emptyList()
+/**
+ * Modelo tipado e inmutable de producto para Compose y dominio.
+ * Se construye una sola vez en la capa de datos mediante [toProduct] a partir del JSON del backend.
+ */
+@Immutable
+data class Product(
+    val id: String = "",
+    val name: String = "",
+    val description: String = "",
+    val categoryId: String = "",
+    val categoryName: String = "",
+    val price: Double = 0.0,
+    val imageUrl: String = "",
+    val images: List<String> = emptyList(),
+    val videoUrl: String = "",
+    val galleryVideoUrls: List<String> = emptyList(),
+    val hasVideo: Boolean = false,
+    val inStock: Boolean = true,
+    val allowCashOnDelivery: Boolean = true,
+    val mediaFormat: String = "1:1",
+    val sizes: List<String> = emptyList(),
+    val colors: List<String> = emptyList(),
+    val shippingMethods: List<ProductShippingMethod> = emptyList(),
+    val selectedShippingId: String = "",
+    val reviewCount: Long = 0L,
+    val likesCount: Long? = null,
+    val commentsCount: Long? = null,
+    val savesCount: Long? = null,
+    val sharesCount: Long? = null
+)
 
-fun ProductJson.productPrice(): Double {
-    val raw = this["price"] ?: return 0.0
-    return parseWholeMoney(raw) ?: 0.0
+fun Product.productId(): String = id
+
+fun Product.productName(): String = name
+
+fun Product.productDescription(): String = description
+
+fun Product.productCategory(): String = categoryId
+
+fun Product.productCategoryDisplayName(categories: List<CategoryItem> = emptyList()): String {
+    if (categoryName.isNotBlank()) return categoryName
+    if (categoryId.isBlank()) return ""
+    val matchedTitle = categories.firstOrNull { it.id == categoryId }?.title?.trim()
+    if (!matchedTitle.isNullOrBlank()) return matchedTitle
+    return if (looksLikeOpaqueCategoryId(categoryId)) "" else categoryId
 }
 
-fun ProductJson.productReviewCount(): Long {
-    val raw = this["reviewCount"] ?: this["review_count"] ?: return 0L
-    return when (raw) {
-        is Number -> raw.toLong().coerceAtLeast(0L)
-        is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
-        else -> 0L
-    }
+fun Product.productCategoryDisplayName(categoryTitlesById: Map<String, String>): String {
+    if (categoryName.isNotBlank()) return categoryName
+    if (categoryId.isBlank()) return ""
+    val matchedTitle = categoryTitlesById[categoryId]?.trim()
+    if (!matchedTitle.isNullOrBlank()) return matchedTitle
+    return if (looksLikeOpaqueCategoryId(categoryId)) "" else categoryId
 }
 
-private fun ProductJson.readLongMetric(vararg keys: String): Long {
-    for (key in keys) {
-        val raw = this[key] ?: continue
-        return when (raw) {
-            is Number -> raw.toLong().coerceAtLeast(0L)
-            is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
-            else -> 0L
-        }
-    }
-    return 0L
-}
+fun Product.productShippingMethods(): List<ProductShippingMethod> = shippingMethods
+
+fun Product.productPrice(): Double = price
+
+fun Product.productReviewCount(): Long = reviewCount
 
 /** Conteo persistente de comentarios enviado por el catálogo móvil del backend. */
-fun ProductJson.productCommentCount(): Long =
-    readLongMetric("commentsCount", "comments_count")
+fun Product.productCommentCount(): Long = commentsCount ?: 0L
 
 /** Conteo global de likes enviado por el catálogo móvil del backend. */
-fun ProductJson.productLikesCount(): Long =
-    readLongMetric("likesCount", "likes_count")
+fun Product.productLikesCount(): Long = likesCount ?: 0L
 
 /** Conteo global de guardados enviado por el catálogo móvil del backend. */
-fun ProductJson.productSavesCount(): Long =
-    readLongMetric("savesCount", "saves_count")
+fun Product.productSavesCount(): Long = savesCount ?: 0L
 
 /** Conteo global de compartidos enviado por el catálogo móvil del backend. */
-fun ProductJson.productSharesCount(): Long =
-    readLongMetric("sharesCount", "shares_count")
+fun Product.productSharesCount(): Long = sharesCount ?: 0L
+
+fun Product.productImages(): List<String> = images
+
+fun Product.productGalleryVideoUrls(): List<String> = galleryVideoUrls
+
+fun Product.productImageUrl(): String = imageUrl
+
+fun Product.productVideoUrl(): String = videoUrl
+
+fun Product.productHasVideo(): Boolean =
+    hasVideo || videoUrl.isNotBlank() || galleryVideoUrls.isNotEmpty()
+
+fun Product.productInStock(): Boolean = inStock
+
+fun Product.productMediaFormat(): String = mediaFormat.ifBlank { "1:1" }
+
+fun Product.productSizes(): List<String> = sizes
+
+fun Product.productColors(): List<String> = colors
 
 private val videoFileExtensions = setOf("mp4", "mov", "webm", "m4v", "mkv", "3gp", "m3u8")
 
@@ -141,116 +140,6 @@ private fun looksLikeMediaPathOrUrl(value: String): Boolean =
         value.startsWith("//") ||
         value.contains('/') ||
         value.substringAfterLast('.', missingDelimiterValue = "").length in 2..5
-
-fun ProductJson.productImages(): List<String> {
-    val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
-    val directUrl = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
-        .let(::resolveBackendMediaUrl)
-    val parsed = rawList.mapNotNull { entry ->
-        val rawUrl = when (entry) {
-            is String -> entry.trim().takeIf { it.isNotBlank() }
-            is Map<*, *> -> {
-                val primary = listOf("url", "imageUrl", "image_url", "mediaUrl", "media_url", "src", "path")
-                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
-                primary ?: (entry["name"] as? String)?.trim()?.takeIf { it.isNotBlank() && looksLikeMediaPathOrUrl(it) }
-            }
-            else -> null
-        }
-        rawUrl?.let(::resolveBackendMediaUrl)?.takeIf { it.isNotBlank() }
-    }
-    return if (directUrl.isNotBlank()) (listOf(directUrl) + parsed).distinct() else parsed.distinct()
-}
-
-fun ProductJson.productGalleryVideoUrls(): List<String> {
-    val rawList = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
-    val videos = mutableListOf<String>()
-    val directVideo = productVideoUrl()
-    if (directVideo.isNotBlank()) {
-        videos.add(directVideo)
-    }
-    rawList.forEach { entry ->
-        when (entry) {
-            is String -> {
-                val resolved = resolveBackendMediaUrl(entry)
-                if (resolved.isNotBlank() && esUrlDeVideo(resolved)) {
-                    videos.add(resolved)
-                }
-            }
-            is Map<*, *> -> {
-                val typeHint = listOf("type", "mediaType", "media_type", "mimeType", "mime_type", "kind")
-                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.lowercase() }
-                    .orEmpty()
-                val rawUrl = listOf("videoUrl", "video_url", "url", "mediaUrl", "media_url", "src", "path")
-                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
-                    .orEmpty()
-                val resolved = resolveBackendMediaUrl(rawUrl)
-                if (resolved.isNotBlank() && (typeHint.contains("video") || esUrlDeVideo(resolved))) {
-                    videos.add(resolved)
-                }
-            }
-        }
-    }
-    return videos.distinct()
-}
-
-fun ProductJson.productImageUrl(): String {
-    val direct = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
-        .let(::resolveBackendMediaUrl)
-    if (direct.isNotBlank() && !esUrlDeVideo(direct)) return direct
-    return productImages().firstOrNull { !esUrlDeVideo(it) }.orEmpty()
-}
-
-fun ProductJson.productVideoUrl(): String =
-    firstNonBlankString("videoUrl", "video_url", "video").let(::resolveBackendMediaUrl)
-
-fun ProductJson.productHasVideo(): Boolean =
-    readBoolean("isVideo", "is_video", defaultValue = false) ||
-        productVideoUrl().isNotBlank() ||
-        productGalleryVideoUrls().isNotEmpty()
-
-fun ProductJson.productInStock(): Boolean =
-    readBoolean("inStock", "in_stock", defaultValue = true)
-
-fun ProductJson.productMediaFormat(): String =
-    firstNonBlankString("mediaFormat", "media_format").ifBlank { "1:1" }
-
-fun ProductJson.productSizes(): List<String> =
-    readStringArray("sizes")
-
-fun ProductJson.productColors(): List<String> =
-    readStringArray("colors")
-
-private fun ProductJson.firstNonBlankString(vararg keys: String): String {
-    for (key in keys) {
-        val value = (this[key] as? String)?.trim()
-        if (!value.isNullOrBlank()) return value
-    }
-    return ""
-}
-
-private fun ProductJson.readBoolean(vararg keys: String, defaultValue: Boolean): Boolean {
-    for (key in keys) {
-        if (!containsKey(key) || this[key] == null) continue
-        return when (val raw = this[key]) {
-            is Boolean -> raw
-            is Number -> raw.toInt() != 0
-            is String -> raw.equals("true", ignoreCase = true) || raw == "1"
-            else -> defaultValue
-        }
-    }
-    return defaultValue
-}
-
-private fun ProductJson.readStringArray(key: String): List<String> {
-    val list = this[key] as? List<*> ?: return emptyList()
-    return list.mapNotNull { item ->
-        when (item) {
-            is String -> item.trim().takeIf { it.isNotBlank() }
-            is Map<*, *> -> (item["name"] as? String)?.trim()?.takeIf { it.isNotBlank() }
-            else -> null
-        }
-    }
-}
 
 internal fun resolveBackendMediaUrl(rawUrl: String): String {
     val clean = rawUrl.trim()
@@ -272,69 +161,263 @@ internal fun resolveBackendMediaUrl(rawUrl: String): String {
     return if (encoded.startsWith("/")) "$cleanBase$encoded" else "$cleanBase/$encoded"
 }
 
-typealias AnnouncementJson = Map<String, Any?>
-
-fun AnnouncementJson.announcementId(): String =
-    firstNonBlankString("id", "_id")
-
-fun AnnouncementJson.announcementTitle(): String =
-    firstNonBlankString("title", "name", "headline")
-
-fun AnnouncementJson.announcementMessage(): String =
-    firstNonBlankString("message", "description", "body", "subtitle", "content")
-
-fun AnnouncementJson.announcementImageUrl(): String =
-    firstNonBlankString("imageUrl", "image_url", "image", "bannerUrl", "banner_url")
+/** Convierte un objeto JSON de producto del backend en un modelo [Product] inmutable. */
+fun Map<*, *>.toProduct(): Product {
+    val rawGallery = (this["images"] as? List<*>) ?: (this["gallery"] as? List<*>) ?: emptyList<Any?>()
+    val directImageUrl = firstNonBlankString("imageUrl", "image_url", "image", "coverImage")
         .let(::resolveBackendMediaUrl)
+    val parsedImages = rawGallery.mapNotNull { entry ->
+        val rawUrl = when (entry) {
+            is String -> entry.trim().takeIf { it.isNotBlank() }
+            is Map<*, *> -> {
+                val primary = listOf("url", "imageUrl", "image_url", "mediaUrl", "media_url", "src", "path")
+                    .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
+                primary ?: (entry["name"] as? String)?.trim()?.takeIf { it.isNotBlank() && looksLikeMediaPathOrUrl(it) }
+            }
+            else -> null
+        }
+        rawUrl?.let(::resolveBackendMediaUrl)?.takeIf { it.isNotBlank() }
+    }
+    val resolvedImages = if (directImageUrl.isNotBlank()) {
+        (listOf(directImageUrl) + parsedImages).distinct()
+    } else {
+        parsedImages.distinct()
+    }
 
+    val resolvedVideoUrl = firstNonBlankString("videoUrl", "video_url", "video")
+        .let(::resolveBackendMediaUrl)
+    val resolvedGalleryVideos = buildList {
+        if (resolvedVideoUrl.isNotBlank()) add(resolvedVideoUrl)
+        rawGallery.forEach { entry ->
+            when (entry) {
+                is String -> {
+                    val resolved = resolveBackendMediaUrl(entry)
+                    if (resolved.isNotBlank() && esUrlDeVideo(resolved)) add(resolved)
+                }
+                is Map<*, *> -> {
+                    val typeHint = listOf("type", "mediaType", "media_type", "mimeType", "mime_type", "kind")
+                        .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.lowercase() }
+                        .orEmpty()
+                    val rawUrl = listOf("videoUrl", "video_url", "url", "mediaUrl", "media_url", "src", "path")
+                        .firstNotNullOfOrNull { key -> (entry[key] as? String)?.trim()?.takeIf { it.isNotBlank() } }
+                        .orEmpty()
+                    val resolved = resolveBackendMediaUrl(rawUrl)
+                    if (resolved.isNotBlank() && (typeHint.contains("video") || esUrlDeVideo(resolved))) {
+                        add(resolved)
+                    }
+                }
+            }
+        }
+    }.distinct()
+
+    val coverImage = if (directImageUrl.isNotBlank() && !esUrlDeVideo(directImageUrl)) {
+        directImageUrl
+    } else {
+        resolvedImages.firstOrNull { !esUrlDeVideo(it) }.orEmpty()
+    }
+
+    val shippingMethods = (this["shippingMethods"] as? List<*>)?.mapNotNull { entry ->
+        val method = entry as? Map<*, *> ?: return@mapNotNull null
+        val id = method["id"]?.toString()?.trim().orEmpty()
+        val name = method["name"]?.toString()?.trim().orEmpty()
+        val price = parseWholeMoney(method["price"]) ?: return@mapNotNull null
+        if (id.isBlank() || name.isBlank()) return@mapNotNull null
+        ProductShippingMethod(
+            id = id,
+            name = name,
+            price = price,
+            deliveryTime = method["deliveryTime"]?.toString().orEmpty(),
+            origin = method["origin"]?.toString().orEmpty()
+        )
+    } ?: emptyList()
+
+    val isExplicitVideo = readBoolean("isVideo", "is_video", defaultValue = false)
+
+    return Product(
+        id = firstNonBlankString("id", "_id"),
+        name = firstNonBlankString("name", "title"),
+        description = firstNonBlankString("description"),
+        categoryId = firstNonBlankString("category", "categoryId", "category_id"),
+        categoryName = firstNonBlankString(
+            "categoryName",
+            "category_name",
+            "categoryTitle",
+            "category_title",
+            "categoryLabel",
+            "category_label"
+        ),
+        price = parseWholeMoney(this["price"]) ?: 0.0,
+        imageUrl = coverImage,
+        images = resolvedImages,
+        videoUrl = resolvedVideoUrl,
+        galleryVideoUrls = resolvedGalleryVideos,
+        hasVideo = isExplicitVideo || resolvedVideoUrl.isNotBlank() || resolvedGalleryVideos.isNotEmpty(),
+        inStock = readBoolean("inStock", "in_stock", defaultValue = true),
+        allowCashOnDelivery = readBoolean("allowCashOnDelivery", "allow_cash_on_delivery", defaultValue = true),
+        mediaFormat = firstNonBlankString("mediaFormat", "media_format").ifBlank { "1:1" },
+        sizes = readStringArray("sizes"),
+        colors = readStringArray("colors"),
+        shippingMethods = shippingMethods,
+        selectedShippingId = firstNonBlankString("selectedShippingId", "shippingMethodId"),
+        reviewCount = readOptionalLongMetric("reviewCount", "review_count") ?: 0L,
+        likesCount = readOptionalLongMetric("likesCount", "likes_count"),
+        commentsCount = readOptionalLongMetric("commentsCount", "comments_count"),
+        savesCount = readOptionalLongMetric("savesCount", "saves_count"),
+        sharesCount = readOptionalLongMetric("sharesCount", "shares_count")
+    )
+}
+
+@Immutable
 sealed interface AnnouncementDestination {
+    @Immutable
     data class Category(val categoryId: String) : AnnouncementDestination
+
+    @Immutable
     data class Product(val productId: String) : AnnouncementDestination
+
+    @Immutable
     data object None : AnnouncementDestination
 }
 
-fun AnnouncementJson.announcementDestinationType(): String =
-    firstNonBlankString("destinationType", "destination_type").lowercase()
+/**
+ * Modelo tipado e inmutable de anuncio promocional de inicio.
+ */
+@Immutable
+data class Announcement(
+    val id: String = "",
+    val title: String = "",
+    val message: String = "",
+    val imageUrl: String = "",
+    val badge: String = "",
+    val destinationType: String = "",
+    val destinationId: String = "",
+    val destination: AnnouncementDestination = AnnouncementDestination.None,
+    val category: String = "",
+    val active: Boolean = true
+)
 
-fun AnnouncementJson.announcementDestinationId(): String =
-    firstNonBlankString("destinationId", "destination_id")
+fun Announcement.announcementId(): String = id
 
-fun AnnouncementJson.announcementDestination(): AnnouncementDestination {
-    val type = announcementDestinationType()
-    val id = announcementDestinationId()
-    if (id.isNotBlank()) {
-        when (type) {
-            "category", "categoria" -> return AnnouncementDestination.Category(id)
-            "product", "producto" -> return AnnouncementDestination.Product(id)
-        }
-    }
+fun Announcement.announcementTitle(): String = title
+
+fun Announcement.announcementMessage(): String = message
+
+fun Announcement.announcementImageUrl(): String = imageUrl
+
+fun Announcement.announcementDestinationType(): String = destinationType
+
+fun Announcement.announcementDestinationId(): String = destinationId
+
+fun Announcement.announcementDestination(): AnnouncementDestination = destination
+
+fun Announcement.announcementCategory(): String = when (val dest = destination) {
+    is AnnouncementDestination.Category -> dest.categoryId
+    else -> category
+}
+
+fun Announcement.announcementBadge(): String = badge
+
+fun Announcement.announcementActive(): Boolean = active
+
+/** Convierte un objeto JSON de anuncio del backend en un modelo [Announcement] inmutable. */
+fun Map<*, *>.toAnnouncement(): Announcement {
+    val destType = firstNonBlankString("destinationType", "destination_type").lowercase()
+    val destId = firstNonBlankString("destinationId", "destination_id")
     val legacyProductId = firstNonBlankString(
         "productId",
         "product_id",
         "targetProductId",
         "target_product_id"
     )
-    if (legacyProductId.isNotBlank()) {
-        return AnnouncementDestination.Product(legacyProductId)
-    }
     val legacyCategory = firstNonBlankString("category", "targetCategory", "target_category")
-    if (legacyCategory.isNotBlank()) {
-        return AnnouncementDestination.Category(legacyCategory)
+
+    val resolvedDestination = when {
+        destId.isNotBlank() && (destType == "category" || destType == "categoria") ->
+            AnnouncementDestination.Category(destId)
+        destId.isNotBlank() && (destType == "product" || destType == "producto") ->
+            AnnouncementDestination.Product(destId)
+        legacyProductId.isNotBlank() ->
+            AnnouncementDestination.Product(legacyProductId)
+        legacyCategory.isNotBlank() ->
+            AnnouncementDestination.Category(legacyCategory)
+        else -> AnnouncementDestination.None
     }
-    return AnnouncementDestination.None
+
+    val resolvedCategory = when (resolvedDestination) {
+        is AnnouncementDestination.Category -> resolvedDestination.categoryId
+        else -> legacyCategory
+    }
+
+    return Announcement(
+        id = firstNonBlankString("id", "_id"),
+        title = firstNonBlankString("title", "name", "headline"),
+        message = firstNonBlankString("message", "description", "body", "subtitle", "content"),
+        imageUrl = firstNonBlankString("imageUrl", "image_url", "image", "bannerUrl", "banner_url")
+            .let(::resolveBackendMediaUrl),
+        badge = firstNonBlankString("badge", "tag", "label"),
+        destinationType = destType,
+        destinationId = destId,
+        destination = resolvedDestination,
+        category = resolvedCategory,
+        active = readBoolean("active", "isActive", "is_active", "published", defaultValue = true)
+    )
 }
 
-fun AnnouncementJson.announcementCategory(): String =
-    when (val destination = announcementDestination()) {
-        is AnnouncementDestination.Category -> destination.categoryId
-        else -> firstNonBlankString("category", "targetCategory", "target_category")
+@Immutable
+data class CashOnDeliveryConfig(
+    val enabled: Boolean = false,
+    val message: String = ""
+)
+
+fun Map<*, *>.toCashOnDeliveryConfig(): CashOnDeliveryConfig = CashOnDeliveryConfig(
+    enabled = readBoolean("enabled", defaultValue = false),
+    message = firstNonBlankString("message")
+)
+
+private fun Map<*, *>.firstNonBlankString(vararg keys: String): String {
+    for (key in keys) {
+        val value = (this[key] as? String)?.trim()
+        if (!value.isNullOrBlank()) return value
     }
+    return ""
+}
 
-fun AnnouncementJson.announcementBadge(): String =
-    firstNonBlankString("badge", "tag", "label")
+private fun Map<*, *>.readBoolean(vararg keys: String, defaultValue: Boolean): Boolean {
+    for (key in keys) {
+        if (!containsKey(key) || this[key] == null) continue
+        return when (val raw = this[key]) {
+            is Boolean -> raw
+            is Number -> raw.toInt() != 0
+            is String -> raw.equals("true", ignoreCase = true) || raw == "1"
+            else -> defaultValue
+        }
+    }
+    return defaultValue
+}
 
-fun AnnouncementJson.announcementActive(): Boolean =
-    readBoolean("active", "isActive", "is_active", "published", defaultValue = true)
+private fun Map<*, *>.readOptionalLongMetric(vararg keys: String): Long? {
+    for (key in keys) {
+        if (!containsKey(key)) continue
+        val raw = this[key] ?: return 0L
+        return when (raw) {
+            is Number -> raw.toLong().coerceAtLeast(0L)
+            is String -> raw.trim().toLongOrNull()?.coerceAtLeast(0L) ?: 0L
+            else -> 0L
+        }
+    }
+    return null
+}
+
+private fun Map<*, *>.readStringArray(key: String): List<String> {
+    val list = this[key] as? List<*> ?: return emptyList()
+    return list.mapNotNull { item ->
+        when (item) {
+            is String -> item.trim().takeIf { it.isNotBlank() }
+            is Map<*, *> -> (item["name"] as? String)?.trim()?.takeIf { it.isNotBlank() }
+            else -> null
+        }
+    }
+}
 
 @Immutable
 data class PublicationStats(
@@ -459,4 +542,11 @@ data class CategoryItem(
     val imageUrl: String = "",
     val iconName: String = "",
     val sortOrder: Int = Int.MAX_VALUE
+)
+
+@Immutable
+data class LegalDocument(
+    val title: String,
+    val subtitle: String,
+    val content: String
 )

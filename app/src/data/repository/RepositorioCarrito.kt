@@ -3,13 +3,8 @@ package com.example.data.repository
 import android.content.Context
 import android.os.Build
 import com.example.data.model.CartItem
-import com.example.data.model.ProductJson
-import com.example.data.model.productId
-import com.example.data.model.productImageUrl
-import com.example.data.model.productName
-import com.example.data.model.productPrice
+import com.example.data.model.Product
 import com.example.data.model.parseWholeMoney
-import com.example.data.model.productShippingMethods
 import com.example.data.model.resolveBackendMediaUrl
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.ApiAutenticacionMovil
@@ -124,15 +119,15 @@ internal class RepositorioCarrito(
     }
 
     suspend fun addToCart(
-        product: ProductJson,
+        product: Product,
         selectedSize: String,
         quantity: Long = 1L,
         selectedColor: String = ""
     ) = withContext(Dispatchers.IO) {
-        val productId = product.productId()
+        val productId = product.id
         require(productId.isNotBlank() && quantity > 0)
-        val selectedShippingId = (product["selectedShippingId"] as? String).orEmpty()
-        val selectedShipping = product.productShippingMethods().firstOrNull { it.id == selectedShippingId }
+        val selectedShippingId = product.selectedShippingId
+        val selectedShipping = product.shippingMethods.firstOrNull { it.id == selectedShippingId }
 
         cartMutex.withLock {
             val token = activeBackendToken()
@@ -150,9 +145,9 @@ internal class RepositorioCarrito(
                                 id = UUID.randomUUID().toString(),
                                 userId = optionalUserId(appContext).orEmpty(),
                                 productId = productId,
-                                name = product.productName(),
-                                price = product.productPrice(),
-                                imageUrl = product.productImageUrl(),
+                                name = product.name,
+                                price = product.price,
+                                imageUrl = product.imageUrl,
                                 selectedSize = selectedSize,
                                 selectedColor = selectedColor,
                                 shippingMethodId = selectedShipping?.id.orEmpty(),
@@ -160,7 +155,7 @@ internal class RepositorioCarrito(
                                 shippingPrice = selectedShipping?.price ?: 0.0,
                                 shippingDeliveryTime = selectedShipping?.deliveryTime.orEmpty(),
                                 shippingOrigin = selectedShipping?.origin.orEmpty(),
-                                allowCashOnDelivery = product["allowCashOnDelivery"] as? Boolean ?: true,
+                                allowCashOnDelivery = product.allowCashOnDelivery,
                                 quantity = quantity
                             )
                         )
@@ -177,9 +172,9 @@ internal class RepositorioCarrito(
             val payload = mapOf(
                 "productId" to productId,
                 "product_id" to productId,
-                "name" to product.productName(),
-                "price" to product.productPrice(),
-                "imageUrl" to product.productImageUrl(),
+                "name" to product.name,
+                "price" to product.price,
+                "imageUrl" to product.imageUrl,
                 "selectedSize" to selectedSize,
                 "size" to selectedSize,
                 "selectedColor" to selectedColor,

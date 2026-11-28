@@ -41,7 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.data.model.ProductJson
+import com.example.data.model.Product
 import com.example.data.model.productCategoryDisplayName
 import com.example.data.model.productId
 import com.example.data.model.productImageUrl
@@ -54,7 +54,7 @@ import com.example.ui.theme.EleganGold
 
 @Composable
 fun ProductGridCard(
-    product: ProductJson,
+    product: Product,
     isSaved: Boolean,
     onClick: () -> Unit,
     onToggleSave: () -> Unit,

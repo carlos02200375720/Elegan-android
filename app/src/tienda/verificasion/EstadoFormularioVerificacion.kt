@@ -7,9 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
+import com.example.data.local.EstadoBloqueoTransferencia
 import com.example.data.model.UserProfile
-import com.example.data.remote.MobileSession
 
 @Stable
 internal class EstadoFormularioVerificacion(
@@ -57,16 +56,18 @@ internal class EstadoFormularioVerificacion(
 @Composable
 internal fun rememberEstadoFormularioVerificacion(
     userProfile: UserProfile?,
-    restoredTransferLock: EstadoBloqueoTransferencia? = null
+    restoredTransferLock: EstadoBloqueoTransferencia? = null,
+    sessionUserName: String = "",
+    sessionUserEmail: String = ""
 ): EstadoFormularioVerificacion {
-    val context = LocalContext.current
-    val user = MobileSession.user(context)
     val estado = remember {
         EstadoFormularioVerificacion(
             initialName = restoredTransferLock?.customerName?.takeIf { it.isNotBlank() }
-                ?: user?.name ?: userProfile?.displayName ?: "",
+                ?: sessionUserName.takeIf { it.isNotBlank() }
+                ?: userProfile?.displayName ?: "",
             initialEmail = restoredTransferLock?.email?.takeIf { it.isNotBlank() }
-                ?: user?.email ?: userProfile?.email ?: "",
+                ?: sessionUserEmail.takeIf { it.isNotBlank() }
+                ?: userProfile?.email ?: "",
             initialPhone = restoredTransferLock?.phone?.takeIf { it.isNotBlank() }
                 ?: userProfile?.phone ?: "",
             initialAddress = restoredTransferLock?.address?.takeIf { it.isNotBlank() }

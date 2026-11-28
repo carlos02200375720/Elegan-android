@@ -16,27 +16,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.view.WindowCompat
+import com.example.data.local.AlmacenBloqueoTransferencia
 import com.example.data.observability.MonitorErrores
 import com.example.data.remote.AuthUser
+import com.example.data.remote.ClienteHttpElegan
 import com.example.data.remote.MobileSession
-import com.example.ui.AlmacenBloqueoTransferencia
 import com.example.ui.auth.AuthScreen
 import com.example.ui.auth.attemptAutoSignIn
 import com.example.ui.auth.signOutUser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-enum class Screen {
-    INICIO,
-    CATEGORIA,
-    CATALOGO,
-    PRODUCTO,
-    CARRITO,
-    VERIFICASION,
-    GRACIA,
-    PERFIL,
-    CHATS
-}
 
 @Composable
 fun MainApp() {
@@ -78,6 +67,15 @@ fun MainApp() {
                 },
                 scope = coroutineScope
             )
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        ClienteHttpElegan.eventosSesionExpirada.collect {
+            if (currentUser != null) {
+                currentUser = null
+                isGuest = false
+            }
         }
     }
 

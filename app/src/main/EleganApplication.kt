@@ -5,36 +5,26 @@ import coil.ImageLoader
 import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
+import com.example.data.di.ContenedorDependenciasApp
+import com.example.data.di.ContenedorDependenciasElegan
+import com.example.data.di.ProveedorContenedorElegan
 import com.example.data.observability.MonitorErrores
-import java.util.concurrent.TimeUnit
-import okhttp3.ConnectionPool
-import okhttp3.Dispatcher
-import okhttp3.OkHttpClient
+import com.example.data.remote.ClienteHttpElegan
 
-class EleganApplication : Application(), ImageLoaderFactory {
+class EleganApplication : Application(), ImageLoaderFactory, ProveedorContenedorElegan {
+    override val contenedor: ContenedorDependenciasElegan by lazy {
+        ContenedorDependenciasApp(this)
+    }
+
     override fun onCreate() {
         super.onCreate()
+        ClienteHttpElegan.inicializar(this)
         MonitorErrores.inicializar(this)
     }
 
     override fun newImageLoader(): ImageLoader {
-        val mediaDispatcher = Dispatcher().apply {
-            maxRequests = 64
-            maxRequestsPerHost = 12
-        }
-        val mediaOkHttpClient = OkHttpClient.Builder()
-            .dispatcher(mediaDispatcher)
-            .connectionPool(ConnectionPool(12, 5, TimeUnit.MINUTES))
-            .connectTimeout(20, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(20, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .followRedirects(true)
-            .followSslRedirects(true)
-            .build()
-
         return ImageLoader.Builder(this)
-            .okHttpClient(mediaOkHttpClient)
+            .okHttpClient(ClienteHttpElegan.mediaClient)
             .memoryCache {
                 MemoryCache.Builder(this)
                     .maxSizePercent(0.25)
